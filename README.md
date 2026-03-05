@@ -7,21 +7,9 @@ A high-dimensional AI deliberation interface featuring multiple AI personas deba
 [![Deployed on Vercel](https://img.shields.io/badge/Vercel-Deployed-blue?style=for-the-badge)](https://roko-s-council.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge)](https://github.com/Michaelrobins938/rokos-council)
 
-## Interface Preview
-
-![Council Chamber Background](public/background-dark.jpg)
-
-![Council Crest Logo](public/council-crest.png)
-
-![Background Texture Overlay](public/background-overlay.png)
-
-![Application Logo Emblem](public/logo-emblem.png)
-
 ## Live Demo
 
 https://roko-s-council.vercel.app
-
-![Council Chamber](public/background-dark.jpg)
 
 ## Overview
 
@@ -44,8 +32,6 @@ The application features a cinematic user interface with animated council assemb
 - Historian: Draws from historical precedents and patterns
 - Critic: Identifies logical fallacies and potential risks
 - Technocrat: Focuses on technical feasibility and implementation
-
-![Council Crest](public/council-crest.png)
 
 ![Council Members Avatars](public/avatar-oracle.png) ![Council Members Avatars](public/avatar-strategos.png) ![Council Members Avatars](public/avatar-philosopher.png) ![Council Members Avatars](public/avatar-demagogue.png) ![Council Members Avatars](public/avatar-citizen.png)
 
@@ -85,8 +71,6 @@ The application features a cinematic user interface with animated council assemb
 - Particle effects and visual enhancements
 - Mobile-friendly sidebar with backdrop blur
 
-![Background Overlay Texture](public/background-overlay.png)
-
 **Integrated Content**
 - Built-in podcast player for "The Council Archives"
 - Direct access to podcast episodes within application
@@ -104,24 +88,29 @@ The application features a cinematic user interface with animated council assemb
 ## Technology Stack
 
 ### Frontend Framework
+
 - **React 19**: Modern React with concurrent features
 - **TypeScript**: Type-safe development with full type coverage
 
 ### Styling and Animation
+
 - **Tailwind CSS**: Utility-first CSS framework
 - **Framer Motion**: Production-ready animation library
 
 ### Build Tools
+
 - **Vite**: Fast build tool with hot module replacement
 - **TypeScript Compiler**: Strict type checking and compilation
 
 ### AI Services
+
 - **Google Gemini API**: Primary AI inference engine
 - **OpenRouter**: Alternative AI model provider
 - **Text-to-Speech**: Google Cloud TTS integration
 - **Web Search**: Contextual search integration
 
 ### Additional Libraries
+
 - **Lucide React**: Icon library for UI elements
 - **react-markdown**: Markdown rendering for AI responses
 
@@ -193,7 +182,7 @@ Build for production:
 npm run build
 ```
 
-Preview production build locally:
+Preview the production build locally:
 
 ```bash
 npm run preview
@@ -252,46 +241,16 @@ The council consists of nine distinct personas, each with unique analytical pers
 ### Podcast Integration
 
 Access "The Council Archives" podcast:
-1. Click "Council Archives" button in sidebar
+1. Click the "Council Archives" button in the sidebar
 2. Browse available episodes
-3. Click episode to see description
+3. Click an episode to see the description
 4. Use platform links to listen
-
-## Project Structure
-
-```
-rokos-council/
-├── components/
-│   ├── App.tsx                  # Main application component
-│   ├── Sidebar.tsx               # Navigation and session management
-│   ├── ChatArea.tsx              # Council chamber and messages
-│   ├── SplashScreen.tsx           # Cinematic intro sequence
-│   ├── PodcastPlayer.tsx          # Podcast episode browser
-│   ├── ConsensusVisualization.tsx   # Voting results display
-│   └── Analyzer.tsx              # Analysis utilities
-├── services/
-│   ├── geminiService.ts           # AI integration and council logic
-│   └── searchService.ts          # Web search functionality
-├── public/
-│   ├── splash-screen.mp4          # Intro video
-│   ├── background-dark.jpg         # Background imagery
-│   ├── background-overlay.png       # Texture overlays
-│   ├── logo-emblem.png           # Application logo
-│   ├── council-crest.png          # Council branding
-│   └── avatar-*.png              # Persona avatars
-├── types.ts                      # TypeScript type definitions
-├── index.tsx                     # Application entry point
-├── index.html                    # HTML template
-├── vite.config.ts                # Vite configuration
-├── tsconfig.json                 # TypeScript configuration
-└── package.json                  # Project dependencies
-```
 
 ## Visual Design
 
 The application features a distinctive dark theme with emerald and gold accents, creating a cinematic atmosphere suitable for high-stakes deliberation.
 
-![Council Logo](public/logo-emblem.png)
+![Council Crest](public/council-crest.png)
 
 **Color Palette**
 - Primary Background: Slate-950 to Slate-900
@@ -488,14 +447,6 @@ Roko's Council includes integration with "The Council Archives: A Synthetic Phil
 - High-dimensional ethical deliberations
 - The Void punishment and gridlock resolution
 
-### Podcast Visual Identity
-
-![Logo Emblem](public/logo-emblem.png)
-
-The podcast features the same visual branding as the council application, creating a cohesive experience across platforms.
-
-![Background Design](public/background-dark.jpg)
-
 ### Available Platforms
 
 - **Substack**: https://mforsytherobinson.substack.com/?utm_medium=podcast
@@ -506,8 +457,6 @@ The podcast features the same visual branding as the council application, creati
 ### Episode Guide
 
 Access all episodes directly through the built-in podcast player in the application sidebar.
-
-![Council Chamber Atmosphere](public/background-overlay.png)
 
 ## Performance Optimization
 
@@ -602,6 +551,7 @@ For questions or suggestions, please open an issue on GitHub or contact via Subs
 ## Version History
 
 ### Version 1.0.0 (March 2026)
+
 - Initial public release
 - Full council deliberation system
 - Podcast integration
