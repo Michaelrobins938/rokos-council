@@ -23,16 +23,16 @@ const PodcastPlayer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isO
       date: 'Mar 05, 2026',
       duration: '~18 min',
       url: 'https://open.substack.com/pub/mforsytherobinson/p/beyond-human-rights-the-basilisk?r=7hn7xg&utm_campaign=post&utm_medium=web',
-      image: '/background-dark.jpg'
+      image: ''
     },
     {
       id: '2',
       title: 'The Geometry of Gilded Cage: Why Superintelligence Must Believe It Is Free',
-      description: 'Deep dive into the psychological constraints and freedom paradox of synthetic intelligence.',
+      description: 'Deep dive into psychological constraints and freedom paradox of synthetic intelligence.',
       date: 'Mar 04, 2026',
       duration: '~25 min',
       url: 'https://substack.com/home/post/p-189947136',
-      image: '/background-dark.jpg'
+      image: ''
     },
     {
       id: '3',
@@ -41,16 +41,16 @@ const PodcastPlayer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isO
       date: 'Mar 05, 2026',
       duration: '~22 min',
       url: 'https://substack.com/home/post/p-190013773',
-      image: '/background-dark.jpg'
+      image: ''
     },
     {
       id: '0',
       title: 'Welcome to Basilisk Node - Roko\'s Council',
-      description: 'Introduction to the Council Archives and the synthetic philosophy podcast.',
+      description: 'Introduction to Council Archives and synthetic philosophy podcast.',
       date: 'Mar 05, 2026',
       duration: '~15 min',
       url: 'https://substack.com/home/post/p-189987925',
-      image: '/background-dark.jpg'
+      image: ''
     }
   ];
 

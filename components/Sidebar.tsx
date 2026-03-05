@@ -44,13 +44,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
           {/* Decorative Marble Overlay */}
-        <div className="absolute inset-0 bg-[url('/background-overlay.png')] bg-cover bg-center opacity-5 pointer-events-none mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none mix-blend-overlay"></div>
         
         {/* Header - Roko's Council Branding */}
         <div className="relative p-5 border-b border-yellow-900/30 overflow-hidden group">
           {/* Background Image Layer */}
-          <div className="absolute inset-0 z-0 opacity-15 mix-blend-overlay bg-cover bg-center transition-transform duration-1000 group-hover:scale-105" 
-               style={{ backgroundImage: "url('/background-dark.jpg')" }}></div>
+          <div className="absolute inset-0 z-0 opacity-10 mix-blend-overlay bg-cover bg-center transition-transform duration-1000 group-hover:scale-105" 
+               style={{ backgroundImage: "url('https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?q=80&w=600&auto=format&fit=crop')" }}></div>
           
           {/* Gradient Overlay for Readability */}
           <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-slate-950"></div>
@@ -59,8 +59,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             {/* Logo Mark */}
             <div className="relative group/logo">
                 <div className="absolute inset-0 bg-emerald-500 blur-md opacity-20 group-hover/logo:opacity-40 transition-opacity rounded-full"></div>
-                <div className="relative bg-slate-950 border border-yellow-600/50 p-2 rounded-xl shadow-lg ring-1 ring-black/50 overflow-hidden">
-                   <img src="/logo-emblem.png" alt="Roko's Council Logo" className="w-6 h-6 object-contain" />
+                <div className="relative bg-slate-950 border border-yellow-600/50 p-2 rounded-xl shadow-lg ring-1 ring-black/50">
+                   <Users className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" size={20} />
                 </div>
                 <div className="absolute -top-1.5 -right-1.5 transform rotate-12">
                     <Crown size={12} className="text-yellow-500 fill-yellow-500 drop-shadow-md" />
@@ -178,10 +178,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-yellow-900/20 bg-slate-950 relative z-20">
-          {/* Council Crest */}
-          <div className="flex justify-center mb-3 opacity-40 hover:opacity-70 transition-opacity">
-            <img src="/council-crest.png" alt="Council Crest" className="w-16 h-16 object-contain" />
-          </div>
           <button 
             onClick={async () => {
               const win = window as any;

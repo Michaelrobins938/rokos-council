@@ -31,19 +31,8 @@ const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
           className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center overflow-hidden"
-        >
-          {/* Background Video */}
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover opacity-60"
-          >
-            <source src="/splash-screen.mp4" type="video/mp4" />
-          </video>
-
-          {/* Gradient Overlay */}
+      >
+        {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-950/80 to-emerald-950/70" />
 
           {/* Animated Particles */}

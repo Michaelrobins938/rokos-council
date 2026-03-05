@@ -536,7 +536,6 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
     <div className={`w-full transition-all duration-1000 ease-in-out ${phase === 'VERDICT' ? 'h-[140px] md:h-[200px]' : 'h-[280px] md:h-[340px]'} bg-slate-950 border border-yellow-900/30 rounded-3xl overflow-hidden shadow-2xl relative perspective-1000 mb-6 group select-none`}>
        {/* Background Ambience */}
        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black"></div>
-       <div className="absolute inset-0 bg-[url('/background-dark.jpg')] bg-cover bg-center opacity-20"></div>
        <Particles />
        <HoloOverlay />
       
@@ -999,7 +998,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
     <div className="flex flex-col h-full relative bg-slate-900">
        {/* Background */}
        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 opacity-50 pointer-events-none"></div>
-       <div className="absolute inset-0 bg-[url('/background-overlay.png')] bg-cover bg-center opacity-10 pointer-events-none"></div>
        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
 
        {/* Top Bar */}
@@ -1045,11 +1043,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                      initial={{ scale: 0.8, opacity: 0 }}
                      animate={{ scale: 1, opacity: 1 }}
                      transition={{ duration: 0.8, ease: "easeOut" }}
-                     className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-slate-800 to-slate-900 flex items-center justify-center mb-6 shadow-2xl relative overflow-hidden"
+                     className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-slate-800 to-slate-900 flex items-center justify-center mb-6 shadow-2xl relative"
                   >
                      <div className="absolute -inset-4 bg-emerald-500/20 rounded-full blur-2xl animate-pulse"></div>
                      <div className="absolute inset-0 rounded-full border-2 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-pulse"></div>
-                     <img src="/council-crest.png" alt="Council Crest" className="w-12 h-12 md:w-16 md:h-16 object-contain relative z-10" />
+                     <Users size={32} className="text-emerald-400 md:hidden relative z-10" />
+                     <Users size={40} className="text-emerald-400 hidden md:block relative z-10" />
                   </motion.div>
                  
                  <div className="text-center px-4">
