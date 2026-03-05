@@ -192,7 +192,7 @@ npm run preview
 
 ### Starting a Council Session
 
-1. Click the "New Session" button in the sidebar
+1. Click "New Session" button in the sidebar
 2. The council chamber will initialize with all members assembled
 3. Enter your query or select from predefined directives
 
@@ -217,20 +217,6 @@ The application includes curated ethical dilemmas and philosophical problems:
 **Vote Tally**: Visual representation of voting distribution
 **Voting Rationale**: Explanation for each member's vote
 
-### Council Members Gallery
-
-The council consists of nine distinct personas, each with unique analytical perspectives:
-
-![Oracle Avatar](public/avatar-oracle.png) **Oracle** - Foresight and predictive modeling
-
-![Strategos Avatar](public/avatar-strategos.png) **Strategos** - Tactical and strategic considerations
-
-![Philosopher Avatar](public/avatar-philosopher.png) **Philosopher** - Ethical frameworks and logical analysis
-
-![Demagogue Avatar](public/avatar-demagogue.png) **Demagogue** - Popular sentiment and rhetoric
-
-![Citizen Avatar](public/avatar-citizen.png) **Citizen** - Common interests and human perspectives
-
 ### Session Management
 
 - View all sessions in the sidebar archives
@@ -241,40 +227,40 @@ The council consists of nine distinct personas, each with unique analytical pers
 ### Podcast Integration
 
 Access "The Council Archives" podcast:
-1. Click the "Council Archives" button in the sidebar
+1. Click "Council Archives" button in the sidebar
 2. Browse available episodes
 3. Click an episode to see the description
 4. Use platform links to listen
 
-## Visual Design
+## Project Structure
 
-The application features a distinctive dark theme with emerald and gold accents, creating a cinematic atmosphere suitable for high-stakes deliberation.
-
-![Council Crest](public/council-crest.png)
-
-**Color Palette**
-- Primary Background: Slate-950 to Slate-900
-- Accent Colors: Emerald-400 (active elements), Gold/Yellow-500 (highlights)
-- Text Colors: Slate-100 (primary), Slate-400 (secondary)
-
-**Typography**
-- Headings: Cinzel font (elegant, serif)
-- Body: Inter font (readable, modern)
-- Monospace: Technical elements and data
-
-**Visual Assets**
-
-![Council Crest](public/council-crest.png)
-
-The council crest represents the synthesis of multiple perspectives into unified wisdom.
-
-![Background Texture](public/background-dark.jpg)
-
-Atmospheric backgrounds provide depth and context for deliberation sessions.
-
-![Overlay Texture](public/background-overlay.png)
-
-Subtle texture overlays enhance visual hierarchy and create depth.
+```
+rokos-council/
+├── components/
+│   ├── App.tsx                  # Main application component
+│   ├── Sidebar.tsx               # Navigation and session management
+│   ├── ChatArea.tsx              # Council chamber and messages
+│   ├── SplashScreen.tsx           # Cinematic intro sequence
+│   ├── PodcastPlayer.tsx          # Podcast episode browser
+│   ├── ConsensusVisualization.tsx   # Voting results display
+│   └── Analyzer.tsx              # Analysis utilities
+├── services/
+│   ├── geminiService.ts           # AI integration and council logic
+│   └── searchService.ts          # Web search functionality
+├── public/
+│   ├── splash-screen.mp4          # Intro video
+│   ├── background-dark.jpg         # Background imagery
+│   ├── background-overlay.png       # Texture overlays
+│   ├── logo-emblem.png           # Application logo
+│   ├── council-crest.png          # Council branding
+│   └── avatar-*.png              # Persona avatars
+├── types.ts                      # TypeScript type definitions
+├── index.tsx                     # Application entry point
+├── index.html                    # HTML template
+├── vite.config.ts                # Vite configuration
+├── tsconfig.json                 # TypeScript configuration
+└── package.json                  # Project dependencies
+```
 
 ## Architecture
 
@@ -333,8 +319,8 @@ The application will be live at your Vercel domain.
 
 ### Manual Deployment to Vercel
 
-1. Push code to GitHub repository
-2. Connect repository to Vercel
+1. Push code to the GitHub repository
+2. Connect the repository to Vercel
 3. Configure build settings:
    - Framework: Vite
    - Build Command: `npm run build`
