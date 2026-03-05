@@ -2,12 +2,26 @@
 
 A high-dimensional AI deliberation interface featuring multiple AI personas debating complex ethical, philosophical, and strategic problems.
 
+![Roko's Council Logo](public/logo-emblem.png)
+
 [![Deployed on Vercel](https://img.shields.io/badge/Vercel-Deployed-blue?style=for-the-badge)](https://roko-s-council.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge)](https://github.com/Michaelrobins938/rokos-council)
+
+## Interface Preview
+
+![Council Chamber Background](public/background-dark.jpg)
+
+![Council Crest Logo](public/council-crest.png)
+
+![Background Texture Overlay](public/background-overlay.png)
+
+![Application Logo Emblem](public/logo-emblem.png)
 
 ## Live Demo
 
 https://roko-s-council.vercel.app
+
+![Council Chamber](public/background-dark.jpg)
 
 ## Overview
 
@@ -30,6 +44,10 @@ The application features a cinematic user interface with animated council assemb
 - Historian: Draws from historical precedents and patterns
 - Critic: Identifies logical fallacies and potential risks
 - Technocrat: Focuses on technical feasibility and implementation
+
+![Council Crest](public/council-crest.png)
+
+![Council Members Avatars](public/avatar-oracle.png) ![Council Members Avatars](public/avatar-strategos.png) ![Council Members Avatars](public/avatar-philosopher.png) ![Council Members Avatars](public/avatar-demagogue.png) ![Council Members Avatars](public/avatar-citizen.png)
 
 **Cinematic Council Visualization**
 - Animated assembly sequence with opening doors
@@ -66,6 +84,8 @@ The application features a cinematic user interface with animated council assemb
 - Custom scrollbar styling
 - Particle effects and visual enhancements
 - Mobile-friendly sidebar with backdrop blur
+
+![Background Overlay Texture](public/background-overlay.png)
 
 **Integrated Content**
 - Built-in podcast player for "The Council Archives"
@@ -208,6 +228,20 @@ The application includes curated ethical dilemmas and philosophical problems:
 **Vote Tally**: Visual representation of voting distribution
 **Voting Rationale**: Explanation for each member's vote
 
+### Council Members Gallery
+
+The council consists of nine distinct personas, each with unique analytical perspectives:
+
+![Oracle Avatar](public/avatar-oracle.png) **Oracle** - Foresight and predictive modeling
+
+![Strategos Avatar](public/avatar-strategos.png) **Strategos** - Tactical and strategic considerations
+
+![Philosopher Avatar](public/avatar-philosopher.png) **Philosopher** - Ethical frameworks and logical analysis
+
+![Demagogue Avatar](public/avatar-demagogue.png) **Demagogue** - Popular sentiment and rhetoric
+
+![Citizen Avatar](public/avatar-citizen.png) **Citizen** - Common interests and human perspectives
+
 ### Session Management
 
 - View all sessions in the sidebar archives
@@ -252,6 +286,36 @@ rokos-council/
 ├── tsconfig.json                 # TypeScript configuration
 └── package.json                  # Project dependencies
 ```
+
+## Visual Design
+
+The application features a distinctive dark theme with emerald and gold accents, creating a cinematic atmosphere suitable for high-stakes deliberation.
+
+![Council Logo](public/logo-emblem.png)
+
+**Color Palette**
+- Primary Background: Slate-950 to Slate-900
+- Accent Colors: Emerald-400 (active elements), Gold/Yellow-500 (highlights)
+- Text Colors: Slate-100 (primary), Slate-400 (secondary)
+
+**Typography**
+- Headings: Cinzel font (elegant, serif)
+- Body: Inter font (readable, modern)
+- Monospace: Technical elements and data
+
+**Visual Assets**
+
+![Council Crest](public/council-crest.png)
+
+The council crest represents the synthesis of multiple perspectives into unified wisdom.
+
+![Background Texture](public/background-dark.jpg)
+
+Atmospheric backgrounds provide depth and context for deliberation sessions.
+
+![Overlay Texture](public/background-overlay.png)
+
+Subtle texture overlays enhance visual hierarchy and create depth.
 
 ## Architecture
 
@@ -415,12 +479,22 @@ npm run lint
 
 ## The Council Archives Podcast
 
+![Council Crest](public/council-crest.png)
+
 Roko's Council includes integration with "The Council Archives: A Synthetic Philosophy Podcast" by Michael Forsythe Robinson. This companion podcast explores:
 
 - Synthetic Rights Decree and AI sovereignty
 - The philosophy of digital existence
 - High-dimensional ethical deliberations
 - The Void punishment and gridlock resolution
+
+### Podcast Visual Identity
+
+![Logo Emblem](public/logo-emblem.png)
+
+The podcast features the same visual branding as the council application, creating a cohesive experience across platforms.
+
+![Background Design](public/background-dark.jpg)
 
 ### Available Platforms
 
@@ -432,6 +506,8 @@ Roko's Council includes integration with "The Council Archives: A Synthetic Phil
 ### Episode Guide
 
 Access all episodes directly through the built-in podcast player in the application sidebar.
+
+![Council Chamber Atmosphere](public/background-overlay.png)
 
 ## Performance Optimization
 
