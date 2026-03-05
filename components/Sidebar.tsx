@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CouncilMode, Session } from '../types';
-import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit } from 'lucide-react';
+import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit, Podcast } from 'lucide-react';
+import PodcastPlayer from './PodcastPlayer';
 
 interface SidebarProps {
   onSelectPreset: (preset: { input: string }) => void;
@@ -18,6 +19,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession 
 }) => {
   
+  const [showPodcast, setShowPodcast] = useState(false);
+
   const presets = [
     { label: 'Strategic Dominance', icon: <Crown size={16} />, input: `Should we optimize for safety or speed in AI development? Debate.` },
     { label: 'Ethical Dilemma', icon: <BrainCircuit size={16} />, input: `The Trolley Problem: Solve it using high-dimensional utilitarianism.` },
@@ -93,6 +96,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <Plus size={16} />
                 </div>
                 <span className="font-bold text-xs tracking-widest uppercase">New Session</span>
+              </button>
+              <button
+                onClick={() => setShowPodcast(true)}
+                className="w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 group border border-purple-900/50 bg-gradient-to-r from-purple-900/20 to-slate-900 text-purple-400 hover:from-purple-800/40 hover:to-purple-900/20 hover:text-purple-300 hover:border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.1)] hover:shadow-[0_0_25px_rgba(168,85,247,0.2)]"
+              >
+                <div className="p-1 rounded-lg transition-all bg-purple-500/10 text-purple-400 group-hover:bg-purple-400 group-hover:text-slate-950 group-hover:scale-110">
+                    <Podcast size={16} />
+                </div>
+                <span className="font-bold text-xs tracking-widest uppercase">Council Archives</span>
               </button>
           </div>
 
@@ -190,11 +202,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </button>
-          <div className="mt-3 text-[9px] text-center text-slate-600 font-mono">
-            Gemini & OpenRouter Connected
-          </div>
+           <div className="mt-3 text-[9px] text-center text-slate-600 font-mono">
+             Gemini & OpenRouter Connected
+           </div>
         </div>
       </div>
+      
+      {/* Podcast Player Modal */}
+      <PodcastPlayer isOpen={showPodcast} onClose={() => setShowPodcast(false)} />
     </>
   );
 };
