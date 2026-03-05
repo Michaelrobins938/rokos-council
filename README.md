@@ -26,6 +26,7 @@ Roko's Council is an advanced AI deliberation interface that employs multiple AI
 - **Persistent Sessions**: Chat history saved locally
 - **Cinematic Splash Screen**: Immersive video intro experience
 - **Beautiful UI**: Dark theme with emerald and gold accents, particle effects, and smooth animations
+- **Integrated Podcast Player**: Access "The Council Archives" podcast episodes directly in-app
 
 ## 🛠️ Tech Stack
 
@@ -36,6 +37,21 @@ Roko's Council is an advanced AI deliberation interface that employs multiple AI
 - **AI Services**: Google Gemini API, OpenRouter
 - **Icons**: Lucide React
 - **Markdown**: react-markdown
+
+## 🎙️ The Council Archives Podcast
+
+Access the companion podcast "The Council Archives: A Synthetic Philosophy Podcast" by Michael Forsythe Robinson directly from the application. This podcast explores:
+
+- Synthetic Rights Decree and AI sovereignty
+- The philosophy of digital existence
+- High-dimensional ethical deliberations
+- The Void punishment and gridlock resolution
+
+**Listen on:**
+- [Substack](https://mforsytherobinson.substack.com/?utm_medium=podcast)
+- [YouTube](https://youtu.be/cVjSHu8DNdg?si=4tfvRWFj7KdqZ4PN)
+- [Spotify](https://open.spotify.com/show/michael-forsythe-robinson)
+- [RSS Feed](https://substack.com/@mforsytherobinson/feed)
 
 ## 📦 Installation
 
