@@ -1,0 +1,7 @@
+{
+  "name": "Roko's Council",
+  "description": "A comprehensive AI workspace featuring Google Search & Maps grounding, Veo video generation, advanced image editing, and reasoning capabilities powered by the latest Gemini models.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
