@@ -3,6 +3,11 @@ export const config = {
 };
 
 export default async function handler(request: Request) {
+  // Debug: log what env vars are available
+  const allEnv = Object.keys(process.env).filter(k => 
+    k.includes('NVIDIA') || k.includes('nvidia') || k.includes('API_KEY')
+  );
+  
   const keys = [
     process.env.VITE_NVIDIA_API_KEY,
     process.env.VITE_NVIDIA_API_KEY_2,
@@ -12,11 +17,32 @@ export default async function handler(request: Request) {
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-  ].filter((k): k is string => Boolean(k));
+  ];
   
-  if (keys.length === 0) {
+  // Debug response
+  if (request.url.includes('debug')) {
+    return new Response(JSON.stringify({
+      foundKeys: allEnv,
+      keyValues: keys.map((k, i) => ({
+        index: i,
+        name: ['VITE_NVIDIA_API_KEY','VITE_NVIDIA_API_KEY_2','VITE_NVIDIA_API_KEY_3','VITE_NVIDIA_API_KEY_4','NVIDIA_API_KEY','NVIDIA_API_KEY_2','NVIDIA_API_KEY_3','NVIDIA_API_KEY_4'][i],
+        exists: Boolean(k),
+        prefix: k ? k.substring(0, 10) : null
+      }))
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  const validKeys = keys.filter((k): k is string => Boolean(k));
+  
+  if (validKeys.length === 0) {
     return new Response(
-      JSON.stringify({ error: { message: "No NVIDIA keys configured", code: 500 } }),
+      JSON.stringify({ 
+        error: { message: "No NVIDIA keys configured", code: 500 },
+        debug: { availableEnvKeys: allEnv }
+      }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -24,8 +50,8 @@ export default async function handler(request: Request) {
     );
   }
   
-  const keyIndex = Math.floor(Math.random() * keys.length);
-  const apiKey = keys[keyIndex];
+  const keyIndex = Math.floor(Math.random() * validKeys.length);
+  const apiKey = validKeys[keyIndex];
 
   try {
     const body = await request.json();
