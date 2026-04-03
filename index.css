@@ -1,0 +1,154 @@
+.filter-grayscale-blur {
+  filter: grayscale(100%) opacity(0.2) blur(2px);
+}
+
+.filter-grayscale-opacity {
+  filter: grayscale(30%) opacity(0.6);
+}
+
+/* Markdown heading styles for synthesis output */
+.prose-markdown h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #10b981;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-family: 'Cinzel', serif;
+}
+
+.prose-markdown h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #34d399;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-family: 'Cinzel', serif;
+}
+
+.prose-markdown h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #6ee7b7;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-markdown p {
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.prose-markdown ul, .prose-markdown ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose-markdown li {
+  margin-bottom: 0.5rem;
+}
+
+.prose-markdown strong {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.prose-markdown em {
+  color: #a78bfa;
+}
+
+/* Chamber Lens visual states */
+.tactical-lens-bg {
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 50px,
+      rgba(220, 38, 38, 0.03) 50px,
+      rgba(220, 38, 38, 0.03) 51px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 50px,
+      rgba(220, 38, 38, 0.03) 50px,
+      rgba(220, 38, 38, 0.03) 51px
+    ),
+    radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+}
+
+.epistemic-lens-bg {
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 30px,
+      rgba(6, 182, 212, 0.02) 30px,
+      rgba(6, 182, 212, 0.02) 31px
+    ),
+    radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%);
+}
+
+.haunted-lens-bg {
+  background: 
+    radial-gradient(ellipse at top left, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+}
+
+/* Lens Text Overlays - Applied to message content */
+.lens-active {
+  position: relative;
+}
+
+/* Tactical Lens - Red monospace with scanline */
+.tactical-text {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #ef4444 !important;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  letter-spacing: 0.05em;
+}
+
+.tactical-text::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(239, 68, 68, 0.03) 2px,
+    rgba(239, 68, 68, 0.03) 4px
+  );
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+/* Epistemic Lens - Cyan for premise keywords */
+.epistemic-text {
+  color: #22d3ee !important;
+}
+
+.epistemic-text .premise-keyword {
+  color: #fbbf24 !important;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(251, 191, 36, 0.5);
+}
+
+/* Haunted Lens - Purple blur glow */
+.haunted-text {
+  color: #c084fc !important;
+  text-shadow: 
+    0 0 10px rgba(192, 132, 252, 0.6),
+    0 0 20px rgba(192, 132, 252, 0.4),
+    0 0 30px rgba(192, 132, 252, 0.2);
+  filter: blur(0.3px);
+}
