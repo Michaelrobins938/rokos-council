@@ -1,9 +1,5 @@
-export const config = {
-  runtime: 'edge',
-};
-
 export default async function handler(request: Request) {
-  // Use non-VITE_ keys first (VITE_ ones are corrupted with newlines in Vercel)
+  // Use non-VITE_ keys first (VITE_ ones may be corrupted with newlines)
   const keys = [
     process.env.NVIDIA_API_KEY,
     process.env.NVIDIA_API_KEY_2,
@@ -40,7 +36,14 @@ export default async function handler(request: Request) {
       body: JSON.stringify(body)
     });
 
-    const data = await response.json();
+    let data = await response.text();
+    
+    // Try to parse as JSON, if fails return the raw text
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      // Keep as text if not JSON
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
