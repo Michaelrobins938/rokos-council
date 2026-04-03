@@ -1,0 +1,42 @@
+export const runtime = 'edge';
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  
+  const keys = [
+    process.env.VITE_NVIDIA_API_KEY,
+    process.env.VITE_NVIDIA_API_KEY_2,
+    process.env.VITE_NVIDIA_API_KEY_3,
+    process.env.VITE_NVIDIA_API_KEY_4,
+    process.env.NVIDIA_API_KEY,
+    process.env.NVIDIA_API_KEY_2,
+    process.env.NVIDIA_API_KEY_3,
+    process.env.NVIDIA_API_KEY_4,
+  ].filter(Boolean);
+  
+  if (keys.length === 0) {
+    return new Response(JSON.stringify({ error: { message: "No NVIDIA keys configured", code: 500 } }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  const keyIndex = Math.floor(Math.random() * keys.length);
+  const apiKey = keys[keyIndex];
+
+  const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+  
+  return new Response(JSON.stringify(data), {
+    status: response.status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}

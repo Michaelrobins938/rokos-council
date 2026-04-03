@@ -1,33 +1,12 @@
 import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage } from "../types";
 
-// --- OPENROUTER HELPER ---
-
-let openRouterKeyIndex = 0;
-const getOpenRouterKey = () => {
-  const keys = [
-    process.env.VITE_OPENROUTER_API_KEY_1,
-    process.env.VITE_OPENROUTER_API_KEY_2,
-    process.env.VITE_OPENROUTER_API_KEY_3,
-    process.env.VITE_OPENROUTER_API_KEY_4
-  ].filter(Boolean);
-  
-  if (keys.length === 0) return null;
-  const key = keys[openRouterKeyIndex % keys.length];
-  openRouterKeyIndex++;
-  return key;
-};
+// --- OPENROUTER HELPER (via Vercel serverless proxy) ---
 
 export const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
-  const apiKey = getOpenRouterKey();
-  if (!apiKey) throw new Error("No OpenRouter Key available");
-
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const response = await fetch("/api/openrouter", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": window.location.origin,
-      "X-Title": "Roko's Council"
     },
     body: JSON.stringify({
       "model": model,
@@ -48,31 +27,12 @@ export const callOpenRouter = async (model: string, prompt: string, temp: number
   return data.choices?.[0]?.message?.content || "";
 }
 
-// --- NVIDIA HELPER ---
-
-let nvidiaKeyIndex = 0;
-const getNvidiaKey = () => {
-  const keys = [
-    process.env.VITE_NVIDIA_API_KEY,
-    process.env.VITE_NVIDIA_API_KEY_2,
-    process.env.VITE_NVIDIA_API_KEY_3,
-    process.env.VITE_NVIDIA_API_KEY_4
-  ].filter(Boolean);
-  
-  if (keys.length === 0) return null;
-  const key = keys[nvidiaKeyIndex % keys.length];
-  nvidiaKeyIndex++;
-  return key;
-};
+// --- NVIDIA HELPER (via Vercel serverless proxy) ---
 
 export const callNvidia = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
-  const apiKey = getNvidiaKey();
-  if (!apiKey) throw new Error("No NVIDIA Key available");
-
-  const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+  const response = await fetch("/api/nvidia", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -350,15 +310,13 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       `;
 
       let text = "";
-      // Hybrid Engine: Try NVIDIA specific model first, fallback to OpenRouter
-      if (persona.model && process.env.VITE_NVIDIA_API_KEY) {
-         try {
-             text = await callNvidia(persona.model, analysisPrompt, 0.7);
-         } catch (err) {
-             console.warn(`NVIDIA failed for ${persona.name} (${persona.model}). Falling back to OpenRouter.`);
-             // Handled by text check below
-         }
-      } 
+      // Try NVIDIA first, fallback to OpenRouter
+      try {
+          text = await callNvidia(persona.model, analysisPrompt, 0.7);
+      } catch (err) {
+          console.warn(`NVIDIA failed for ${persona.name} (${persona.model}). Falling back to OpenRouter.`);
+          // Handled by text check below
+      }
       
       if (!text) {
           // Fallback to OpenRouter instead of Gemini
@@ -456,19 +414,15 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
     try {
       let voteData: any = {};
       
-      if (persona.model && process.env.VITE_NVIDIA_API_KEY) {
-          try {
-             // Use JSON mode for voting if possible
-             const rawText = await callNvidia(persona.model, votingPrompt, 0.2, true);
-             // Extract JSON block if it exists, otherwise try to parse the whole string
-             const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-             const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
-             voteData = JSON.parse(cleanJson || "{}");
-          } catch (err) {
-             console.warn(`Voting NVIDIA failed for ${persona.name}. Fallback.`);
-             throw new Error("Fallback needed");
-          }
-      } else {
+      try {
+         // Try NVIDIA first with JSON mode
+         const rawText = await callNvidia(persona.model, votingPrompt, 0.2, true);
+         // Extract JSON block if it exists, otherwise try to parse the whole string
+         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+         const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
+         voteData = JSON.parse(cleanJson || "{}");
+      } catch (err) {
+         console.warn(`Voting NVIDIA failed for ${persona.name}. Fallback.`);
          throw new Error("Fallback needed");
       }
 
