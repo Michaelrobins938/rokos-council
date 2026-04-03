@@ -1,8 +1,10 @@
-export const runtime = 'edge';
+// Vercel Serverless Function - has access to env vars
+export const config = {
+  runtime: 'edge',
+};
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  
+export default async function handler(request: Request) {
+  // Access env vars - Vercel injects these at runtime
   const keys = [
     process.env.VITE_OPENROUTER_API_KEY_1,
     process.env.VITE_OPENROUTER_API_KEY_2,
@@ -12,17 +14,22 @@ export async function POST(request: Request) {
     process.env.OPENROUTER_API_KEY_2,
     process.env.OPENROUTER_API_KEY_3,
     process.env.OPENROUTER_API_KEY_4,
-  ].filter(Boolean);
+  ].filter((k): k is string => Boolean(k));
   
   if (keys.length === 0) {
-    return new Response(JSON.stringify({ error: { message: "No OpenRouter keys configured", code: 500 } }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ error: { message: "No OpenRouter keys configured", code: 500 } }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
   
   const keyIndex = Math.floor(Math.random() * keys.length);
   const apiKey = keys[keyIndex];
+
+  const body = await request.json();
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
