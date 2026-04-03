@@ -1,28 +1,14 @@
-import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage } from "../types";
-
-const getAIClient = async (requiresPaidKey = false): Promise<GoogleGenAI> => {
-  const win = window as any;
-  if (requiresPaidKey && win.aistudio) {
-    const hasKey = await win.aistudio.hasSelectedApiKey();
-    if (!hasKey) {
-      await win.aistudio.openSelectKey();
-    }
-    // For paid models, use the key from the selector
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
-  }
-  // For free models, use the standard environment key
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-};
 
 // --- OPENROUTER HELPER ---
 
 let openRouterKeyIndex = 0;
 const getOpenRouterKey = () => {
   const keys = [
-    process.env.OPENROUTER_API_KEY_1,
-    process.env.OPENROUTER_API_KEY_2,
-    process.env.OPENROUTER_API_KEY_3
+    process.env.VITE_OPENROUTER_API_KEY_1,
+    process.env.VITE_OPENROUTER_API_KEY_2,
+    process.env.VITE_OPENROUTER_API_KEY_3,
+    process.env.VITE_OPENROUTER_API_KEY_4
   ].filter(Boolean);
   
   if (keys.length === 0) return null;
@@ -31,7 +17,7 @@ const getOpenRouterKey = () => {
   return key;
 };
 
-const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
+export const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("No OpenRouter Key available");
 
@@ -67,9 +53,10 @@ const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7,
 let nvidiaKeyIndex = 0;
 const getNvidiaKey = () => {
   const keys = [
-    process.env.NVIDIA_API_KEY,
-    process.env.NVIDIA_API_KEY_2,
-    process.env.NVIDIA_API_KEY_3
+    process.env.VITE_NVIDIA_API_KEY,
+    process.env.VITE_NVIDIA_API_KEY_2,
+    process.env.VITE_NVIDIA_API_KEY_3,
+    process.env.VITE_NVIDIA_API_KEY_4
   ].filter(Boolean);
   
   if (keys.length === 0) return null;
@@ -78,7 +65,7 @@ const getNvidiaKey = () => {
   return key;
 };
 
-const callNvidia = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
+export const callNvidia = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
   const apiKey = getNvidiaKey();
   if (!apiKey) throw new Error("No NVIDIA Key available");
 
@@ -107,18 +94,9 @@ const callNvidia = async (model: string, prompt: string, temp: number = 0.7, jso
   return data.choices?.[0]?.message?.content || "";
 }
 
-// --- LIVE API HELPER ---
+// --- LIVE API HELPER (DISABLED - REQUIRES GEMINI) ---
 
 export class LiveClient {
-  private ai: GoogleGenAI | null = null;
-  private sessionPromise: Promise<any> | null = null;
-  private inputAudioContext: AudioContext | null = null;
-  private outputAudioContext: AudioContext | null = null;
-  private inputSource: MediaStreamAudioSourceNode | null = null;
-  private processor: ScriptProcessorNode | null = null;
-  private outputNode: GainNode | null = null;
-  private nextStartTime = 0;
-  private sources = new Set<AudioBufferSourceNode>();
   private onStatusChange: (status: string) => void;
 
   constructor(onStatusChange: (status: string) => void) {
@@ -126,301 +104,69 @@ export class LiveClient {
   }
 
   async connect() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-    this.outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    this.outputNode = this.outputAudioContext.createGain();
-    this.outputNode.connect(this.outputAudioContext.destination);
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    
-    this.sessionPromise = this.ai.live.connect({
-      model: 'gemini-2.5-flash-native-audio-preview-09-2025',
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-        },
-      },
-      callbacks: {
-        onopen: () => {
-          this.onStatusChange("Connected");
-          this.startAudioInput(stream);
-        },
-        onmessage: async (message: any) => {
-          // Handle Audio Output
-          const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-          if (base64Audio) {
-            this.playAudioChunk(base64Audio);
-          }
-          
-          // Handle Interruption
-          if (message.serverContent?.interrupted) {
-             this.stopAudioPlayback();
-          }
-        },
-        onclose: () => this.onStatusChange("Disconnected"),
-        onerror: (e) => {
-          console.error(e);
-          this.onStatusChange("Error");
-        }
-      }
-    });
-  }
-
-  private startAudioInput(stream: MediaStream) {
-    if (!this.inputAudioContext) return;
-    this.inputSource = this.inputAudioContext.createMediaStreamSource(stream);
-    this.processor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
-    
-    this.processor.onaudioprocess = (e) => {
-      const inputData = e.inputBuffer.getChannelData(0);
-      const pcmBlob = this.createBlob(inputData);
-      this.sessionPromise?.then(session => {
-        session.sendRealtimeInput({ media: pcmBlob });
-      });
-    };
-
-    this.inputSource.connect(this.processor);
-    this.processor.connect(this.inputAudioContext.destination);
-  }
-
-  private createBlob(data: Float32Array) {
-     const l = data.length;
-     const int16 = new Int16Array(l);
-     for (let i = 0; i < l; i++) {
-       int16[i] = data[i] * 32768;
-     }
-     // Simple base64 encode for the blob data part
-     let binary = '';
-     const bytes = new Uint8Array(int16.buffer);
-     const len = bytes.byteLength;
-     for (let i = 0; i < len; i++) {
-       binary += String.fromCharCode(bytes[i]);
-     }
-     const b64 = btoa(binary);
-
-     return {
-       data: b64,
-       mimeType: 'audio/pcm;rate=16000'
-     };
-  }
-
-  private async playAudioChunk(base64: string) {
-    if (!this.outputAudioContext || !this.outputNode) return;
-    
-    // Base64 decode
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // PCM Decode
-    const dataInt16 = new Int16Array(bytes.buffer);
-    const buffer = this.outputAudioContext.createBuffer(1, dataInt16.length, 24000);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < dataInt16.length; i++) {
-        channelData[i] = dataInt16[i] / 32768.0;
-    }
-
-    const source = this.outputAudioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.outputNode);
-    
-    // Schedule
-    this.nextStartTime = Math.max(this.outputAudioContext.currentTime, this.nextStartTime);
-    source.start(this.nextStartTime);
-    this.nextStartTime += buffer.duration;
-    
-    this.sources.add(source);
-    source.onended = () => this.sources.delete(source);
-  }
-
-  private stopAudioPlayback() {
-    this.sources.forEach(s => s.stop());
-    this.sources.clear();
-    this.nextStartTime = 0;
+    this.onStatusChange("Live mode requires Gemini API - not available");
+    throw new Error("LiveClient requires Gemini API which is not configured");
   }
 
   async disconnect() {
-    this.stopAudioPlayback();
-    if (this.processor) {
-        this.processor.disconnect();
-        this.processor.onaudioprocess = null;
-    }
-    if (this.inputSource) this.inputSource.disconnect();
-    if (this.inputAudioContext) this.inputAudioContext.close();
-    if (this.outputAudioContext) this.outputAudioContext.close();
-    
-    // Close session
-    this.sessionPromise?.then(session => session.close());
+    this.onStatusChange("Disconnected");
   }
 }
 
-// --- TTS ---
+// --- TTS (DISABLED - REQUIRES GEMINI) ---
 
 export const generateSpeech = async (text: string, voiceName: string = 'Fenrir'): Promise<string> => {
-  const ai = await getAIClient();
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview-tts",
-    contents: { parts: [{ text }] },
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceName } },
-      },
-    },
-  });
-
-  const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!base64Audio) throw new Error("No audio generated");
-  return base64Audio;
+  console.warn("TTS requires Gemini API - returning empty string");
+  return "";
 };
 
-// --- IMAGE GENERATION & EDITING ---
+// --- IMAGE GENERATION & EDITING (DISABLED - REQUIRES GEMINI) ---
 
-export const generateImage = async (prompt: string, aspectRatio: AspectRatio, imageSize: '1K' | '2K' | '4K'): Promise<GenerateContentResponse> => {
-  const requiresPaidKey = imageSize === '2K' || imageSize === '4K';
-  const ai = await getAIClient(requiresPaidKey);
-  const model = requiresPaidKey ? 'gemini-3.1-flash-image-preview' : 'gemini-2.5-flash-image';
-  
-  const config: any = {
-    imageConfig: {
-      aspectRatio: aspectRatio,
-    }
-  };
-
-  if (requiresPaidKey) {
-    config.imageConfig.imageSize = imageSize;
-  }
-
-  return await ai.models.generateContent({
-    model,
-    contents: { parts: [{ text: prompt }] },
-    config
-  });
+export const generateImage = async (prompt: string, aspectRatio: AspectRatio, imageSize: '1K' | '2K' | '4K'): Promise<any> => {
+  console.warn("Image generation requires Gemini API - returning empty response");
+  return { candidates: [] };
 };
 
-export const editImage = async (prompt: string, base64Image: string): Promise<GenerateContentResponse> => {
-  const ai = await getAIClient();
-  const model = 'gemini-2.5-flash-image';
-  
-  const base64Data = base64Image.split(',')[1] || base64Image;
-  const mimeType = base64Image.match(/data:([^;]+);base64,/)?.[1] || 'image/png';
-
-  return await ai.models.generateContent({
-    model,
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: mimeType,
-          },
-        },
-        { text: prompt },
-      ],
-    },
-  });
+export const editImage = async (prompt: string, base64Image: string): Promise<any> => {
+  console.warn("Image editing requires Gemini API - returning empty response");
+  return { candidates: [] };
 };
 
-// --- VIDEO GENERATION ---
+// --- VIDEO GENERATION (DISABLED - REQUIRES GEMINI) ---
 
 export const generateVideo = async (prompt: string, aspectRatio: '16:9' | '9:16', resolution: '720p' | '1080p', inputImage?: string): Promise<string | null> => {
-  const ai = await getAIClient(true);
-  const model = 'veo-3.1-generate-preview'; 
-  
-  const config: any = {
-    numberOfVideos: 1,
-    resolution: resolution,
-    aspectRatio: aspectRatio,
-  };
-
-  let operation;
-  if (inputImage) {
-     const mimeType = inputImage.match(/data:([^;]+);base64,/)?.[1] || 'image/png';
-     const base64Data = inputImage.split(',')[1] || inputImage;
-     operation = await ai.models.generateVideos({
-        model,
-        prompt,
-        image: {
-            imageBytes: base64Data,
-            mimeType: mimeType
-        },
-        config
-     });
-  } else {
-     operation = await ai.models.generateVideos({
-        model,
-        prompt,
-        config
-     });
-  }
-
-  while (!operation.done) {
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    operation = await ai.operations.getVideosOperation({operation: operation});
-  }
-
-  const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
-  if (videoUri) {
-      return `${videoUri}&key=${process.env.API_KEY}`;
-  }
+  console.warn("Video generation requires Gemini API - returning null");
   return null;
 };
 
-// --- MULTIMODAL ANALYSIS ---
+// --- MULTIMODAL ANALYSIS (DISABLED - REQUIRES GEMINI) ---
 
-export const analyzeContent = async (prompt: string, fileData: string, mimeType: string): Promise<GenerateContentResponse> => {
-  const ai = await getAIClient();
-  const model = 'gemini-3.1-pro-preview';
-
-  const base64Data = fileData.split(',')[1] || fileData;
-
-  return await ai.models.generateContent({
-    model,
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: mimeType,
-          },
-        },
-        { text: prompt },
-      ],
-    },
-  });
+export const analyzeContent = async (prompt: string, fileData: string, mimeType: string): Promise<any> => {
+  console.warn("Multimodal analysis requires Gemini API - returning empty response");
+  return { candidates: [] };
 };
 
-// --- GENERAL MESSAGING (WITH CAPABILITIES) ---
+// --- GENERAL MESSAGING (REPLACED WITH OPENROUTER) ---
 
-export const sendMessage = async (message: string, capability?: Capability): Promise<GenerateContentResponse> => {
-    const ai = await getAIClient();
-    
-    if (capability === Capability.MAPS) {
-        return await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: message,
-            config: {
-                tools: [{googleMaps: {}}],
-            },
-        });
-    }
-
-    if (capability === Capability.REASONING) {
-        return await ai.models.generateContent({
-            model: "gemini-3.1-pro-preview",
-            contents: message,
-        });
-    }
-
-    return await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
-        contents: message,
-    });
+export const sendMessage = async (message: string, capability?: Capability): Promise<any> => {
+  // Use OpenRouter for all messaging instead of Gemini
+  const model = capability === Capability.REASONING 
+    ? 'deepseek/deepseek-r1:free' 
+    : 'deepseek/deepseek-r1:free';
+  
+  try {
+    const result = await callOpenRouter(model, message, 0.7);
+    return {
+      candidates: [{
+        content: {
+          parts: [{ text: result }]
+        }
+      }]
+    };
+  } catch (e) {
+    console.error("sendMessage failed:", e);
+    return { candidates: [] };
+  }
 };
 
 // --- STRATEGIC SUGGESTIONS ---
@@ -564,7 +310,6 @@ const generateNewArchetype = async (): Promise<any> => {
 };
 
 export const runCouncil = async (message: string, mode: CouncilMode): Promise<CouncilResult> => {
-  const ai = await getAIClient();
   const isDeep = mode === CouncilMode.DEEP_REASONING;
 
   // Batch processor to avoid rate limits when hitting Gemini fallback repeatedly
@@ -605,12 +350,12 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       `;
 
       let text = "";
-      // Hybrid Engine: Try NVIDIA specific model first, fallback to Gemini
-      if (persona.model && process.env.NVIDIA_API_KEY) {
+      // Hybrid Engine: Try NVIDIA specific model first, fallback to OpenRouter
+      if (persona.model && process.env.VITE_NVIDIA_API_KEY) {
          try {
              text = await callNvidia(persona.model, analysisPrompt, 0.7);
          } catch (err) {
-             console.warn(`NVIDIA failed for ${persona.name} (${persona.model}). Falling back to Gemini.`);
+             console.warn(`NVIDIA failed for ${persona.name} (${persona.model}). Falling back to OpenRouter.`);
              // Handled by text check below
          }
       } 
@@ -711,7 +456,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
     try {
       let voteData: any = {};
       
-      if (persona.model && process.env.NVIDIA_API_KEY) {
+      if (persona.model && process.env.VITE_NVIDIA_API_KEY) {
           try {
              // Use JSON mode for voting if possible
              const rawText = await callNvidia(persona.model, votingPrompt, 0.2, true);

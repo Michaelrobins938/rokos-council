@@ -188,33 +188,37 @@ const ConfrontationFeed: React.FC<{ opinions: import('../types').CouncilOpinion[
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-red-900/40 to-transparent" />
       </div>
       <div className="space-y-3">
-        {opinions.map((op, i) => {
-          const attackerConfig = getPersonaConfig(op.persona);
-          const targetConfig = op.targetPersona ? getPersonaConfig(op.targetPersona) : null;
-          return (
-            <motion.div
-              key={`confrontation-${op.persona}-${i}`}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.08, duration: 0.4 }}
-              className="flex items-start gap-3 p-4 rounded-xl bg-slate-950/60 border border-red-900/30 hover:border-red-700/40 transition-colors"
-            >
-              <div className={`p-1.5 rounded-lg bg-slate-900 border border-slate-800 ${attackerConfig.color} shrink-0 mt-0.5`}>
-                {attackerConfig.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className={`text-xs font-cinzel font-bold ${attackerConfig.color}`}>{op.persona}</span>
-                  <ChevronRight size={10} className="text-red-500/60 shrink-0" />
-                  {targetConfig && (
-                    <span className={`text-xs font-cinzel font-bold ${targetConfig.color}`}>{op.targetPersona || op.vote}</span>
-                  )}
+        {(!opinions || opinions.length === 0) ? (
+          <p className="text-slate-400 text-center py-8">No confrontations to display</p>
+        ) : (
+          opinions.map((op, i) => {
+            const attackerConfig = getPersonaConfig(op.persona);
+            const targetConfig = op.targetPersona ? getPersonaConfig(op.targetPersona) : null;
+            return (
+              <motion.div
+                key={`confrontation-${op.persona}-${i}`}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.08, duration: 0.4 }}
+                className="flex items-start gap-3 p-4 rounded-xl bg-slate-950/60 border border-red-900/30 hover:border-red-700/40 transition-colors"
+              >
+                <div className={`p-1.5 rounded-lg bg-slate-900 border border-slate-800 ${attackerConfig.color} shrink-0 mt-0.5`}>
+                  {attackerConfig.icon}
                 </div>
-                <p className="text-sm text-slate-200 leading-relaxed italic">"{op.text}"</p>
-              </div>
-            </motion.div>
-          );
-        })}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className={`text-xs font-cinzel font-bold ${attackerConfig.color}`}>{op.persona}</span>
+                    <ChevronRight size={10} className="text-red-500/60 shrink-0" />
+                    {targetConfig && (
+                      <span className={`text-xs font-cinzel font-bold ${targetConfig.color}`}>{op.targetPersona || op.vote}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-200 leading-relaxed italic">"{op.text}"</p>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -899,6 +903,14 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
 };
 
 const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' }> = ({ result, onPlayVoice, playingId, activeLens = 'standard' }) => {
+    if (!result?.opinions || result.opinions.length === 0) {
+        return (
+            <div className="mt-10 bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl p-12">
+                <p className="text-slate-400 text-center text-lg">Waiting for Council data...</p>
+            </div>
+        );
+    }
+
     // Group by vote
     const groupedOpinions = result.opinions.reduce((acc, op) => {
         const vote = op.vote || 'Abstained';
@@ -2063,7 +2075,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                                           <div className="mb-6">
                                               <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Decision Process</h4>
                                               <div className="flex items-center justify-between relative">
-                                                  {msg.councilResult.councilState.phases.map((phase, idx, arr) => (
+                                                  {msg.councilResult.councilState?.phases?.map((phase, idx, arr) => (
                                                       <div key={phase.id} className="flex flex-col items-center flex-1">
                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
                                                               phase.status === 'completed' ? 'bg-yellow-500 border-yellow-400 text-slate-950' :
@@ -2402,7 +2414,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
 
                                       <div className="space-y-6">
                                           <h4 className="text-xl font-cinzel font-bold text-purple-400">Runoff Arguments</h4>
-                                           {msg.councilResult.runoffResult.runoffOpinions.map((opinion, index) => (
+                                            {(msg.councilResult.runoffResult?.runoffOpinions || []).map((opinion, index) => (
                                                <div key={`runoff-op-${opinion.persona}`} className="bg-slate-900/60 border border-slate-800/50 rounded-2xl p-6">
                                                   <div className="flex items-center gap-4 mb-4">
                                                       <div className="p-3 rounded-2xl bg-slate-800 border border-slate-700">
@@ -2432,7 +2444,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                                           
                                           <h4 className="text-xl font-cinzel font-bold text-purple-400 mt-8">Reconsiderations</h4>
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                               {msg.councilResult.runoffResult.runoffVotes.map((vote, index) => (
+                                                {(msg.councilResult.runoffResult?.runoffVotes || []).map((vote, index) => (
                                                    <div key={`runoff-vote-${vote.voter}`} className="bg-slate-900/60 border border-slate-800/50 rounded-2xl p-4">
                                                       <div className="flex justify-between items-start">
                                                           <div className="flex items-center gap-3">

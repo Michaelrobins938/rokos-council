@@ -9,6 +9,18 @@ interface ConsensusVisualizationProps {
 }
 
 const ConsensusVisualization: React.FC<ConsensusVisualizationProps> = ({ result }) => {
+  if (!result?.opinions || result.opinions.length === 0) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 mt-6"
+      >
+        <p className="text-slate-400 text-center">Waiting for voting data...</p>
+      </motion.div>
+    );
+  }
+
   const totalVotes = result.opinions.filter(o => o.vote && o.vote !== 'None').length;
   
   const voteCounts: Record<string, number> = {};

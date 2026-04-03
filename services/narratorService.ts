@@ -1,5 +1,5 @@
 import { NarratorOutput } from '../types';
-import { callOpenrouter, callNvidia } from './geminiService';
+import { callOpenRouter, callNvidia } from './geminiService';
 
 const cleanJsonResponse = (text: string): string => {
   const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
@@ -37,11 +37,11 @@ export const generateNarration = async (
 
   try {
     let responseText = '';
-    if (process.env.OPENROUTER_API_KEY_1) {
-      responseText = await callOpenrouter("stepfun/step-3.5-flash", prompt, 0.92, true);
+    if (process.env.VITE_OPENROUTER_API_KEY_1) {
+      responseText = await callOpenRouter("stepfun/step-3.5-flash", prompt, 0.92, true);
     }
     
-    if (!responseText && process.env.NVIDIA_API_KEY) {
+    if (!responseText && process.env.VITE_NVIDIA_API_KEY) {
       responseText = await callNvidia("deepseek-ai/deepseek-v3.2", prompt, 0.92, true);
     }
     
