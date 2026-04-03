@@ -1,20 +1,19 @@
-// Vercel Serverless Function - has access to env vars
 export const config = {
   runtime: 'edge',
 };
 
 export default async function handler(request: Request) {
-  // Access env vars - Vercel injects these at runtime
+  // Use non-VITE_ keys first (VITE_ ones are corrupted with newlines in Vercel)
   const keys = [
-    process.env.VITE_OPENROUTER_API_KEY_1,
-    process.env.VITE_OPENROUTER_API_KEY_2,
-    process.env.VITE_OPENROUTER_API_KEY_3,
-    process.env.VITE_OPENROUTER_API_KEY_4,
     process.env.OPENROUTER_API_KEY_1,
     process.env.OPENROUTER_API_KEY_2,
     process.env.OPENROUTER_API_KEY_3,
     process.env.OPENROUTER_API_KEY_4,
-  ].filter((k): k is string => Boolean(k));
+    process.env.VITE_OPENROUTER_API_KEY_1,
+    process.env.VITE_OPENROUTER_API_KEY_2,
+    process.env.VITE_OPENROUTER_API_KEY_3,
+    process.env.VITE_OPENROUTER_API_KEY_4,
+  ].filter((k): k is string => Boolean(k) && k.startsWith('sk-or-v1-'));
   
   if (keys.length === 0) {
     return new Response(

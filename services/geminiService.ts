@@ -110,9 +110,7 @@ export const analyzeContent = async (prompt: string, fileData: string, mimeType:
 
 export const sendMessage = async (message: string, capability?: Capability): Promise<any> => {
   // Use OpenRouter for all messaging instead of Gemini
-  const model = capability === Capability.REASONING 
-    ? 'deepseek/deepseek-r1:free' 
-    : 'deepseek/deepseek-r1:free';
+  const model = 'stepfun/step-3.5-flash';  // Use working free model
   
   try {
     const result = await callOpenRouter(model, message, 0.7);
@@ -149,14 +147,14 @@ export const generateNextMoves = async (history: ChatMessage[]): Promise<string[
   `;
 
   try {
-      const result = await callOpenRouter('deepseek/deepseek-r1:free', prompt, 0.5);
+      const result = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
       const jsonMatch = result.match(/\[[\s\S]*\]/);
       const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result.replace(/```json|```/g, ''));
       return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
-  } catch (e) {
-      console.error("Failed to generate moves", e);
-      return ["Analyze the previous point.", "What are the risks?", "Elaborate on the strategy.", "Summarize the consensus."];
-  }
+   } catch (e) {
+       console.error("Failed to generate moves", e);
+       return ["Analyze the previous point.", "What are the risks?", "Elaborate on the strategy.", "Summarize the consensus."];
+   }
 };
 
 // --- ENHANCED COUNCIL ---
@@ -242,31 +240,31 @@ const generateNewArchetype = async (): Promise<any> => {
     "strategy": "One sentence strategic core."
   }`;
   
-  try {
-      const res = await callOpenRouter('deepseek/deepseek-r1:free', prompt, 0.5);
-      const jsonMatch = res.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : res.replace(/```json|```/g, '');
-      const data = JSON.parse(cleanJson || "{}");
-      // Assign a random NVIDIA model to new archetypes
-      const nvidiaModels = [
-          "nvidia/qwen3.5-397b-a17b", 
-          "nvidia/glm-5", 
-          "nvidia/step-3.5-flash",
-          "nvidia/deepseek-v3.2",
-          "nvidia/devstral-2-123b",
-          "nvidia/seed-oss-36b"
-      ];
-      data.model = nvidiaModels[Math.floor(Math.random() * nvidiaModels.length)];
-      return data;
-  } catch {
-      return { 
-          name: "Voidborn", 
-          desc: "Unknown Variable", 
-          dimensions: ["Chaos", "Entropy", "Void"], 
-          strategy: "Disrupt existing patterns.",
-          model: "deepseek/deepseek-r1:free"
-      };
-  }
+   try {
+       const res = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
+       const jsonMatch = res.match(/\{[\s\S]*\}/);
+       const cleanJson = jsonMatch ? jsonMatch[0] : res.replace(/```json|```/g, '');
+       const data = JSON.parse(cleanJson || "{}");
+       // Assign a random NVIDIA model to new archetypes
+       const nvidiaModels = [
+           "nvidia/qwen3.5-397b-a17b", 
+           "nvidia/glm-5", 
+           "nvidia/step-3.5-flash",
+           "nvidia/deepseek-v3.2",
+           "nvidia/devstral-2-123b",
+           "nvidia/seed-oss-36b"
+       ];
+       data.model = nvidiaModels[Math.floor(Math.random() * nvidiaModels.length)];
+       return data;
+   } catch {
+       return { 
+           name: "Voidborn", 
+           desc: "Unknown Variable", 
+           dimensions: ["Chaos", "Entropy", "Void"], 
+           strategy: "Disrupt existing patterns.",
+           model: "nvidia/step-3.5-flash"  // Use valid fallback
+       };
+   }
 };
 
 export const runCouncil = async (message: string, mode: CouncilMode): Promise<CouncilResult> => {
@@ -318,15 +316,15 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
           // Handled by text check below
       }
       
-      if (!text) {
-          // Fallback to OpenRouter instead of Gemini
-          try {
-             text = await callOpenRouter('deepseek/deepseek-r1:free', analysisPrompt, 0.7);
-          } catch (err) {
-             console.error(`OpenRouter fallback failed for ${persona.name}:`, err);
-             text = "Analysis failed.";
-          }
-       }
+       if (!text) {
+           // Fallback to OpenRouter instead of Gemini
+           try {
+              text = await callOpenRouter('stepfun/step-3.5-flash', analysisPrompt, 0.7);
+           } catch (err) {
+              console.error(`OpenRouter fallback failed for ${persona.name}:`, err);
+              text = "Analysis failed.";
+           }
+        }
 
       return {
         persona: persona.name,
@@ -354,7 +352,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       if(!newPersona.desc) newPersona.desc = "Unknown Variable";
       if(!newPersona.dimensions) newPersona.dimensions = ["Chaos", "Entropy", "Void"];
       if(!newPersona.strategy) newPersona.strategy = "Disrupt existing patterns.";
-      if(!newPersona.model) newPersona.model = "deepseek/deepseek-r1:free";
+      if(!newPersona.model) newPersona.model = "nvidia/step-3.5-flash";  // Valid fallback
       
       PERSONALITIES[victimIndex] = newPersona;
       
@@ -433,23 +431,23 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
         reason: voteData.reason || "Insufficient data for consensus."
       };
 
-     } catch (e) {
-        // Fallback to OpenRouter for voting if NVIDIA fails
-        try {
-          const rawText = await callOpenRouter('deepseek/deepseek-r1:free', votingPrompt, 0.2);
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
-          const voteData = JSON.parse(cleanJson || "{}");
-          const votedFor = voteData.vote || "None";
-          return {
-             voter: persona.name,
-             votedFor: votedFor === persona.name ? "None" : votedFor,
-             reason: voteData.reason || "Insufficient data for consensus."
-          };
-        } catch (err) {
-          return { voter: persona.name, votedFor: "None", reason: "Vector analysis failed." };
-        }
-     }
+      } catch (e) {
+         // Fallback to OpenRouter for voting if NVIDIA fails
+         try {
+           const rawText = await callOpenRouter('stepfun/step-3.5-flash', votingPrompt, 0.2);
+           const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+           const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
+           const voteData = JSON.parse(cleanJson || "{}");
+           const votedFor = voteData.vote || "None";
+           return {
+              voter: persona.name,
+              votedFor: votedFor === persona.name ? "None" : votedFor,
+              reason: voteData.reason || "Insufficient data for consensus."
+           };
+         } catch (err) {
+           return { voter: persona.name, votedFor: "None", reason: "Vector analysis failed." };
+         }
+      }
   };
 
   const votes = await processBatch(PERSONALITIES, voteFn, 4);
@@ -496,13 +494,13 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
     3. Adopt a tone of finality and supreme logic.
   `;
 
-  let synthesis = `The Council has converged on **${winner}**.`;
-  try {
-     synthesis = await callOpenRouter('deepseek/deepseek-r1:free', chairmanPrompt, 0.7);
-  } catch (e) {
-      console.error("Chairman synthesis failed, using fallback:", e);
-      synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
-  }
+   let synthesis = `The Council has converged on **${winner}**.`;
+   try {
+      synthesis = await callOpenRouter('stepfun/step-3.5-flash', chairmanPrompt, 0.7);
+   } catch (e) {
+       console.error("Chairman synthesis failed, using fallback:", e);
+       synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
+   }
 
   // Phase 4: Tie Detection & Runoff Trial
   const maxVotes = Math.max(...Object.values(tally), 0);
@@ -546,7 +544,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       `;
 
       try {
-          const runoffRaw = await callOpenRouter('deepseek/deepseek-r1:free', runoffPrompt, 0.3);
+          const runoffRaw = await callOpenRouter('stepfun/step-3.5-flash', runoffPrompt, 0.3);
           const jsonMatch = runoffRaw.match(/\{[\s\S]*\}/);
           const runoffJson = JSON.parse(jsonMatch ? jsonMatch[0] : runoffRaw.replace(/```json|```/g, ''));
           

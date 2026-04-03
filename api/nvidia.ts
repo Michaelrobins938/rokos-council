@@ -3,8 +3,7 @@ export const config = {
 };
 
 export default async function handler(request: Request) {
-  // Use non-VITE_ prefixed keys first (they have correct values)
-  // VITE_ prefixed keys are corrupted with leading newlines
+  // Use non-VITE_ keys first (VITE_ ones are corrupted with newlines in Vercel)
   const keys = [
     process.env.NVIDIA_API_KEY,
     process.env.NVIDIA_API_KEY_2,
