@@ -1,4 +1,8 @@
-export default async function handler(req: Request) {
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(request: Request) {
   const keys = [
     process.env.VITE_NVIDIA_API_KEY,
     process.env.VITE_NVIDIA_API_KEY_2,
@@ -8,33 +12,46 @@ export default async function handler(req: Request) {
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-  ].filter(Boolean) as string[];
+  ].filter((k): k is string => Boolean(k));
   
   if (keys.length === 0) {
-    return new Response(JSON.stringify({ error: { message: "No NVIDIA keys configured", code: 500 } }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ error: { message: "No NVIDIA keys configured", code: 500 } }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
   
   const keyIndex = Math.floor(Math.random() * keys.length);
   const apiKey = keys[keyIndex];
 
-  const body = await req.json();
+  try {
+    const body = await request.json();
 
-  const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
 
-  const data = await response.json();
-  
-  return new Response(JSON.stringify(data), {
-    status: response.status,
-    headers: { 'Content-Type': 'application/json' }
-  });
+    const data = await response.json();
+    
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: { message: `NVIDIA proxy error: ${error}`, code: 500 } }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
 }
