@@ -31,12 +31,22 @@ export default async function handler(request: Request) {
       body: JSON.stringify(body)
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
     
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // Try to parse as JSON, otherwise return raw text
+    try {
+      const data = JSON.parse(responseText);
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch {
+      // Return as plain text if not JSON
+      return new Response(responseText, {
+        status: response.status,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
   } catch (error: any) {
     return new Response(
       JSON.stringify({ error: `NVIDIA proxy error: ${error.message}` }),
