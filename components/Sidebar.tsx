@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CouncilMode, Session } from '../types';
-import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit, Podcast } from 'lucide-react';
+import { CouncilMode, Session, CouncilResult } from '../types';
+import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit, Podcast, Download, FileText, Mic, Newspaper, FileArchive } from 'lucide-react';
 import PodcastPlayer from './PodcastPlayer';
 
 interface SidebarProps {
@@ -12,11 +12,14 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string, e: React.MouseEvent) => void;
+  onExport: (format: 'json' | 'markdown' | 'csv' | 'script' | 'substack' | 'zip') => void;
+  hasArchive: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
     onSelectPreset, isOpen, onClose, 
-    sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession 
+    sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession,
+    onExport, hasArchive
 }) => {
   
   const [showPodcast, setShowPodcast] = useState(false);
@@ -44,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
           {/* Decorative Marble Overlay */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none mix-blend-overlay"></div>
+          <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay"></div>
         
         {/* Header - Roko's Council Branding */}
         <div className="relative p-5 border-b border-yellow-900/30 overflow-hidden group">
@@ -175,6 +178,43 @@ const Sidebar: React.FC<SidebarProps> = ({
              </div>
           </div>
         </div>
+
+        {/* Export Section */}
+        {hasArchive && (
+          <div className="border-t border-slate-800/50 bg-slate-950/50 relative z-10">
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 px-1 flex items-center gap-1.5">
+                <Download size={10} /> Export Session
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button onClick={() => onExport('json')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-900/60 border border-slate-800/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-900/10 transition-all">
+                  <Download size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">JSON</span>
+                </button>
+                <button onClick={() => onExport('markdown')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-900/60 border border-slate-800/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-900/10 transition-all">
+                  <FileText size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">Markdown</span>
+                </button>
+                <button onClick={() => onExport('csv')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-900/60 border border-slate-800/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-900/10 transition-all">
+                  <FileText size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">CSV</span>
+                </button>
+                <button onClick={() => onExport('script')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-900/60 border border-slate-800/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-900/10 transition-all">
+                  <Mic size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">Podcast</span>
+                </button>
+                <button onClick={() => onExport('substack')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-900/60 border border-slate-800/50 text-slate-400 hover:text-orange-400 hover:border-orange-500/30 hover:bg-orange-900/10 transition-all">
+                  <Newspaper size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">Substack</span>
+                </button>
+                <button onClick={() => onExport('zip')} className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-emerald-900/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-900/30 hover:border-emerald-500/50 transition-all">
+                  <FileArchive size={12} />
+                  <span className="text-[8px] font-bold uppercase tracking-wider">All (ZIP)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-4 border-t border-yellow-900/20 bg-slate-950 relative z-20">

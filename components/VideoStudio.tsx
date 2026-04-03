@@ -131,7 +131,7 @@ const VideoStudio: React.FC = () => {
 
       {/* Preview */}
       <div className="flex-1 p-8 flex items-center justify-center bg-slate-950 relative">
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-10 pointer-events-none"></div>
          
          {videoUrl ? (
            <div className="flex flex-col items-center gap-4 w-full max-w-4xl">

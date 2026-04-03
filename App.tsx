@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import SplashScreen from './components/SplashScreen';
-import { Session, ChatMessage } from './types';
+import { Session, ChatMessage, CouncilMode } from './types';
+import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, exportAllAsZip } from './services/exportService';
 import { Menu } from 'lucide-react';
 
 const STORAGE_KEY = 'gemini_hub_council_sessions_v1';
@@ -95,7 +96,67 @@ const App: React.FC = () => {
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
+  const handleExport = (format: 'json' | 'markdown' | 'csv' | 'script' | 'substack' | 'zip') => {
+    const msg = activeSession?.messages.find(m => m.councilResult);
+    if (!msg?.councilResult) return;
+    const result = msg.councilResult;
+    const query = msg.text;
+    const mode = councilMode;
+    const timestamp = Date.now();
+    const msgId = msg.id;
+
+    if (format === 'zip') {
+      exportAllAsZip(result, query, mode, timestamp, msgId);
+      return;
+    }
+
+    const exportData = buildExportSession(result, query, mode, timestamp, msgId);
+    let content: string;
+    let filename: string;
+    let mimeType: string;
+
+    switch (format) {
+      case 'json':
+        content = exportToJSON(exportData);
+        filename = `roko-council-${msgId}.json`;
+        mimeType = 'application/json';
+        break;
+      case 'markdown':
+        content = exportToMarkdown(exportData);
+        filename = `roko-council-${msgId}.md`;
+        mimeType = 'text/markdown';
+        break;
+      case 'csv':
+        content = exportToCSV(exportData);
+        filename = `roko-council-${msgId}.csv`;
+        mimeType = 'text/csv';
+        break;
+      case 'script':
+        content = exportToScript(exportData);
+        filename = `roko-council-script-${msgId}.md`;
+        mimeType = 'text/markdown';
+        break;
+      case 'substack':
+        content = exportToSubstack(exportData);
+        filename = `roko-council-substack-${msgId}.md`;
+        mimeType = 'text/markdown';
+        break;
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const activeSession = sessions.find(s => s.id === activeSessionId);
+  const hasArchive = activeSession?.messages.some(m => m.councilResult?.winner) ?? false;
+  const [councilMode, setCouncilMode] = useState<CouncilMode>(CouncilMode.STANDARD);
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -112,6 +173,8 @@ const App: React.FC = () => {
         }}
         onNewChat={() => createNewSession()}
         onDeleteSession={deleteSession}
+        onExport={handleExport}
+        hasArchive={hasArchive}
       />
       
       <main className="flex-1 h-full overflow-hidden relative flex flex-col">

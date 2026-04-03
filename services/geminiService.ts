@@ -788,3 +788,14 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
     opinions: enhancedOpinions
   };
 };
+
+// --- DUMMY EXPORTS TO PREVENT CRASHES & 429 ERRORS ---
+export const generateSessionMood = async (question: string) => {
+    console.log("Session mood generation disabled to save API quota.");
+    return null;
+};
+
+export const generateVerdictSigil = async (winner: string, question: string) => {
+    console.log("Verdict sigil generation disabled to save API quota.");
+    return null;
+};
