@@ -1,28 +1,23 @@
+export const config = {
+  runtime: 'edge',
+};
+
 export default async function handler(request: Request) {
-  // Use non-VITE_ keys first (VITE_ ones may be corrupted with newlines)
   const keys = [
     process.env.NVIDIA_API_KEY,
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-    process.env.VITE_NVIDIA_API_KEY,
-    process.env.VITE_NVIDIA_API_KEY_2,
-    process.env.VITE_NVIDIA_API_KEY_3,
-    process.env.VITE_NVIDIA_API_KEY_4,
   ].filter((k): k is string => Boolean(k) && k.startsWith('nvapi-'));
   
   if (keys.length === 0) {
-    return new Response(
-      JSON.stringify({ error: { message: "No valid NVIDIA keys configured", code: 500 } }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response(JSON.stringify({ error: "No NVIDIA keys" }), { 
+      status: 500, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
   }
   
-  const keyIndex = Math.floor(Math.random() * keys.length);
-  const apiKey = keys[keyIndex];
+  const apiKey = keys[0];
 
   try {
     const body = await request.json();
@@ -36,26 +31,16 @@ export default async function handler(request: Request) {
       body: JSON.stringify(body)
     });
 
-    let data = await response.text();
-    
-    // Try to parse as JSON, if fails return the raw text
-    try {
-      data = JSON.parse(data);
-    } catch (e) {
-      // Keep as text if not JSON
-    }
+    const data = await response.json();
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' }
     });
-  } catch (error) {
+  } catch (error: any) {
     return new Response(
-      JSON.stringify({ error: { message: `NVIDIA proxy error: ${error}`, code: 500 } }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ error: `NVIDIA proxy error: ${error.message}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
