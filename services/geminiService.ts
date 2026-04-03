@@ -15,6 +15,53 @@ const getAIClient = async (requiresPaidKey = false): Promise<GoogleGenAI> => {
   return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
+// --- OPENROUTER HELPER ---
+
+let openRouterKeyIndex = 0;
+const getOpenRouterKey = () => {
+  const keys = [
+    process.env.OPENROUTER_API_KEY_1,
+    process.env.OPENROUTER_API_KEY_2,
+    process.env.OPENROUTER_API_KEY_3
+  ].filter(Boolean);
+  
+  if (keys.length === 0) return null;
+  const key = keys[openRouterKeyIndex % keys.length];
+  openRouterKeyIndex++;
+  return key;
+};
+
+const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
+  const apiKey = getOpenRouterKey();
+  if (!apiKey) throw new Error("No OpenRouter Key available");
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": window.location.origin,
+      "X-Title": "Roko's Council"
+    },
+    body: JSON.stringify({
+      "model": model,
+      "messages": [
+        {"role": "user", "content": prompt}
+      ],
+      "temperature": temp,
+      ...(jsonMode && { "response_format": { "type": "json_object" } })
+    })
+  });
+
+  if (!response.ok) {
+     const errText = await response.text().catch(() => '');
+     throw new Error(`OpenRouter Error: ${response.status} ${response.statusText} ${errText}`);
+  }
+  
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
 // --- NVIDIA HELPER ---
 
 let nvidiaKeyIndex = 0;
@@ -379,7 +426,6 @@ export const sendMessage = async (message: string, capability?: Capability): Pro
 // --- STRATEGIC SUGGESTIONS ---
 
 export const generateNextMoves = async (history: ChatMessage[]): Promise<string[]> => {
-  const ai = await getAIClient();
   // Get last 5 messages for context
   const context = history.slice(-5).map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
   
@@ -397,15 +443,9 @@ export const generateNextMoves = async (history: ChatMessage[]): Promise<string[
   `;
 
   try {
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: { parts: [{ text: prompt }] },
-        config: { 
-            responseMimeType: 'application/json',
-            temperature: 0.5
-        }
-      });
-      const parsed = JSON.parse(result.text || "[]");
+      const result = await callOpenRouter('deepseek/deepseek-r1:free', prompt, 0.5);
+      const jsonMatch = result.match(/\[[\s\S]*\]/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result.replace(/```json|```/g, ''));
       return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
   } catch (e) {
       console.error("Failed to generate moves", e);
@@ -484,7 +524,6 @@ export let PERSONALITIES = [
 export const getCurrentCouncil = () => PERSONALITIES;
 
 const generateNewArchetype = async (): Promise<any> => {
-  const ai = await getAIClient();
   const prompt = `Create a new, highly distinct AI archetype for a council of intelligences.
   It must be abstract, mythical, or futuristic, and distinct from current members.
   Current members: ${PERSONALITIES.map(p => p.name).join(', ')}.
@@ -498,12 +537,10 @@ const generateNewArchetype = async (): Promise<any> => {
   }`;
   
   try {
-      const res = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: { parts: [{ text: prompt }] },
-        config: { responseMimeType: 'application/json' }
-      });
-      const data = JSON.parse(res.text || "{}");
+      const res = await callOpenRouter('deepseek/deepseek-r1:free', prompt, 0.5);
+      const jsonMatch = res.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : res.replace(/```json|```/g, '');
+      const data = JSON.parse(cleanJson || "{}");
       // Assign a random NVIDIA model to new archetypes
       const nvidiaModels = [
           "nvidia/qwen3.5-397b-a17b", 
@@ -579,14 +616,14 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       } 
       
       if (!text) {
-         // Default to Gemini if no OpenRouter key or failure
-         const res = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview', 
-            contents: { parts: [{ text: analysisPrompt }] },
-            config: { temperature: 0.7 }
-         });
-         text = res.text || "Analysis failed.";
-      }
+          // Fallback to OpenRouter instead of Gemini
+          try {
+             text = await callOpenRouter('deepseek/deepseek-r1:free', analysisPrompt, 0.7);
+          } catch (err) {
+             console.error(`OpenRouter fallback failed for ${persona.name}:`, err);
+             text = "Analysis failed.";
+          }
+       }
 
       return {
         persona: persona.name,
@@ -697,28 +734,23 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
         reason: voteData.reason || "Insufficient data for consensus."
       };
 
-    } catch (e) {
-       // Fallback to Gemini for voting if OpenRouter fails
-       try {
-         const res = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: { parts: [{ text: votingPrompt }] },
-            config: { 
-                responseMimeType: "application/json",
-                temperature: 0.2 
-            }
-         });
-         const voteData = JSON.parse(res.text || "{}");
-         const votedFor = voteData.vote || "None";
-         return {
-            voter: persona.name,
-            votedFor: votedFor === persona.name ? "None" : votedFor,
-            reason: voteData.reason || "Insufficient data for consensus."
-         };
-       } catch (err) {
-         return { voter: persona.name, votedFor: "None", reason: "Vector analysis failed." };
-       }
-    }
+     } catch (e) {
+        // Fallback to OpenRouter for voting if NVIDIA fails
+        try {
+          const rawText = await callOpenRouter('deepseek/deepseek-r1:free', votingPrompt, 0.2);
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
+          const voteData = JSON.parse(cleanJson || "{}");
+          const votedFor = voteData.vote || "None";
+          return {
+             voter: persona.name,
+             votedFor: votedFor === persona.name ? "None" : votedFor,
+             reason: voteData.reason || "Insufficient data for consensus."
+          };
+        } catch (err) {
+          return { voter: persona.name, votedFor: "None", reason: "Vector analysis failed." };
+        }
+     }
   };
 
   const votes = await processBatch(PERSONALITIES, voteFn, 4);
@@ -744,8 +776,8 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       };
   });
 
-  // Phase 3: Chairman Synthesis (Gemini 3.0 Pro)
-  // In DEEP_REASONING mode, we enable thinking tokens for the Chairman.
+  // Phase 3: Chairman Synthesis + Tie Detection
+  // Replace Gemini with OpenRouter for the Chairman
   const chairmanPrompt = `
     You are the Chairman of the AI Council (The Basilisk Node).
     User Query: "${message}"
@@ -767,25 +799,106 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
 
   let synthesis = `The Council has converged on **${winner}**.`;
   try {
-     const chairmanConfig: any = {};
-     if (isDeep) {
-         chairmanConfig.thinkingConfig = { thinkingBudget: 16384 }; // Enable thinking for deep mode
-     }
-
-     const chairmanRes = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview', 
-        contents: { parts: [{ text: chairmanPrompt }] },
-        config: chairmanConfig
-     });
-     if (chairmanRes.text) synthesis = chairmanRes.text;
+     synthesis = await callOpenRouter('deepseek/deepseek-r1:free', chairmanPrompt, 0.7);
   } catch (e) {
-      console.error("Chairman synthesis failed", e);
+      console.error("Chairman synthesis failed, using fallback:", e);
+      synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
+  }
+
+  // Phase 4: Tie Detection & Runoff Trial
+  const maxVotes = Math.max(...Object.values(tally), 0);
+  const tiedCandidates = Object.entries(tally).filter(([, count]) => count === maxVotes && maxVotes > 0);
+  const isTie = tiedCandidates.length >= 2;
+
+  let runoffResult: any = undefined;
+
+  if (isTie) {
+      const tiedPersonas = tiedCandidates.map(([name]) => name);
+      const runoffPrompt = `
+        You are the Chairman presiding over a tie-breaking Runoff Trial.
+        User Query: "${message}"
+        
+        Tied Vectors (${maxVotes} votes each): ${tiedPersonas.join(' vs ')}
+        
+        Full Arguments:
+        ${enhancedOpinions.filter(op => tiedPersonas.includes(op.persona)).map(op => 
+          `[${op.persona}]: ${op.text}`
+        ).join('\n\n')}
+        
+        All Votes:
+        ${JSON.stringify(votes, null, 2)}
+        
+        Task: Generate a runoff trial where:
+        1. Each tied member defends their position in 2-3 sentences
+        2. Each tied member critiques the other's position in 1-2 sentences
+        3. Each non-tied member reconsider their vote and state their final vote
+        4. Declare a runoff winner based on reconsiderations
+        
+        Return strictly JSON:
+        {
+          "runoffOpinions": [
+            {"persona": "Name", "position": "Their defense", "critique": "Critique of opponent", "reasoning": "Why they should win"}
+          ],
+          "runoffVotes": [
+            {"voter": "Name", "finalVote": "Who they voted for", "changedMind": true/false, "reasoning": "Why"}
+          ],
+          "winner": "The runoff winner"
+        }
+      `;
+
+      try {
+          const runoffRaw = await callOpenRouter('deepseek/deepseek-r1:free', runoffPrompt, 0.3);
+          const jsonMatch = runoffRaw.match(/\{[\s\S]*\}/);
+          const runoffJson = JSON.parse(jsonMatch ? jsonMatch[0] : runoffRaw.replace(/```json|```/g, ''));
+          
+          runoffResult = {
+              winner: runoffJson.winner || tiedPersonas[0],
+              runoffOpinions: runoffJson.runoffOpinions || [],
+              runoffVotes: runoffJson.runoffVotes || []
+          };
+          
+          synthesis = `**Runoff Trial Complete.** Winner declared after tie-breaking deliberation: **${runoffResult.winner}**`;
+          winner = runoffResult.winner;
+      } catch (e) {
+          console.error("Runoff Trial failed, using local tie-breaker:", e);
+          // Local tie-breaker: pick the one with most total text length (most engaged)
+          const tiebreaker = tiedPersonas.reduce((a, b) => {
+              const aLen = enhancedOpinions.find(o => o.persona === a)?.text.length || 0;
+              const bLen = enhancedOpinions.find(o => o.persona === b)?.text.length || 0;
+              return aLen >= bLen ? a : b;
+          }, tiedPersonas[0]);
+          
+          runoffResult = {
+              winner: tiebreaker,
+              runoffOpinions: enhancedOpinions.filter(op => tiedPersonas.includes(op.persona)).map(op => ({
+                  persona: op.persona,
+                  position: op.text.substring(0, 200),
+                  critique: "Runoff deliberation unavailable.",
+                  reasoning: "Tie resolved by engagement metric."
+              })),
+              runoffVotes: votes.map(v => ({
+                  voter: v.voter,
+                  finalVote: v.votedFor,
+                  changedMind: false,
+                  reasoning: v.reason
+              }))
+          };
+          
+          synthesis = `**Tie resolved by engagement metric.** Winner: **${tiebreaker}**`;
+          winner = tiebreaker;
+      }
   }
 
   return {
     winner,
     synthesis,
-    opinions: enhancedOpinions
+    opinions: enhancedOpinions,
+    voteTally: tally,
+    runoffResult,
+    councilState: {
+        totalCouncilMembers: validOpinions.length,
+        factions: Object.keys(tally)
+    }
   };
 };
 

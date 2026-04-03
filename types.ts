@@ -40,12 +40,37 @@ export interface CouncilOpinion {
   score?: number;
 }
 
+export interface RunoffOpinion {
+  persona: string;
+  position: string;
+  critique: string;
+  reasoning: string;
+}
+
+export interface RunoffVote {
+  voter: string;
+  finalVote: string;
+  changedMind: boolean;
+  reasoning: string;
+}
+
+export interface RunoffResult {
+  winner: string;
+  runoffOpinions: RunoffOpinion[];
+  runoffVotes: RunoffVote[];
+}
+
 export interface CouncilResult {
   winner: string;
   synthesis: string;
   opinions: CouncilOpinion[];
   voteTally?: Record<string, number>;
   timestamp?: number;
+  runoffResult?: RunoffResult;
+  councilState?: {
+    totalCouncilMembers: number;
+    factions: string[];
+  };
 }
 
 export interface ChatMessage {
