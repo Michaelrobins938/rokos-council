@@ -1666,7 +1666,7 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
 // StakesPanel — Demagogue's request: make the human feel what the verdict costs
 // Shows what it would mean in real terms if each major vector had carried the day
 const StakesPanel: React.FC<{ result: CouncilResult }> = ({ result }) => {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useState(true); // default open for screenshot/PDF capture
 
     if (!result?.opinions || result.opinions.length === 0) return null;
 
