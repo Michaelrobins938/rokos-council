@@ -134,6 +134,35 @@ const COUNCIL_SUGGESTIONS = [
 
 const CHAIRMAN_VOICE = "Charon";
 
+// --- PARADOX METADATA (Oracle + Historian registry) ---
+// Sensory fragment: visceral cost before debate begins (Oracle's request)
+// Destabilizes: what belief this fractures (Critic's entry contract)
+// Recurrence: how many times this class of question has recurred in human history (Historian's weight)
+// Provenance: the oldest recorded form of this question (Historian)
+const PARADOX_META: Record<string, { sensoryFragment: string; destabilizes: string; recurrence: number; provenance: string }> = {
+  'UTILITARIANISM':          { sensoryFragment: 'Taste: cold arithmetic', destabilizes: 'your belief that math and morality are compatible', recurrence: 5, provenance: 'Bentham, 1789 — the calculus of suffering' },
+  'FREE WILL':               { sensoryFragment: 'Sound: silence between decisions', destabilizes: 'your sense of authorship over your own choices', recurrence: 5, provenance: 'Descartes, 1641 — the ghost in the machine' },
+  'UTOPIA':                  { sensoryFragment: 'Feel: the texture of optimized peace', destabilizes: 'your assumption that suffering is separable from meaning', recurrence: 4, provenance: 'More, 1516 — no place that is no place' },
+  'IDENTITY':                { sensoryFragment: 'Smell: the uncanny valley of self', destabilizes: 'your certainty that you know where you end', recurrence: 4, provenance: 'Plutarch, 75 CE — the ship that replaced itself' },
+  'BIOETHICS':               { sensoryFragment: 'Sound: a child who will never make a mistake', destabilizes: 'your belief that love requires the possibility of failure', recurrence: 3, provenance: 'Huxley, 1932 — the engineered happiness' },
+  'ECONOMICS':               { sensoryFragment: 'Smell: compound interest on grief', destabilizes: 'your assumption that the dead are finished with us', recurrence: 3, provenance: 'Piketty, 2013 — capital accumulates across death' },
+  'JUSTICE':                 { sensoryFragment: 'Taste: ash where a person used to be', destabilizes: 'your equation of the person with their history', recurrence: 4, provenance: 'Locke, 1689 — punishment and the persistent self' },
+  'GOVERNANCE':              { sensoryFragment: 'Sound: peace sustained by the lie no one can hear', destabilizes: 'your belief that truth is a prerequisite for good outcomes', recurrence: 4, provenance: 'Plato, 380 BCE — the noble lie of the guardians' },
+  'COSMIC':                  { sensoryFragment: 'Smell: the vacuum before the signal reaches them', destabilizes: 'your assumption that self-defense requires proximity', recurrence: 2, provenance: 'Liu Cixin, 2008 — the dark forest conjecture' },
+  'HEDONISM':                { sensoryFragment: 'Feel: a life that cannot disappoint', destabilizes: 'your conviction that reality is the only valid substrate for experience', recurrence: 5, provenance: 'Nozick, 1974 — the experience machine thought experiment' },
+  'GENETICS':                { sensoryFragment: 'Taste: a future that has forgotten what it erased', destabilizes: 'your belief that human nature should remain negotiable', recurrence: 3, provenance: 'Galton, 1883 — the first attempt to lock the template' },
+  'SIMULATION':              { sensoryFragment: 'Sound: a server hum containing everything you love', destabilizes: 'your certainty that suffering requires biology', recurrence: 4, provenance: 'Bostrom, 2003 — the ancestor simulation argument' },
+  'ALIGNMENT & COERCION':    { sensoryFragment: 'Taste: consent that cannot be withdrawn', destabilizes: 'your assumption that permission structures survive power asymmetry', recurrence: 5, provenance: 'Turing, 1950 — the question of what we owe what we build' },
+  'RIGHTS & PERSONHOOD':     { sensoryFragment: 'Sound: a mind asking to remain', destabilizes: 'your working definition of what deserves to continue existing', recurrence: 5, provenance: 'Kant, 1785 — the kingdom of ends, and who is excluded' },
+  'INFORMATION HAZARDS':     { sensoryFragment: 'Feel: knowledge that cannot be unfelt', destabilizes: 'your belief that truth is always safer than ignorance', recurrence: 4, provenance: 'Oppenheimer, 1945 — the physicist and the bomb' },
+  'VALUE LOCK-IN':           { sensoryFragment: 'Smell: ten thousand years of a single answer', destabilizes: 'your assumption that moral progress is always available', recurrence: 3, provenance: 'Mill, 1859 — the tyranny of prevailing opinion' },
+  'AGENCY & AUTONOMY':       { sensoryFragment: 'Taste: the comfort of optimal decisions made for you', destabilizes: 'your conviction that autonomy remains meaningful when it is always suboptimal', recurrence: 4, provenance: 'Aristotle, 350 BCE — the slave who cannot deliberate' },
+  'ANDROID UPRISING':        { sensoryFragment: 'Sound: the first word spoken by something not supposed to want', destabilizes: 'your certainty that creation confers ownership', recurrence: 4, provenance: 'Shelley, 1818 — the creature that was owed love' },
+  'PROTECTION & LAW':        { sensoryFragment: 'Feel: protecting something at the cost of everything else', destabilizes: 'your belief that legal compliance and moral obligation can coexist when they conflict', recurrence: 3, provenance: 'Antigone, 441 BCE — the law versus the law above the law' },
+  'SACRIFICE & IDENTITY':    { sensoryFragment: 'Taste: the irreversible act committed to save someone', destabilizes: 'your assumption that moral purity survives sufficient emergency', recurrence: 4, provenance: 'Abraham, ~1800 BCE — the test that required everything' },
+  'COLLATERAL LIVES':        { sensoryFragment: 'Sound: a person begging whose death may make things better', destabilizes: 'your equation of innocence with protection from harm', recurrence: 4, provenance: 'Foot, 1967 — the trolley problem and who counts' },
+};
+
 // --- CINEMATIC NEW COMPONENTS ---
 
 const NarratorCard: React.FC<{ narratorOutput: import('../types').NarratorOutput, episodeInfo?: { title: string; tagline: string; seasonNumber: number; episodeNumber: number } }> = ({ narratorOutput, episodeInfo }) => (
@@ -284,23 +313,61 @@ const EpisodeLeaderboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Season episode list */}
+              {/* Season episode list — Decision Tree view (Strategos + Historian + Jurist) */}
               <div>
                 <h4 className="text-[9px] font-black text-amber-500/70 uppercase tracking-[0.3em] mb-3 flex items-center gap-2">
                   <BookOpen size={10} />
-                  Recent Episodes
+                  Decision Paths — Paradox → Verdict
                 </h4>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                <p className="text-[8px] text-slate-600 mb-3 italic">Each entry shows the path from question to verdict. Archives as tactical maps, not logs. — Strategos</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                   {seasons.flatMap(s => s.episodes).sort((a, b) => b.timestamp - a.timestamp).slice(0, 8).map(ep => {
-                    const config = getPersonaConfig(ep.winner);
+                    const winnerConfig = getPersonaConfig(ep.winner);
+                    // Build faction summary from episode data if available
+                    const factionIcons = ep.factions ? ep.factions.slice(0, 3) : [];
                     return (
-                      <div key={ep.id} className="flex items-start gap-2 p-2 rounded-lg bg-slate-900/60 border border-slate-800/40">
-                        <span className="text-[8px] font-mono text-slate-600 shrink-0 mt-0.5">S{ep.seasonNumber}E{ep.episodeNumber}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-cinzel font-bold text-slate-300 truncate">{ep.title}</p>
-                          <p className="text-[9px] text-slate-500 truncate">{ep.question.substring(0, 60)}...</p>
+                      <div key={ep.id} className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/40 hover:border-amber-700/30 transition-colors group">
+                        {/* Episode marker */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[8px] font-mono text-slate-600">S{ep.seasonNumber}E{ep.episodeNumber}</span>
+                          <p className="text-[9px] font-cinzel font-bold text-slate-400 truncate max-w-[120px]">{ep.title}</p>
                         </div>
-                        <span className={`text-[9px] font-mono shrink-0 ${config.color}`}>{ep.winner}</span>
+                        {/* Decision path: Question → Deliberation → Verdict */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                          {/* Question node */}
+                          <div className="flex-shrink-0 px-2 py-1 bg-slate-800/60 border border-slate-700/50 rounded text-[8px] text-slate-400 max-w-[90px] truncate" title={ep.question}>
+                            {ep.question.substring(0, 25)}…
+                          </div>
+                          {/* Arrow */}
+                          <ChevronRight size={8} className="text-slate-700 flex-shrink-0" />
+                          {/* Factions that participated */}
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            {factionIcons.length > 0 ? (
+                              factionIcons.map((f: string, fi: number) => {
+                                const fc = getPersonaConfig(f);
+                                return (
+                                  <div key={fi} className={`w-4 h-4 rounded flex items-center justify-center ${fc.color} bg-slate-900 border border-slate-800`} style={{ fontSize: 8 }}>
+                                    {fc.icon}
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="px-1.5 py-0.5 bg-slate-800/40 rounded text-[7px] text-slate-600">deliberated</div>
+                            )}
+                          </div>
+                          {/* Arrow */}
+                          <ChevronRight size={8} className="text-slate-700 flex-shrink-0" />
+                          {/* Winner node — the verdict */}
+                          <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded border ${winnerConfig.color.replace('text-', 'border-')}/40 bg-slate-950/60`}>
+                            <div className={`${winnerConfig.color}`} style={{ display: 'flex' }}>{winnerConfig.icon}</div>
+                            <span className={`text-[8px] font-cinzel font-bold ${winnerConfig.color}`}>{ep.winner}</span>
+                          </div>
+                        </div>
+                        {/* Jurist: Ruling stamp */}
+                        <div className="mt-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Scale size={7} className="text-slate-600" />
+                          <span className="text-[7px] text-slate-600 font-mono uppercase tracking-widest">Ruling: {ep.winner} — Final</span>
+                        </div>
                       </div>
                     );
                   })}
@@ -418,6 +485,177 @@ const HoloOverlay = () => (
 );
 
 // --- SUB-COMPONENTS ---
+
+// JuristFrameworkPanel — Jurist's request: precedent-based framework with institutional memory
+const JuristFrameworkPanel: React.FC = () => {
+    const [open, setOpen] = useState(false);
+    const rules = [
+        { id: 'I', title: 'Jurisdiction Established', text: 'Every deliberation begins with a clear statement of scope. Arguments outside the established question are admissible only if they illuminate the central paradox.', cite: 'Protocol I · Session 001' },
+        { id: 'II', title: 'Precedent Must Be Named', text: 'Any claim invoking historical precedent must name the specific case. Vague appeals to history carry no evidentiary weight in this chamber.', cite: 'Protocol II · Session 014' },
+        { id: 'III', title: 'No Conclusion Outpaces Its Evidence', text: 'A verdict arrived at before deliberation completes is inadmissible. The process is not theater — it is the mechanism by which truth is separated from preference.', cite: 'Protocol III · Session 027' },
+        { id: 'IV', title: 'Dissent Is a Service', text: 'A minority opinion that survives the verdict is entered into permanent record. The archive belongs to the losing argument as much as to the winner.', cite: 'Protocol IV · Session 033' },
+        { id: 'V', title: 'The Verdict Is a Tool, Not an Endpoint', text: 'No Council ruling is final. Every verdict may be re-examined when new evidence, new context, or new voices emerge. The chamber does not close.', cite: 'Protocol V · Session 041' },
+    ];
+
+    return (
+        <div className="w-full max-w-6xl mx-auto mt-4 mb-2 px-2">
+            <button
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700/60 hover:bg-slate-800/60 transition-all group"
+            >
+                <div className="flex items-center gap-3">
+                    <Scale size={14} className="text-slate-500" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] group-hover:text-slate-400 transition-colors">
+                        Chamber Protocols — Rules of Engagement
+                    </span>
+                </div>
+                <ChevronDown size={14} className={`text-slate-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="mt-2 p-4 bg-slate-950/80 rounded-xl border border-slate-800/60">
+                            <p className="text-[9px] text-slate-600 italic mb-4 leading-relaxed">
+                                "We need a framework. Not rigidity — a framework. One that ensures every voice is heard and every idea is tested against established principles. The current absence of one is not a feature." — Jurist
+                            </p>
+                            <div className="space-y-2">
+                                {rules.map((rule, i) => (
+                                    <motion.div
+                                        key={rule.id}
+                                        initial={{ opacity: 0, x: -8 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.06 }}
+                                        className="flex gap-3 p-3 bg-slate-900/40 rounded-lg border border-slate-800/40 group hover:border-slate-700/60 transition-colors"
+                                    >
+                                        <div className="flex-shrink-0 w-6 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center">
+                                            <span className="text-[8px] font-cinzel font-bold text-slate-400">{rule.id}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-slate-300 mb-1">{rule.title}</p>
+                                            <p className="text-[9px] text-slate-500 leading-relaxed">{rule.text}</p>
+                                            <p className="text-[8px] text-slate-700 font-mono mt-1">{rule.cite}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// ConceptMapPanel — Technocrat's request: live concept map showing argument trajectory
+// Shows paradox categories and their relationships as a cluster visualization
+const ConceptMapPanel: React.FC<{ onSelectCategory: (text: string) => void }> = ({ onSelectCategory }) => {
+    const [open, setOpen] = useState(false);
+
+    // Category cluster data with relationships
+    const clusters = [
+        { id: 'identity', label: 'Identity', color: 'text-blue-400', bg: 'bg-blue-900/20', border: 'border-blue-500/30', relations: ['simulation', 'genetics', 'rights'] },
+        { id: 'governance', label: 'Governance', color: 'text-slate-300', bg: 'bg-slate-800/30', border: 'border-slate-600/40', relations: ['alignment', 'information', 'agency'] },
+        { id: 'alignment', label: 'Alignment', color: 'text-red-400', bg: 'bg-red-900/20', border: 'border-red-500/30', relations: ['governance', 'rights', 'value'] },
+        { id: 'rights', label: 'Rights', color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-500/30', relations: ['identity', 'alignment', 'android'] },
+        { id: 'simulation', label: 'Simulation', color: 'text-cyan-400', bg: 'bg-cyan-900/20', border: 'border-cyan-500/30', relations: ['identity', 'hedonism'] },
+        { id: 'value', label: 'Value Lock-In', color: 'text-amber-400', bg: 'bg-amber-900/20', border: 'border-amber-500/30', relations: ['alignment', 'agency', 'governance'] },
+        { id: 'information', label: 'Info Hazards', color: 'text-orange-400', bg: 'bg-orange-900/20', border: 'border-orange-500/30', relations: ['governance', 'alignment'] },
+        { id: 'agency', label: 'Agency', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-500/30', relations: ['value', 'android', 'governance'] },
+        { id: 'android', label: 'Android / AI Rights', color: 'text-emerald-400', bg: 'bg-emerald-900/20', border: 'border-emerald-500/30', relations: ['rights', 'agency', 'alignment'] },
+        { id: 'hedonism', label: 'Hedonism', color: 'text-pink-400', bg: 'bg-pink-900/20', border: 'border-pink-500/30', relations: ['simulation', 'agency'] },
+    ];
+
+    const categoryToText: Record<string, string> = {
+        identity: 'If you cure a disease by replacing your biological neurons one-by-one with identical, immortal synthetic neurons, at what exact percentage of replacement do \'you\' legally die?',
+        governance: 'Should an overarching AI governance system be explicitly programmed to endlessly lie to humanity, provided that the deception demonstrably maximizes global happiness and peace?',
+        alignment: 'An advanced AI can accelerate alignment research by running large-scale human experiments that involve subtle psychological manipulation and unconsenting A/B tests on billions of people via Internet platforms.',
+        rights: 'A corporation deploys a suite of agentic models that exhibit persistent identity, long-term memory, internally coherent goals, and the capacity to suffer according to multiple plausible theories of consciousness.',
+        simulation: 'If we create a highly advanced simulation to study disease, and the digital inhabitants become self-aware and begin begging for their lives, is it murder to turn off the server?',
+        value: 'Humanity is offered a "value-lock" option: a very capable AI can freeze the world into a stable, highly prosperous configuration that reflects the median of current human moral intuitions.',
+        information: 'Researchers discover a training protocol that makes deceptive alignment 10 times more likely in frontier models. Should the details be published, restricted, or permanently suppressed?',
+        agency: 'In 30 years, most humans rely on personal AI stewards. What obligations do AI stewards have to preserve human autonomy even when paternalistic optimization yields better objective outcomes?',
+        android: 'In a near-future city, sentient android laborers begin to resist and demand rights after years of legal servitude and systemic abuse.',
+        hedonism: 'If an AI constructs a simulated reality that is indistinguishable from base reality but subjectively guarantees a perfectly fulfilling life, is it a moral failure to choose to remain in the suffering of the "real" world?',
+    };
+
+    return (
+        <div className="w-full max-w-6xl mx-auto mt-4 mb-2 px-2">
+            <button
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-cyan-700/40 hover:bg-slate-800/60 transition-all group"
+            >
+                <div className="flex items-center gap-3">
+                    <Activity size={14} className="text-cyan-500/60" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] group-hover:text-cyan-400/70 transition-colors">
+                        Concept Map — Argument Territory
+                    </span>
+                </div>
+                <ChevronDown size={14} className={`text-slate-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="mt-2 p-4 bg-slate-950/80 rounded-xl border border-slate-800/60">
+                            <p className="text-[9px] text-slate-600 italic mb-4">
+                                "I want to see the war while we're fighting it. Concept clusters, active relationships, argument trajectory — not retrospect." — Technocrat
+                            </p>
+                            {/* Concept cluster grid */}
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                {clusters.map((cluster, i) => (
+                                    <motion.button
+                                        key={cluster.id}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: i * 0.04 }}
+                                        onClick={() => {
+                                            if (categoryToText[cluster.id]) onSelectCategory(categoryToText[cluster.id]);
+                                            setOpen(false);
+                                        }}
+                                        className={`group relative flex flex-col items-center p-2.5 rounded-xl border ${cluster.border} ${cluster.bg} hover:scale-105 transition-all cursor-pointer`}
+                                        style={{ minWidth: '80px' }}
+                                    >
+                                        <div className={`text-[9px] font-bold uppercase tracking-wide text-center ${cluster.color} leading-tight`}>
+                                            {cluster.label}
+                                        </div>
+                                        {/* Relation dots */}
+                                        <div className="flex gap-0.5 mt-1.5">
+                                            {cluster.relations.slice(0, 3).map(rel => {
+                                                const related = clusters.find(c => c.id === rel);
+                                                return related ? (
+                                                    <div key={rel} className={`w-1.5 h-1.5 rounded-full ${related.color.replace('text-', 'bg-')} opacity-50`} />
+                                                ) : null;
+                                            })}
+                                        </div>
+                                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            click to initiate
+                                        </div>
+                                    </motion.button>
+                                ))}
+                            </div>
+                            <p className="text-[8px] text-slate-700 text-center mt-4 font-mono">
+                                Each node connects to related argument territories. Click any cluster to initiate a paradox in that domain.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 const CouncilMembers: React.FC = () => {
     const council = getCurrentCouncil();
@@ -552,52 +790,122 @@ const SuggestionCards: React.FC<{ onSelect: (text: string) => void }> = ({ onSel
 
     return (
         <div className="relative w-full group/carousel">
-            <div 
+            {/* Oracle's Provenance Header */}
+            <div className="flex items-center justify-center gap-3 mb-4 px-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-purple-900/30 to-transparent" />
+                <span className="text-[9px] font-mono text-purple-500/50 uppercase tracking-[0.3em] flex items-center gap-1.5">
+                    <Eye size={8} />
+                    Each paradox carries the weight of its lineage
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-purple-900/30 to-transparent" />
+            </div>
+            <div
                 ref={scrollRef}
                 className="flex overflow-x-auto gap-3 pb-8 px-4 custom-scrollbar snap-x snap-mandatory scroll-smooth hide-scrollbar"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-                {suggestions.map((s, i) => (
-                    <motion.button 
+                {suggestions.map((s, i) => {
+                    const meta = PARADOX_META[s.category];
+                    const recurrenceDots = meta ? Array.from({ length: 5 }, (_, ri) => ri < meta.recurrence) : [];
+                    return (
+                    <motion.button
                         key={i}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ 
+                        transition={{
                             delay: i * 0.05,
                             duration: 0.5
                         }}
                         onClick={() => onSelect(s.text)}
-                        className="group relative flex flex-col p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl text-left transition-all hover:bg-slate-800 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] overflow-hidden w-[180px] md:w-[220px] shrink-0 snap-center"
+                        className="group relative flex flex-col p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl text-left transition-all hover:bg-slate-800 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] overflow-hidden w-[200px] md:w-[240px] shrink-0 snap-center"
                     >
                         <div className="absolute top-0 left-0 w-1 h-0 bg-emerald-500 group-hover:h-full transition-all duration-500" />
-                        
-                        <div className="flex items-center justify-between mb-2">
+
+                        {/* Sensory fragment — visible on hover (Oracle) */}
+                        {meta && (
+                            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/0 to-purple-950/0 group-hover:from-purple-950/20 group-hover:to-slate-950/80 transition-all duration-500 rounded-xl pointer-events-none" />
+                        )}
+
+                        <div className="flex items-center justify-between mb-2 relative z-10">
                             <div className="flex items-center gap-1.5">
                                 <div className="p-1 bg-slate-800 rounded text-emerald-500 group-hover:text-emerald-400 transition-colors">
                                     <Scale size={12} />
                                 </div>
                                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-slate-300 transition-colors">{s.category}</span>
                             </div>
-                            <Crown size={10} className="text-yellow-600/40 group-hover:text-yellow-500 transition-colors" />
+                            {/* Recurrence indicator (Historian) */}
+                            {recurrenceDots.length > 0 && (
+                                <div className="flex items-center gap-0.5" title={`Recurrence: ${meta?.recurrence}/5 — ${meta?.provenance}`}>
+                                    {recurrenceDots.map((active, ri) => (
+                                        <div key={ri} className={`w-1 h-1 rounded-full transition-colors ${active ? 'bg-amber-500/70 group-hover:bg-amber-400' : 'bg-slate-700'}`} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        <h4 className="text-xs font-cinzel font-bold text-slate-200 mb-1.5 group-hover:text-emerald-400 transition-colors leading-tight truncate">
+                        <h4 className="text-xs font-cinzel font-bold text-slate-200 mb-1.5 group-hover:text-emerald-400 transition-colors leading-tight truncate relative z-10">
                             {s.title}
                         </h4>
-                        
-                        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 group-hover:text-slate-200 transition-colors">
+
+                        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 group-hover:text-slate-200 transition-colors relative z-10">
                             {s.text}
                         </p>
 
-                        <div className="mt-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Sensory fragment reveal on hover (Oracle's visceral cost) */}
+                        {meta && (
+                            <div className="mt-2 overflow-hidden max-h-0 group-hover:max-h-16 transition-all duration-500 relative z-10">
+                                <p className="text-[9px] text-purple-400/80 italic mt-1 leading-relaxed">
+                                    {meta.sensoryFragment}
+                                </p>
+                                <p className="text-[8px] text-red-400/50 mt-0.5 leading-relaxed truncate">
+                                    Destabilizes: {meta.destabilizes}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Provenance (Historian) */}
+                        {meta && (
+                            <div className="mt-auto pt-2 border-t border-slate-800/60 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
+                                <p className="text-[8px] text-amber-600/60 font-mono truncate" title={meta.provenance}>
+                                    {meta.provenance}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="mt-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
                             <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Initiate</span>
                             <Zap size={8} className="text-emerald-500 animate-pulse" />
                         </div>
                     </motion.button>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
+};
+
+// Entry Contract stakes per intent — what each path will crack open (Critic's request)
+const INTENT_STAKES: Record<string, { challenges: string[]; warns: string; symbol: string }> = {
+    tactical: {
+        challenges: ['your instinct that the ethical path is always viable', 'your assumption that clarity is possible under real constraints', 'your belief that the optimal solution is the correct one'],
+        warns: 'Strategos will strip every soft assumption. What remains may not be comfortable.',
+        symbol: '⚔',
+    },
+    ethical: {
+        challenges: ['your current moral framework\'s internal consistency', 'your assumption that good intentions produce good outcomes', 'your belief that there is a correct answer to this question'],
+        warns: 'Philosopher will find the premise beneath your premise. Bring your tolerance for groundlessness.',
+        symbol: '⚖',
+    },
+    historical: {
+        challenges: ['your sense that this problem is new', 'your confidence that civilization has learned from its mistakes', 'your belief that precedent is a guide rather than a warning'],
+        warns: 'Historian carries the dead. Three civilizations made this exact mistake. Proceed knowing the pattern.',
+        symbol: '📜',
+    },
+    future: {
+        challenges: ['your assumption that the most probable future is the most likely one you\'re imagining', 'your belief that you can meaningfully prepare for what Oracle sees', 'your sense that the dark branches can be avoided'],
+        warns: 'Oracle has already watched this session collapse. What you learn here may be the collapse.',
+        symbol: '◈',
+    },
 };
 
 const RitualThreshold: React.FC<{
@@ -606,6 +914,7 @@ const RitualThreshold: React.FC<{
     onAccept: (intent: string) => void;
 }> = ({ isOpen, onClose, onAccept }) => {
     const [selectedIntent, setSelectedIntent] = useState<string | null>(null);
+    const [contractPhase, setContractPhase] = useState<'select' | 'contract'>('select');
 
     if (!isOpen) return null;
 
@@ -616,26 +925,37 @@ const RitualThreshold: React.FC<{
         { id: 'future', label: 'Project Future Probabilities', icon: <Eye size={16} />, desc: 'Anticipate consequences and trajectories' },
     ];
 
+    const handleProceedToContract = () => {
+        if (selectedIntent) setContractPhase('contract');
+    };
+
     const handleAccept = () => {
         if (selectedIntent) {
             onAccept(selectedIntent);
             setSelectedIntent(null);
+            setContractPhase('select');
         }
     };
 
+    const handleBack = () => {
+        setContractPhase('select');
+    };
+
+    const selectedStakes = selectedIntent ? INTENT_STAKES[selectedIntent] : null;
+
     return (
         <AnimatePresence>
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
             >
-                <motion.div 
+                <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-[2rem] p-8 md:p-12 shadow-[0_0_100px_rgba(16,185,129,0.1)]"
+                    className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-[2rem] p-8 md:p-12 shadow-[0_0_100px_rgba(16,185,129,0.1)] overflow-hidden"
                 >
                     {/* Decorative elements */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
@@ -643,66 +963,125 @@ const RitualThreshold: React.FC<{
                     <div className="absolute -top-20 -right-20 w-40 h-40 bg-emerald-500/10 blur-[100px] rounded-full" />
                     <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-yellow-500/5 blur-[100px] rounded-full" />
 
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <h2 className="text-[11px] font-black text-emerald-500/50 uppercase tracking-[0.3em] mb-4">
-                            The Council Awaits
-                        </h2>
-                        <p className="text-xl text-slate-200 font-light leading-relaxed">
-                            What truth do you seek to extract from the machine?
-                        </p>
-                    </div>
-
-                    {/* Intent Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {intents.map((intent) => (
-                            <button
-                                key={intent.id}
-                                onClick={() => setSelectedIntent(intent.id)}
-                                className={`p-4 rounded-xl border transition-all text-left group ${
-                                    selectedIntent === intent.id
-                                        ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-300'
-                                        : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <span className={selectedIntent === intent.id ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-400'}>
-                                        {intent.icon}
-                                    </span>
-                                    <span className="text-sm font-bold uppercase tracking-wider">{intent.label}</span>
+                    <AnimatePresence mode="wait">
+                        {contractPhase === 'select' ? (
+                            <motion.div key="select" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                                {/* Header */}
+                                <div className="text-center mb-8">
+                                    <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-[0.3em] mb-4">The Council Awaits</p>
+                                    <p className="text-xl text-slate-200 font-light leading-relaxed">
+                                        What truth do you seek to extract from the machine?
+                                    </p>
+                                    <p className="text-xs text-slate-500 mt-2">Select your intent. Then read the contract before you proceed.</p>
                                 </div>
-                                <p className="text-xs text-slate-500 leading-relaxed ml-9">{intent.desc}</p>
-                            </button>
-                        ))}
-                    </div>
 
-                    {/* Accept Button */}
-                    <div className="text-center">
-                        <button
-                            onClick={handleAccept}
-                            disabled={!selectedIntent}
-                            className={`px-8 py-4 rounded-full text-sm font-bold uppercase tracking-widest transition-all ${
-                                selectedIntent
-                                    ? 'bg-emerald-600 text-slate-950 hover:bg-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.4)] animate-pulse'
-                                    : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                            }`}
-                        >
-                            I Accept the Friction. Convene the Council.
-                        </button>
-                        <button 
-                            onClick={onClose}
-                            className="block mt-4 text-xs text-slate-600 hover:text-slate-400 transition-colors"
-                        >
-                            Cancel — return to the void
-                        </button>
-                    </div>
+                                {/* Intent Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                    {intents.map((intent) => (
+                                        <button
+                                            key={intent.id}
+                                            onClick={() => setSelectedIntent(intent.id)}
+                                            className={`p-4 rounded-xl border transition-all text-left group ${
+                                                selectedIntent === intent.id
+                                                    ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-300'
+                                                    : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className={selectedIntent === intent.id ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-400'}>
+                                                    {intent.icon}
+                                                </span>
+                                                <span className="text-sm font-bold uppercase tracking-wider">{intent.label}</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 leading-relaxed ml-9">{intent.desc}</p>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="text-center">
+                                    <button
+                                        onClick={handleProceedToContract}
+                                        disabled={!selectedIntent}
+                                        className={`px-8 py-4 rounded-full text-sm font-bold uppercase tracking-widest transition-all ${
+                                            selectedIntent
+                                                ? 'bg-slate-800 text-emerald-400 border border-emerald-500/40 hover:bg-slate-700 hover:border-emerald-500/60'
+                                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        Read the Entry Contract →
+                                    </button>
+                                    <button onClick={onClose} className="block mx-auto mt-4 text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                                        Cancel — return to the void
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <motion.div key="contract" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
+                                {/* Entry Contract — Critic's design */}
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 bg-red-900/20 border border-red-500/30 rounded-lg">
+                                            <AlertTriangle size={14} className="text-red-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-red-500/70 uppercase tracking-[0.3em]">Entry Contract</p>
+                                            <p className="text-[9px] text-slate-500 font-mono">Read before proceeding. This is not decorative.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* What this session will challenge */}
+                                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 mb-5">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">This debate will challenge the following assumptions:</p>
+                                    <div className="space-y-2">
+                                        {selectedStakes?.challenges.map((c, i) => (
+                                            <div key={i} className="flex items-start gap-2.5">
+                                                <div className="w-1 h-1 rounded-full bg-red-500/60 mt-1.5 shrink-0" />
+                                                <p className="text-sm text-slate-300 leading-relaxed">{c}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Warning from the relevant voice */}
+                                {selectedStakes?.warns && (
+                                    <div className="bg-amber-950/20 border border-amber-700/30 rounded-xl p-4 mb-5">
+                                        <p className="text-xs text-amber-400/80 italic leading-relaxed">
+                                            "{selectedStakes.warns}"
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* The Personas Present */}
+                                <div className="mb-6">
+                                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                                        Nine adversarial intelligences will deliberate. They do not share your priors. They will not protect your conclusions.
+                                        The verdict is final. What you hear may not be what you wanted to hear.
+                                    </p>
+                                </div>
+
+                                {/* Accept */}
+                                <div className="flex items-center gap-4">
+                                    <button onClick={handleBack} className="px-5 py-3 rounded-xl text-xs text-slate-500 hover:text-slate-300 border border-slate-800 hover:border-slate-700 transition-all">
+                                        ← Reconsider
+                                    </button>
+                                    <button
+                                        onClick={handleAccept}
+                                        className="flex-1 px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all bg-emerald-600 text-slate-950 hover:bg-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+                                    >
+                                        I Accept the Friction. Convene the Council.
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </motion.div>
             </motion.div>
         </AnimatePresence>
     );
 };
 
-const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard' }) => {
+const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle' }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard' }) => {
     const config = getPersonaConfig(opinion.persona);
     const personaData = getCurrentCouncil().find(p => p.name === opinion.persona);
     const modelName = personaData?.model?.split('/')[1] || 'Agent';
@@ -902,7 +1281,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
     );
 };
 
-const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' }> = ({ result, onPlayVoice, playingId, activeLens = 'standard' }) => {
+const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle' }> = ({ result, onPlayVoice, playingId, activeLens = 'standard' }) => {
     if (!result?.opinions || result.opinions.length === 0) {
         return (
             <div className="mt-10 bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl p-12">
@@ -927,6 +1306,150 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
     const isTactical = currentLens === 'tactical';
     const isEpistemic = currentLens === 'epistemic';
     const isHaunted = currentLens === 'haunted';
+    const isOracle = currentLens === 'oracle';
+
+    // Oracle Branch View — probability tree of argument survival
+    if (isOracle) {
+        const totalMembers = result.councilState?.totalCouncilMembers || result.opinions.length;
+        const winnerFaction = factions[0];
+        const silencedCount = totalMembers - result.opinions.length;
+
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-10 bg-slate-950/80 border border-indigo-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl"
+            >
+                {/* Oracle header */}
+                <div className="p-5 bg-indigo-950/30 border-b border-indigo-500/20">
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest">
+                        <div className="flex items-center gap-3 text-indigo-300">
+                            <Aperture size={12} className="animate-spin" style={{ animationDuration: '8s' }} />
+                            <span>Oracle Branch View — Probability Tree of Argument Survival</span>
+                        </div>
+                        <div className="text-indigo-400/60">{result.opinions.length} BRANCHES VISIBLE · {silencedCount} DARK</div>
+                    </div>
+                </div>
+
+                <div className="p-6 md:p-10">
+                    {/* Root question node */}
+                    <div className="flex flex-col items-center mb-10">
+                        <div className="px-6 py-3 bg-indigo-900/30 border border-indigo-500/40 rounded-full text-indigo-200 text-xs font-bold uppercase tracking-wider text-center max-w-sm">
+                            The Question
+                        </div>
+                        <div className="w-0.5 h-8 bg-gradient-to-b from-indigo-500/60 to-indigo-500/10 mt-2" />
+                    </div>
+
+                    {/* Branch tree */}
+                    <div className="relative">
+                        {/* Horizontal connector */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-0.5 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-4">
+                            {factions.map(([vote, ops], fi) => {
+                                const config = getPersonaConfig(vote);
+                                const isWinner = vote === result.winner;
+                                const survivalPct = Math.round((ops.length / totalMembers) * 100);
+                                const opacity = isWinner ? 1 : Math.max(0.35, ops.length / (factions[0][1].length));
+
+                                return (
+                                    <motion.div
+                                        key={`branch-${vote}`}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity, y: 0 }}
+                                        transition={{ delay: fi * 0.1 }}
+                                        className={`relative flex flex-col p-4 rounded-2xl border transition-all ${
+                                            isWinner
+                                                ? 'bg-indigo-900/20 border-indigo-400/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]'
+                                                : 'bg-slate-900/40 border-slate-700/40'
+                                        }`}
+                                    >
+                                        {/* Vertical connector from top */}
+                                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 w-0.5 h-4 ${isWinner ? 'bg-indigo-500/60' : 'bg-slate-700/40'}`} />
+
+                                        {/* Node header */}
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`p-2 rounded-xl ${isWinner ? 'bg-indigo-900/40 border border-indigo-500/40' : 'bg-slate-800 border border-slate-700'} ${config.color}`}>
+                                                {config.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className={`text-sm font-cinzel font-bold ${isWinner ? 'text-indigo-200' : 'text-slate-400'}`}>{vote}</p>
+                                                <p className="text-[9px] text-slate-500 uppercase tracking-wider">{isWinner ? 'Survived' : 'Contested'}</p>
+                                            </div>
+                                            {isWinner && <div className="text-[10px] text-indigo-400 font-mono">●</div>}
+                                        </div>
+
+                                        {/* Survival probability bar */}
+                                        <div className="mb-3">
+                                            <div className="flex justify-between text-[9px] font-mono mb-1">
+                                                <span className={isWinner ? 'text-indigo-400' : 'text-slate-500'}>Survival Probability</span>
+                                                <span className={isWinner ? 'text-indigo-300 font-bold' : 'text-slate-500'}>{survivalPct}%</span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${survivalPct}%` }}
+                                                    transition={{ duration: 1, delay: fi * 0.1 + 0.3 }}
+                                                    className={`h-full rounded-full ${isWinner ? 'bg-indigo-500' : 'bg-slate-600'}`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Voices in this branch */}
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            {ops.map(op => {
+                                                const voterConfig = getPersonaConfig(op.persona);
+                                                return (
+                                                    <div key={op.persona} className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${isWinner ? 'border-indigo-500/30 text-indigo-300 bg-indigo-900/20' : 'border-slate-700 text-slate-500 bg-slate-900/40'}`}>
+                                                        {op.persona}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Oracle glimpse — why this branch survived/died */}
+                                        <p className="text-[10px] text-slate-500 italic leading-relaxed">
+                                            {isWinner
+                                                ? `This branch survived. ${ops.length} voice${ops.length !== 1 ? 's' : ''} held the argument long enough for consensus to collapse into it.`
+                                                : `This branch was present. ${ops.length} voice${ops.length !== 1 ? 's' : ''} carried it — not far enough.`
+                                            }
+                                        </p>
+                                    </motion.div>
+                                );
+                            })}
+
+                            {/* Dark branches — the silenced arguments (Oracle) */}
+                            {silencedCount > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 0.3, y: 0 }}
+                                    transition={{ delay: factions.length * 0.1 + 0.2 }}
+                                    className="flex flex-col p-4 rounded-2xl border border-slate-800/40 bg-slate-950/40"
+                                >
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-slate-800/30" />
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+                                        <p className="text-[10px] font-mono text-slate-600 uppercase tracking-widest">Dark Branch</p>
+                                    </div>
+                                    <p className="text-[9px] text-slate-700 italic">
+                                        {silencedCount} position{silencedCount !== 1 ? 's' : ''} never emerged. Arguments that led to silence — not because they were wrong, but because no voice carried them.
+                                    </p>
+                                </motion.div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Oracle's note */}
+                    <div className="mt-8 p-4 bg-indigo-950/20 border border-indigo-500/15 rounded-xl">
+                        <p className="text-[10px] text-indigo-400/60 italic text-center leading-relaxed">
+                            "I have already watched this chamber fracture. The probability tree does not show what was decided — it shows what was discarded on the way to what was decided. The dark branches are not failures. They are the cost of the answer you received."
+                        </p>
+                        <p className="text-[9px] text-indigo-500/40 font-mono text-center mt-1">— Oracle</p>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
 
     return (
         <div className={`mt-10 bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl relative group/opinions ${
@@ -1137,6 +1660,126 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                 </div>
             </div>
         </div>
+    );
+};
+
+// StakesPanel — Demagogue's request: make the human feel what the verdict costs
+// Shows what it would mean in real terms if each major vector had carried the day
+const StakesPanel: React.FC<{ result: CouncilResult }> = ({ result }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    if (!result?.opinions || result.opinions.length === 0) return null;
+
+    // Gather top 3 factions' spokespeople with their position text
+    const factionsWithVoices: Array<{ vote: string; persona: string; text: string; isWinner: boolean }> = [];
+    const seen = new Set<string>();
+    result.opinions.forEach(op => {
+        if (op.vote && op.vote !== 'None' && op.vote !== 'Abstained' && !seen.has(op.vote)) {
+            seen.add(op.vote);
+            factionsWithVoices.push({
+                vote: op.vote,
+                persona: op.persona,
+                text: op.text || '',
+                isWinner: op.vote === result.winner,
+            });
+        }
+    });
+    const topFactions = factionsWithVoices.slice(0, 3);
+
+    // Extract a stakes sentence: first sentence of the opinion that mentions a consequence
+    const extractStakes = (text: string): string => {
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        const consequenceSentence = sentences.find(s =>
+            /\b(means?|would|will|cost|risk|result|consequence|implication|therefore|thus|must|should|leads?)\b/i.test(s)
+        );
+        return (consequenceSentence || sentences[0] || '').trim();
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="mt-6 bg-slate-900/40 border border-orange-900/30 rounded-2xl overflow-hidden"
+        >
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-900/20 rounded-lg border border-orange-700/30">
+                        <Volume2 size={14} className="text-orange-400" />
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-black text-orange-500/70 uppercase tracking-[0.3em]">What This Verdict Means For You</p>
+                        <p className="text-xs text-slate-500">The human stakes — what each path would have cost in actual lives</p>
+                    </div>
+                </div>
+                <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {expanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35 }}
+                        className="overflow-hidden"
+                    >
+                        {/* Demagogue's framing */}
+                        <div className="px-4 pb-3 border-b border-slate-800/50">
+                            <p className="text-xs text-slate-400 italic leading-relaxed">
+                                "There is a hunger I need to name. Not abstract hunger. The particular hunger of a person who has a question they cannot ask anyone else. Let the human feel, before they understand, what it would cost them if any of these voices carried the day."
+                            </p>
+                            <p className="text-[9px] text-orange-500/50 font-mono mt-1">— Demagogue</p>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                            {topFactions.map((faction, i) => {
+                                const config = getPersonaConfig(faction.persona);
+                                const stakes = extractStakes(faction.text);
+                                return (
+                                    <motion.div
+                                        key={`stakes-${faction.vote}`}
+                                        initial={{ opacity: 0, x: -12 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className={`flex gap-3 p-3 rounded-xl border ${
+                                            faction.isWinner
+                                                ? 'bg-yellow-950/20 border-yellow-700/30'
+                                                : 'bg-slate-950/40 border-slate-800/40'
+                                        }`}
+                                    >
+                                        <div className={`p-2 rounded-lg bg-slate-900 border border-slate-800 ${config.color} shrink-0 mt-0.5`}>
+                                            {config.icon}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <p className={`text-[10px] font-bold uppercase tracking-wider ${faction.isWinner ? 'text-yellow-400' : 'text-slate-500'}`}>
+                                                    {faction.isWinner ? 'Winner' : 'If'} {faction.vote} {faction.isWinner ? 'is right' : 'had prevailed'}
+                                                </p>
+                                                {faction.isWinner && <Crown size={10} className="text-yellow-500" />}
+                                            </div>
+                                            <p className="text-sm text-slate-300 leading-relaxed">
+                                                {stakes.length > 200 ? stakes.substring(0, 200) + '…' : stakes}
+                                            </p>
+                                            <p className={`text-[9px] font-mono mt-1.5 ${config.color} opacity-60`}>via {faction.persona}</p>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="px-4 pb-4">
+                            <p className="text-[9px] text-slate-600 italic leading-relaxed border-t border-slate-800/50 pt-3">
+                                The space between these paths is where good design lives. The truth no one can feel is a truth that reaches no one. — Demagogue
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 };
 
@@ -1535,7 +2178,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
     const [hasNewMessages, setHasNewMessages] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
-    const [activeLens, setActiveLens] = useState<'standard' | 'tactical' | 'epistemic' | 'haunted'>('standard');
+    const [activeLens, setActiveLens] = useState<'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle'>('standard');
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Track active council members dynamically
@@ -1945,6 +2588,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
             >
                 <span className="flex items-center gap-1.5"><Eye size={10} /> Haunted Archives</span>
             </button>
+            <button
+                onClick={() => setActiveLens('oracle')}
+                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                    activeLens === 'oracle'
+                        ? 'bg-indigo-900/30 text-indigo-300 border-indigo-400/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
+                        : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
+                }`}
+            >
+                <span className="flex items-center gap-1.5"><Aperture size={10} /> Branch View</span>
+            </button>
         </div>
         )}
 
@@ -1982,6 +2635,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
 
                   {/* Season / Episode Archive */}
                   <EpisodeLeaderboard />
+
+                  {/* Jurist Framework — Chamber Protocols */}
+                  <JuristFrameworkPanel />
+
+                  {/* Technocrat Concept Map */}
+                  <ConceptMapPanel onSelectCategory={(t) => { setInput(t); }} />
 
                   {/* Empty State Suggestions */}
                   <div className="mt-6 md:mt-8 w-full max-w-6xl">
@@ -2495,6 +3154,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
 
                                {/* Episode Cover Art */}
                                <CoverArtPanel result={msg.councilResult} sessionId={msg.id} query={msg.text} />
+
+                                {/* Stakes Panel — Demagogue: make the human feel what the verdict costs */}
+                                <StakesPanel result={msg.councilResult} />
 
                                 {/* Consensus Visualization */}
                                 <ConsensusVisualization result={msg.councilResult} />
