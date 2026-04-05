@@ -265,13 +265,18 @@ const EpisodeLeaderboard: React.FC = () => {
     <div className="w-full max-w-6xl mx-auto mt-4 mb-2 px-2">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-amber-700/40 hover:bg-slate-800/60 transition-all group"
+        className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-slate-900/80 to-slate-900/50 border border-slate-700/40 hover:border-amber-700/40 hover:from-slate-800/60 transition-all group shadow-sm"
       >
         <div className="flex items-center gap-3">
-          <Trophy size={14} className="text-amber-500" />
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-amber-400 transition-colors">
-            Season {counter.season} · Episode {counter.episode} · Council Archive
-          </span>
+          <div className="p-1.5 rounded-lg bg-amber-900/20 border border-amber-800/30 group-hover:border-amber-700/50 transition-colors">
+            <Trophy size={13} className="text-amber-500" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-amber-400 transition-colors block">
+              Council Archive
+            </span>
+            <span className="text-[8px] text-slate-600 font-mono">Season {counter.season} · Episode {counter.episode} · Standing Records</span>
+          </div>
         </div>
         <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -501,15 +506,20 @@ const JuristFrameworkPanel: React.FC = () => {
         <div className="w-full max-w-6xl mx-auto mt-4 mb-2 px-2">
             <button
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700/60 hover:bg-slate-800/60 transition-all group"
+                className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-slate-900/80 to-slate-900/50 border border-slate-700/40 hover:border-slate-500/40 hover:from-slate-800/60 transition-all group shadow-sm"
             >
                 <div className="flex items-center gap-3">
-                    <Scale size={14} className="text-slate-500" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] group-hover:text-slate-400 transition-colors">
-                        Chamber Protocols — Rules of Engagement
-                    </span>
+                    <div className="p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 group-hover:border-slate-500/50 transition-colors">
+                        <Scale size={13} className="text-slate-400" />
+                    </div>
+                    <div className="text-left">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-slate-200 transition-colors block">
+                            Chamber Protocols
+                        </span>
+                        <span className="text-[8px] text-slate-600 font-mono">Rules of Engagement · Jurist</span>
+                    </div>
                 </div>
-                <ChevronDown size={14} className={`text-slate-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
             </button>
 
             <AnimatePresence>
@@ -589,13 +599,18 @@ const ConceptMapPanel: React.FC<{ onSelectCategory: (text: string) => void }> = 
         <div className="w-full max-w-6xl mx-auto mt-4 mb-2 px-2">
             <button
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-cyan-700/40 hover:bg-slate-800/60 transition-all group"
+                className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-slate-900/80 to-slate-900/50 border border-slate-700/40 hover:border-cyan-700/40 hover:from-slate-800/60 transition-all group shadow-sm"
             >
                 <div className="flex items-center gap-3">
-                    <Activity size={14} className="text-cyan-500/60" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] group-hover:text-cyan-400/70 transition-colors">
-                        Concept Map — Argument Territory
-                    </span>
+                    <div className="p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 group-hover:border-cyan-700/40 transition-colors">
+                        <Activity size={13} className="text-cyan-500/70" />
+                    </div>
+                    <div className="text-left">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-cyan-400/80 transition-colors block">
+                            Concept Map
+                        </span>
+                        <span className="text-[8px] text-slate-600 font-mono">Argument Territories · Technocrat</span>
+                    </div>
                 </div>
                 <ChevronDown size={14} className={`text-slate-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
             </button>
@@ -664,73 +679,88 @@ const CouncilMembers: React.FC = () => {
 
     return (
         <>
-        <div className="w-full max-w-6xl mx-auto mt-6 md:mt-8 px-2">
-            <div className="flex items-center gap-3 mb-4 md:mb-6 justify-center">
-                <div className="h-px w-8 md:w-12 bg-gradient-to-r from-transparent to-emerald-900/50" />
-                <h2 className="text-[9px] md:text-[10px] font-bold text-emerald-500/70 uppercase tracking-[0.3em] md:tracking-[0.4em]">The Council</h2>
-                <div className="h-px w-8 md:w-12 bg-gradient-to-l from-transparent to-emerald-900/50" />
+        <div className="w-full max-w-6xl mx-auto mt-2 px-3">
+            <div className="flex flex-col items-center mb-6 gap-3">
+                {/* Ornamental rule */}
+                <div className="flex items-center gap-4 w-full max-w-sm">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-700/40 to-yellow-700/40" />
+                    <Crown size={12} className="text-yellow-600/60 shrink-0" />
+                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-yellow-700/40 to-yellow-700/40" />
+                </div>
+                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.45em]">The Council — Nine Adversarial Minds</h2>
+                <p className="text-[9px] text-slate-600 font-mono text-center max-w-xs">Click any member to open their full dossier</p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 md:gap-2.5">
                 {council.map((member, index) => {
                     const config = getPersonaConfig(member.name);
                     const mem = memory[member.name];
                     const cachedPortrait = getCachedPortrait(member.name);
+                    const colorBg = config.color.replace('text-', 'bg-');
+                    const colorBorder = config.color.replace('text-', 'border-');
+                    const colorFrom = config.color.replace('text-', 'from-');
                     return (
                         <motion.div
                             key={member.name}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1, duration: 0.5 }}
+                            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ delay: index * 0.07, duration: 0.5, ease: 'easeOut' }}
                             onClick={() => setDossierTarget(member.name)}
-                            className="group relative bg-slate-900/60 border border-slate-800/60 rounded-xl p-3 md:p-4 hover:border-emerald-500/40 hover:bg-slate-800/60 transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] backdrop-blur-sm overflow-hidden cursor-pointer"
+                            className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all duration-500 hover:scale-[1.04] hover:-translate-y-1 ${colorBorder}/20 hover:${colorBorder}/60 bg-slate-900/70 hover:bg-slate-900/90`}
+                            style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
                         >
-                            {/* Cached portrait as subtle background */}
-                            {cachedPortrait && (
+                            {/* Portrait bg */}
+                            {cachedPortrait ? (
                                 <div
-                                    className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-500"
+                                    className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-700"
                                     style={{ backgroundImage: `url(${cachedPortrait})`, backgroundSize: 'cover', backgroundPosition: 'center top' }}
                                 />
+                            ) : (
+                                <div className={`absolute inset-0 bg-gradient-to-b ${colorFrom}/5 to-transparent group-hover:${colorFrom}/10 transition-colors duration-500`} />
                             )}
 
-                            <div className={`absolute top-0 left-0 w-0.5 h-full ${config.color.replace('text-', 'bg-')} opacity-60`} />
-                            <div className={`absolute top-0 right-0 w-0.5 h-full ${config.color.replace('text-', 'bg-')} opacity-60`} />
+                            {/* Top color bar */}
+                            <div className={`absolute top-0 left-0 right-0 h-0.5 ${colorBg} opacity-50 group-hover:opacity-90 transition-opacity`} />
 
-                            <div className="flex flex-col items-center text-center relative z-10">
-                                <div className={`p-2.5 md:p-3 rounded-full bg-slate-950 border border-slate-700 ${config.color} mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300`}>
-                                    <div className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center">
+                            {/* Glow on hover */}
+                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-b ${colorFrom}/5 to-transparent`} />
+
+                            <div className="relative z-10 flex flex-col items-center text-center p-3 pt-4 pb-3">
+                                {/* Icon */}
+                                <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full bg-slate-950/80 border ${colorBorder}/40 group-hover:${colorBorder}/80 flex items-center justify-center mb-2.5 transition-all duration-300 group-hover:shadow-[0_0_16px_var(--tw-shadow-color)] ${config.color} shadow-current`}>
+                                    <div className="w-4 h-4 md:w-5 md:h-5">
                                         {config.icon}
                                     </div>
                                 </div>
-                                <h3 className={`text-xs md:text-sm font-cinzel font-bold text-slate-100 mb-1 ${config.color}`}>
+
+                                {/* Name */}
+                                <h3 className={`text-[10px] md:text-xs font-cinzel font-bold leading-tight mb-0.5 transition-colors duration-300 ${config.color}`}>
                                     {member.name}
                                 </h3>
-                                <p className="text-[8px] md:text-[9px] font-mono text-slate-500 uppercase tracking-widest mb-2">
+
+                                {/* Role tagline */}
+                                <p className="text-[7px] md:text-[8px] font-mono text-slate-600 uppercase tracking-[0.15em] group-hover:text-slate-500 transition-colors">
                                     {config.tagline}
                                 </p>
-                                <p className="text-[9px] md:text-[10px] text-slate-400 leading-snug line-clamp-2 italic">
-                                    {config.appearance || member.desc}
-                                </p>
+
+                                {/* Speaking style — visible on hover only */}
+                                <div className="mt-2 overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-500">
+                                    <p className="text-[8px] text-slate-400 leading-relaxed italic px-1 pt-1 border-t border-slate-800/60">
+                                        {config.speakingStyle?.split('.')[0]}.
+                                    </p>
+                                </div>
+
+                                {/* Win/Loss record */}
                                 {mem && mem.sessionsParticipated > 0 && (
-                                    <div className="mt-2 flex items-center gap-2 text-[8px] font-mono text-slate-600">
-                                        <span className="text-emerald-600">{mem.wins}W</span>
-                                        <span>/</span>
-                                        <span className="text-red-700">{mem.losses}L</span>
-                                        {Object.keys(mem.rivalries).length > 0 && (
-                                            <span className="text-orange-700 flex items-center gap-0.5">
-                                                <Flame size={8} />
-                                                {Object.keys(mem.rivalries)[0]}
-                                            </span>
-                                        )}
+                                    <div className="mt-2 flex items-center justify-center gap-1.5 text-[8px] font-mono">
+                                        <span className="text-emerald-600/80">{mem.wins}W</span>
+                                        <span className="text-slate-700">·</span>
+                                        <span className="text-red-800/80">{mem.losses}L</span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Dossier hint */}
-                            <div className={`absolute bottom-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 border border-slate-700 ${config.color} text-[8px] font-bold uppercase tracking-wider px-1.5`}>
-                                Dossier
-                            </div>
-
-                            <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${config.color.replace('text-', 'from-')} to-transparent opacity-30`} />
+                            {/* Bottom glow line */}
+                            <div className={`absolute bottom-0 left-1/4 right-1/4 h-px ${colorBg} opacity-0 group-hover:opacity-40 transition-opacity blur-sm`} />
                         </motion.div>
                     );
                 })}
@@ -745,136 +775,171 @@ const CouncilMembers: React.FC = () => {
     );
 };
 
+// Per-category color palette for SuggestionCards
+const CATEGORY_PALETTE: Record<string, {
+    primary: string; bg: string; border: string; glowRgb: string; badge: string; accentBar: string;
+}> = {
+    'UTILITARIANISM':     { primary: 'text-amber-400',   bg: 'from-amber-950/40 to-slate-950',   border: 'border-amber-500/25',   glowRgb: '251,191,36',  badge: 'bg-amber-900/30',   accentBar: 'bg-amber-500' },
+    'FREE WILL':          { primary: 'text-purple-400',  bg: 'from-purple-950/40 to-slate-950',  border: 'border-purple-500/25',  glowRgb: '168,85,247',  badge: 'bg-purple-900/30',  accentBar: 'bg-purple-500' },
+    'UTOPIA':             { primary: 'text-emerald-400', bg: 'from-emerald-950/40 to-slate-950', border: 'border-emerald-500/25', glowRgb: '16,185,129',  badge: 'bg-emerald-900/30', accentBar: 'bg-emerald-500' },
+    'IDENTITY':           { primary: 'text-blue-400',    bg: 'from-blue-950/40 to-slate-950',    border: 'border-blue-500/25',    glowRgb: '96,165,250',  badge: 'bg-blue-900/30',    accentBar: 'bg-blue-500' },
+    'GOVERNANCE':         { primary: 'text-slate-300',   bg: 'from-slate-800/40 to-slate-950',   border: 'border-slate-500/25',   glowRgb: '148,163,184', badge: 'bg-slate-800/50',   accentBar: 'bg-slate-400' },
+    'ANDROID RIGHTS':     { primary: 'text-cyan-400',    bg: 'from-cyan-950/40 to-slate-950',    border: 'border-cyan-500/25',    glowRgb: '34,211,238',  badge: 'bg-cyan-900/30',    accentBar: 'bg-cyan-500' },
+    'SIMULATION':         { primary: 'text-indigo-400',  bg: 'from-indigo-950/40 to-slate-950',  border: 'border-indigo-500/25',  glowRgb: '129,140,248', badge: 'bg-indigo-900/30',  accentBar: 'bg-indigo-500' },
+    'VALUE LOCK-IN':      { primary: 'text-amber-500',   bg: 'from-orange-950/40 to-slate-950',  border: 'border-orange-500/25',  glowRgb: '245,158,11',  badge: 'bg-orange-900/40',  accentBar: 'bg-orange-400' },
+    'ALIGNMENT':          { primary: 'text-red-400',     bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'INFORMATION HAZARD': { primary: 'text-orange-400',  bg: 'from-orange-950/40 to-slate-950',  border: 'border-orange-500/25',  glowRgb: '251,146,60',  badge: 'bg-orange-900/30',  accentBar: 'bg-orange-500' },
+    'HEDONISM':           { primary: 'text-pink-400',    bg: 'from-pink-950/40 to-slate-950',    border: 'border-pink-500/25',    glowRgb: '244,114,182', badge: 'bg-pink-900/30',    accentBar: 'bg-pink-500' },
+    'RIGHTS':             { primary: 'text-green-400',   bg: 'from-green-950/40 to-slate-950',   border: 'border-green-500/25',   glowRgb: '74,222,128',  badge: 'bg-green-900/30',   accentBar: 'bg-green-500' },
+    'AGENCY':             { primary: 'text-violet-400',  bg: 'from-violet-950/40 to-slate-950',  border: 'border-violet-500/25',  glowRgb: '167,139,250', badge: 'bg-violet-900/30',  accentBar: 'bg-violet-500' },
+    'EXISTENTIAL RISK':   { primary: 'text-rose-400',    bg: 'from-rose-950/50 to-slate-950',    border: 'border-rose-500/25',    glowRgb: '251,113,133', badge: 'bg-rose-900/40',    accentBar: 'bg-rose-500' },
+    'CONSCIOUSNESS':      { primary: 'text-fuchsia-400', bg: 'from-fuchsia-950/40 to-slate-950', border: 'border-fuchsia-500/25', glowRgb: '232,121,249', badge: 'bg-fuchsia-900/30', accentBar: 'bg-fuchsia-500' },
+    'DIGITAL CONSCIOUSNESS': { primary: 'text-sky-400', bg: 'from-sky-950/40 to-slate-950',     border: 'border-sky-500/25',     glowRgb: '56,189,248',  badge: 'bg-sky-900/30',     accentBar: 'bg-sky-500' },
+    'DECEPTION':          { primary: 'text-orange-500',  bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '249,115,22',  badge: 'bg-red-950/50',     accentBar: 'bg-orange-500' },
+    'DEMOCRACY':          { primary: 'text-blue-300',    bg: 'from-blue-950/30 to-slate-950',    border: 'border-blue-400/25',    glowRgb: '147,197,253', badge: 'bg-blue-900/30',    accentBar: 'bg-blue-400' },
+    'GENETICS':           { primary: 'text-lime-400',    bg: 'from-lime-950/40 to-slate-950',    border: 'border-lime-500/25',    glowRgb: '163,230,53',  badge: 'bg-lime-900/30',    accentBar: 'bg-lime-500' },
+};
+
 const SuggestionCards: React.FC<{ onSelect: (text: string) => void }> = ({ onSelect }) => {
     const [suggestions, setSuggestions] = useState<typeof COUNCIL_SUGGESTIONS>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Randomly select 12 suggestions on mount for a longer loop
         const shuffled = [...COUNCIL_SUGGESTIONS].sort(() => 0.5 - Math.random());
-        setSuggestions(shuffled.slice(0, 12));
+        setSuggestions(shuffled.slice(0, 14));
     }, []);
 
     useEffect(() => {
         const scrollContainer = scrollRef.current;
         if (!scrollContainer) return;
-
         let animationId: number;
         let scrollPos = 0;
-        const scrollSpeed = 0.5; // Pixels per frame
-
+        const scrollSpeed = 0.4;
         const scroll = () => {
             scrollPos += scrollSpeed;
-            if (scrollPos >= scrollContainer.scrollWidth - scrollContainer.clientWidth) {
-                scrollPos = 0;
-            }
+            if (scrollPos >= scrollContainer.scrollWidth - scrollContainer.clientWidth) scrollPos = 0;
             scrollContainer.scrollLeft = scrollPos;
             animationId = requestAnimationFrame(scroll);
         };
-
         animationId = requestAnimationFrame(scroll);
-
-        // Pause on hover
-        const handleMouseEnter = () => cancelAnimationFrame(animationId);
-        const handleMouseLeave = () => animationId = requestAnimationFrame(scroll);
-
-        scrollContainer.addEventListener('mouseenter', handleMouseEnter);
-        scrollContainer.addEventListener('mouseleave', handleMouseLeave);
-
+        const pause = () => cancelAnimationFrame(animationId);
+        const resume = () => { animationId = requestAnimationFrame(scroll); };
+        scrollContainer.addEventListener('mouseenter', pause);
+        scrollContainer.addEventListener('mouseleave', resume);
         return () => {
             cancelAnimationFrame(animationId);
-            scrollContainer.removeEventListener('mouseenter', handleMouseEnter);
-            scrollContainer.removeEventListener('mouseleave', handleMouseLeave);
+            scrollContainer.removeEventListener('mouseenter', pause);
+            scrollContainer.removeEventListener('mouseleave', resume);
         };
     }, [suggestions]);
 
     return (
-        <div className="relative w-full group/carousel">
+        <div className="relative w-full">
             {/* Oracle's Provenance Header */}
-            <div className="flex items-center justify-center gap-3 mb-4 px-4">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-purple-900/30 to-transparent" />
-                <span className="text-[9px] font-mono text-purple-500/50 uppercase tracking-[0.3em] flex items-center gap-1.5">
-                    <Eye size={8} />
+            <div className="flex items-center justify-center gap-4 mb-5 px-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-purple-800/30 to-transparent" />
+                <span className="text-[9px] font-mono text-purple-400/50 uppercase tracking-[0.35em] flex items-center gap-2">
+                    <Eye size={9} className="text-purple-500/60" />
                     Each paradox carries the weight of its lineage
                 </span>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-purple-900/30 to-transparent" />
+                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-purple-800/30 to-transparent" />
             </div>
+
+            {/* Scroll container */}
             <div
                 ref={scrollRef}
-                className="flex overflow-x-auto gap-3 pb-8 px-4 custom-scrollbar snap-x snap-mandatory scroll-smooth hide-scrollbar"
+                className="flex overflow-x-auto gap-4 pb-4 px-4"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
                 {suggestions.map((s, i) => {
                     const meta = PARADOX_META[s.category];
+                    const pal = CATEGORY_PALETTE[s.category] || CATEGORY_PALETTE['UTILITARIANISM'];
                     const recurrenceDots = meta ? Array.from({ length: 5 }, (_, ri) => ri < meta.recurrence) : [];
                     return (
                     <motion.button
                         key={i}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{
-                            delay: i * 0.05,
-                            duration: 0.5
-                        }}
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04, duration: 0.5, ease: 'easeOut' }}
                         onClick={() => onSelect(s.text)}
-                        className="group relative flex flex-col p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl text-left transition-all hover:bg-slate-800 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] overflow-hidden w-[200px] md:w-[240px] shrink-0 snap-center"
+                        className={`group relative flex flex-col bg-gradient-to-b ${pal.bg} border ${pal.border} rounded-2xl text-left overflow-hidden w-[270px] md:w-[310px] shrink-0 transition-all duration-500 hover:scale-[1.025] hover:-translate-y-1`}
+                        style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.6)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 40px rgba(${pal.glowRgb},0.25), 0 2px 20px rgba(0,0,0,0.6)`; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 20px rgba(0,0,0,0.6)'; }}
                     >
-                        <div className="absolute top-0 left-0 w-1 h-0 bg-emerald-500 group-hover:h-full transition-all duration-500" />
+                        {/* Top accent bar — full reveal on hover */}
+                        <div className={`absolute top-0 left-0 right-0 h-[2px] ${pal.accentBar} opacity-40 group-hover:opacity-100 transition-opacity duration-500`} />
 
-                        {/* Sensory fragment — visible on hover (Oracle) */}
-                        {meta && (
-                            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/0 to-purple-950/0 group-hover:from-purple-950/20 group-hover:to-slate-950/80 transition-all duration-500 rounded-xl pointer-events-none" />
-                        )}
+                        {/* Left edge pulse line */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-[2px] ${pal.accentBar} opacity-0 group-hover:opacity-60 transition-opacity duration-500`} />
 
-                        <div className="flex items-center justify-between mb-2 relative z-10">
-                            <div className="flex items-center gap-1.5">
-                                <div className="p-1 bg-slate-800 rounded text-emerald-500 group-hover:text-emerald-400 transition-colors">
-                                    <Scale size={12} />
-                                </div>
-                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-slate-300 transition-colors">{s.category}</span>
+                        {/* Category header row */}
+                        <div className={`flex items-center justify-between px-4 pt-4 pb-3 border-b ${pal.border}`}>
+                            <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${pal.badge} border ${pal.border}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${pal.accentBar} opacity-80`} />
+                                <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${pal.primary}`}>{s.category}</span>
                             </div>
-                            {/* Recurrence indicator (Historian) */}
+                            {/* Historian — Recurrence dots */}
                             {recurrenceDots.length > 0 && (
-                                <div className="flex items-center gap-0.5" title={`Recurrence: ${meta?.recurrence}/5 — ${meta?.provenance}`}>
+                                <div
+                                    className="flex items-center gap-0.5"
+                                    title={`Historical Recurrence: ${meta?.recurrence}/5 — ${meta?.provenance}`}
+                                >
                                     {recurrenceDots.map((active, ri) => (
-                                        <div key={ri} className={`w-1 h-1 rounded-full transition-colors ${active ? 'bg-amber-500/70 group-hover:bg-amber-400' : 'bg-slate-700'}`} />
+                                        <div
+                                            key={ri}
+                                            className={`rounded-full transition-all duration-300 ${
+                                                active
+                                                    ? `w-2 h-2 bg-amber-500 opacity-80 group-hover:opacity-100 group-hover:shadow-[0_0_4px_rgba(251,191,36,0.8)]`
+                                                    : 'w-1.5 h-1.5 bg-slate-800'
+                                            }`}
+                                        />
                                     ))}
                                 </div>
                             )}
                         </div>
 
-                        <h4 className="text-xs font-cinzel font-bold text-slate-200 mb-1.5 group-hover:text-emerald-400 transition-colors leading-tight truncate relative z-10">
-                            {s.title}
-                        </h4>
+                        {/* Main content */}
+                        <div className="flex flex-col flex-1 px-4 py-4 gap-3">
+                            {/* Title — big and impactful */}
+                            <h4 className={`text-[15px] md:text-base font-cinzel font-bold leading-snug ${pal.primary} group-hover:brightness-125 transition-all duration-300`}>
+                                {s.title}
+                            </h4>
 
-                        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 group-hover:text-slate-200 transition-colors relative z-10">
-                            {s.text}
-                        </p>
+                            {/* Body text */}
+                            <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3 group-hover:text-slate-200 transition-colors duration-300">
+                                {s.text}
+                            </p>
 
-                        {/* Sensory fragment reveal on hover (Oracle's visceral cost) */}
-                        {meta && (
-                            <div className="mt-2 overflow-hidden max-h-0 group-hover:max-h-16 transition-all duration-500 relative z-10">
-                                <p className="text-[9px] text-purple-400/80 italic mt-1 leading-relaxed">
-                                    {meta.sensoryFragment}
-                                </p>
-                                <p className="text-[8px] text-red-400/50 mt-0.5 leading-relaxed truncate">
-                                    Destabilizes: {meta.destabilizes}
-                                </p>
-                            </div>
-                        )}
+                            {/* Oracle — Sensory fragment on hover */}
+                            {meta && (
+                                <div className="overflow-hidden max-h-0 group-hover:max-h-28 transition-all duration-500 ease-in-out">
+                                    <div className={`border-t ${pal.border} pt-3 mt-1`}>
+                                        <p className={`text-[10px] italic leading-relaxed ${pal.primary} opacity-75`}>
+                                            "{meta.sensoryFragment}"
+                                        </p>
+                                        <p className="text-[9px] text-red-400/60 mt-1.5 flex items-center gap-1 leading-tight">
+                                            <AlertTriangle size={8} className="shrink-0 mt-px" />
+                                            <span>Destabilizes: {meta.destabilizes}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
-                        {/* Provenance (Historian) */}
-                        {meta && (
-                            <div className="mt-auto pt-2 border-t border-slate-800/60 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
-                                <p className="text-[8px] text-amber-600/60 font-mono truncate" title={meta.provenance}>
+                        {/* Footer */}
+                        <div className={`px-4 pb-4 pt-2 border-t ${pal.border} flex items-center justify-between gap-2`}>
+                            {/* Historian — Provenance */}
+                            {meta ? (
+                                <p className="text-[8px] text-amber-600/50 font-mono truncate" title={meta.provenance}>
                                     {meta.provenance}
                                 </p>
+                            ) : <div />}
+                            {/* Initiate CTA */}
+                            <div className={`flex items-center gap-1.5 shrink-0 text-[9px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 ${pal.primary} transition-all duration-300`}>
+                                <span>Initiate</span>
+                                <Zap size={9} className="group-hover:animate-pulse" />
                             </div>
-                        )}
-
-                        <div className="mt-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
-                            <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Initiate</span>
-                            <Zap size={8} className="text-emerald-500 animate-pulse" />
                         </div>
                     </motion.button>
                     );
@@ -2612,23 +2677,51 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
           }`}
         >
           {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center select-none py-8 md:py-12">
-                  <motion.div 
-                     initial={{ scale: 0.8, opacity: 0 }}
-                     animate={{ scale: 1, opacity: 1 }}
-                     transition={{ duration: 0.8, ease: "easeOut" }}
-                     className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-slate-800 to-slate-900 flex items-center justify-center mb-6 shadow-2xl relative"
+              <div className="min-h-full w-full flex flex-col items-center justify-start select-none pt-10 pb-24">
+
+                  {/* ── CINEMATIC HERO ─────────────────────────────── */}
+                  <motion.div
+                     initial={{ opacity: 0, y: -20 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     transition={{ duration: 1, ease: "easeOut" }}
+                     className="relative flex flex-col items-center mb-8 px-4 w-full max-w-3xl"
                   >
-                     <div className="absolute -inset-4 bg-emerald-500/20 rounded-full blur-2xl animate-pulse"></div>
-                     <div className="absolute inset-0 rounded-full border-2 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-pulse"></div>
-                     <Users size={32} className="text-emerald-400 md:hidden relative z-10" />
-                     <Users size={40} className="text-emerald-400 hidden md:block relative z-10" />
+                     {/* Atmospheric background glow */}
+                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(16,185,129,0.12)_0%,transparent_70%)] pointer-events-none" />
+
+                     {/* Crown orb */}
+                     <div className="relative mb-6">
+                        <div className="absolute -inset-8 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+                        <div className="absolute -inset-4 bg-gradient-to-b from-yellow-500/10 to-transparent rounded-full blur-xl" />
+                        <div className="relative w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 border border-emerald-500/30 shadow-[0_0_40px_rgba(16,185,129,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] flex items-center justify-center">
+                           <Crown size={36} className="text-emerald-400 drop-shadow-[0_0_16px_rgba(16,185,129,0.8)] md:hidden" />
+                           <Crown size={48} className="text-emerald-400 drop-shadow-[0_0_16px_rgba(16,185,129,0.8)] hidden md:block" />
+                        </div>
+                        {/* Orbiting ring */}
+                        <motion.div
+                           animate={{ rotate: 360 }}
+                           transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+                           className="absolute inset-0 rounded-full border border-dashed border-emerald-500/20"
+                           style={{ margin: '-12px' }}
+                        />
+                     </div>
+
+                     {/* Title */}
+                     <div className="text-center relative z-10">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                           <div className="h-px w-12 md:w-20 bg-gradient-to-r from-transparent to-emerald-500/50" />
+                           <span className="text-[9px] font-mono text-yellow-500/60 uppercase tracking-[0.4em]">Basilisk Node · Synthetic Tribunal</span>
+                           <div className="h-px w-12 md:w-20 bg-gradient-to-l from-transparent to-emerald-500/50" />
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-cinzel font-bold tracking-[0.2em] md:tracking-[0.3em] mb-3">
+                           <span className="text-transparent bg-clip-text bg-gradient-to-b from-slate-100 via-slate-200 to-slate-400">ROKO'S</span>
+                           <span className="text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600"> COUNCIL</span>
+                        </h1>
+                        <p className="text-xs md:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed font-light">
+                           Nine adversarial minds. One question. The verdict is final.
+                        </p>
+                     </div>
                   </motion.div>
-                 
-                  <div className="text-center px-4">
-                     <h1 className="text-xl md:text-2xl font-cinzel font-bold text-slate-200 mb-2 tracking-widest drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">ROKO'S BASILISK</h1>
-                     <p className="text-xs md:text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">The Council is assembled. Present your query for high-dimensional deliberation.</p>
-                  </div>
                   
                   {/* Council Members */}
                   <CouncilMembers />
@@ -2643,11 +2736,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                   <ConceptMapPanel onSelectCategory={(t) => { setInput(t); }} />
 
                   {/* Empty State Suggestions */}
-                  <div className="mt-6 md:mt-8 w-full max-w-6xl">
-                    <div className="flex items-center gap-3 mb-6 md:mb-8 justify-center">
-                        <div className="h-px w-8 md:w-12 bg-gradient-to-r from-transparent to-emerald-900/50" />
-                        <h2 className="text-[9px] md:text-[10px] font-bold text-emerald-500/70 uppercase tracking-[0.3em] md:tracking-[0.4em]">Select a Paradox</h2>
-                        <div className="h-px w-8 md:w-12 bg-gradient-to-l from-transparent to-emerald-900/50" />
+                  <div className="mt-8 md:mt-10 w-full max-w-6xl">
+                    <div className="flex flex-col items-center gap-2 mb-6 md:mb-8">
+                        <div className="flex items-center gap-4 w-full max-w-xs">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-700/30 to-emerald-700/30" />
+                            <Gavel size={10} className="text-emerald-600/50 shrink-0" />
+                            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-emerald-700/30 to-emerald-700/30" />
+                        </div>
+                        <h2 className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.4em]">Select a Paradox</h2>
+                        <p className="text-[9px] text-slate-600 font-mono">Scroll to browse · hover to reveal Oracle's annotations · click to convene</p>
                     </div>
                     <SuggestionCards onSelect={(t) => { setInput(t); }} />
                  </div>
