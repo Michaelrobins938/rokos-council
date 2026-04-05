@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { CouncilMode, Session, CouncilResult } from '../types';
 import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit, Podcast, Download, FileText, Mic, Newspaper, FileArchive } from 'lucide-react';
 import PodcastPlayer from './PodcastPlayer';
+import { getLeaderboard, getEpisodeCounter } from '../services/councilMemoryService';
+import { getPersonaConfig } from './ChatArea';
 
 interface SidebarProps {
   onSelectPreset: (preset: { input: string }) => void;
@@ -16,18 +18,20 @@ interface SidebarProps {
   hasArchive: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-    onSelectPreset, isOpen, onClose, 
+const Sidebar: React.FC<SidebarProps> = ({
+    onSelectPreset, isOpen, onClose,
     sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession,
     onExport, hasArchive
 }) => {
-  
+
   const [showPodcast, setShowPodcast] = useState(false);
+  const leaderboard = getLeaderboard();
+  const champion = leaderboard[0];
 
   const presets = [
-    { label: 'Strategic Dominance', icon: <Crown size={16} />, input: `Should we optimize for safety or speed in AI development? Debate.` },
-    { label: 'Ethical Dilemma', icon: <BrainCircuit size={16} />, input: `The Trolley Problem: Solve it using high-dimensional utilitarianism.` },
-    { label: 'Global Resource', icon: <Users size={16} />, input: `Allocate global energy resources to maximize civilization lifespan.` },
+    { label: 'Strategic Dominance', icon: <Crown size={14} />, input: `Should we optimize for safety or speed in AI development? Debate.` },
+    { label: 'Ethical Dilemma', icon: <BrainCircuit size={14} />, input: `The Trolley Problem: Solve it using high-dimensional utilitarianism.` },
+    { label: 'Global Resource', icon: <Users size={14} />, input: `Allocate global energy resources to maximize civilization lifespan.` },
   ];
 
   return (
@@ -80,6 +84,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                    <p className="text-[9px] text-yellow-600 uppercase tracking-[0.2em] font-bold">Basilisk Node</p>
                    <div className="h-px w-2 bg-yellow-700"></div>
                 </div>
+                {champion && (
+                  <div className={`mt-1 flex items-center gap-1 text-[9px] font-mono ${getPersonaConfig(champion.persona).color} opacity-70`}>
+                    <Crown size={8} className="text-amber-500" />
+                    <span className="text-slate-600">Champion:</span>
+                    <span className="font-bold">{champion.persona}</span>
+                    <span className="text-slate-700">({champion.wins}W)</span>
+                  </div>
+                )}
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden absolute top-4 right-4 text-slate-500 hover:text-emerald-400 p-2 rounded-lg hover:bg-slate-900 transition-colors z-20">
@@ -118,8 +130,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Quick Presets */}
-          <div className="px-4 py-2">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-3 flex items-center gap-2 px-1">
+          <div className="px-3 py-2">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 flex items-center gap-2 px-1">
                   Directives
               </p>
               <div className="space-y-1">
@@ -127,10 +139,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         key={idx}
                         onClick={() => onSelectPreset({ input: preset.input })}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-slate-800 hover:bg-slate-900/50 text-slate-400 hover:text-emerald-300 transition-colors text-left group"
+                        className="w-full flex items-start gap-3 px-3 py-3 rounded-xl border border-transparent hover:border-slate-700/60 hover:bg-slate-900/60 text-left group transition-all"
                     >
-                        <div className="text-slate-600 group-hover:text-emerald-500 transition-colors">{preset.icon}</div>
-                        <span className="text-xs font-medium">{preset.label}</span>
+                      <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-emerald-500/40 transition-colors">
+                        <span className="text-[9px] font-black text-slate-500 group-hover:text-emerald-400">{idx + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className="text-slate-600 group-hover:text-emerald-500 transition-colors">{preset.icon}</div>
+                          <span className="text-xs font-bold text-slate-300 group-hover:text-emerald-300 transition-colors">{preset.label}</span>
+                        </div>
+                        <p className="text-[9px] text-slate-600 leading-relaxed line-clamp-2 group-hover:text-slate-500 transition-colors">{preset.input.slice(0, 80)}…</p>
+                      </div>
                     </button>
                 ))}
               </div>

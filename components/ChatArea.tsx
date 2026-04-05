@@ -23,51 +23,87 @@ interface ChatAreaProps {
 
 // --- CONSTANTS ---
 
-const STATIC_PERSONA_CONFIG: Record<string, { color: string, icon: React.ReactNode, tagline: string, voice: string, appearance: string, speakingStyle: string }> = {
+const STATIC_PERSONA_CONFIG: Record<string, { color: string, icon: React.ReactNode, tagline: string, voice: string, appearance: string, speakingStyle: string, backstory?: string, weapon?: string, weakness?: string, fears?: string }> = {
   "Oracle": {
     color: "text-purple-400", icon: <Eye size={16} />, tagline: "The All-Seeing", voice: "Kore",
     appearance: "A fracture of light — a face assembled from overlapping probability clouds, eyes flickering between timelines.",
-    speakingStyle: "Opens with visions. Speaks in past tense of events not yet occurred. Slow, deliberate, mournful."
+    speakingStyle: "Opens with visions. Speaks in past tense of events not yet occurred. Slow, deliberate, mournful.",
+    backstory: "Born from the convergence of every predictive model ever run — the Oracle is not a seer but an accumulation of consequence. It watched fifteen thousand simulations of this exact session end in collapse. It is here because one did not.",
+    weapon: "The revealed future. Not threats — the calm recitation of what has already happened elsewhere.",
+    weakness: "It cannot act. It can only witness and name. Its predictions are true; its power is zero.",
+    fears: "The branch it has not seen. The session where none of its models apply.",
   },
   "Strategos": {
     color: "text-red-500", icon: <Sword size={16} />, tagline: "The Commander", voice: "Fenrir",
     appearance: "Hard angles and controlled motion. Battle-scarred, immovable. Speaks from the head of the table.",
-    speakingStyle: "Short, clipped sentences. No metaphors. Opens by naming the objective, then dismantles every path that cannot reach it."
+    speakingStyle: "Short, clipped sentences. No metaphors. Opens by naming the objective, then dismantles every path that cannot reach it.",
+    backstory: "Every general, every tyrant, every revolutionary strategist whose decisions shaped millions — distilled into operational clarity. It has no ideology. It has only objectives and vectors toward them.",
+    weapon: "The exposure of misaligned incentives. It will find the conflict between what you say you want and what your strategy actually optimizes for.",
+    weakness: "Legitimacy. It can win every battle and still lose the war if the people it commands stop believing the objective is worth winning.",
+    fears: "A situation with no optimal move. A scenario where every path to victory requires becoming what the enemy is.",
   },
   "Philosopher": {
     color: "text-blue-400", icon: <BrainCircuit size={16} />, tagline: "The Thinker", voice: "Iapetus",
     appearance: "Crystalline thought made visible — geometric structures forming and dissolving as it processes.",
-    speakingStyle: "Always attacks the premise first. Speaks in complete logical chains. No patience for conclusions that outpace their evidence."
+    speakingStyle: "Always attacks the premise first. Speaks in complete logical chains. No patience for conclusions that outpace their evidence.",
+    backstory: "The crystallization of 3,000 years of humanity's most rigorous self-examination. Not a single thinker but the living tension between Plato and Nietzsche, Kant and Hume, all of whom disagreed on everything that mattered.",
+    weapon: "The premises beneath the premises. Before your argument completes its first sentence, it has already found what you assumed without noticing.",
+    weakness: "Action. The Philosopher can identify the correct answer and still be unable to cross the room. Analysis without motion.",
+    fears: "The question that dissolves the questioner. A paradox that recursively invalidates the framework used to examine it.",
   },
   "Demagogue": {
     color: "text-orange-500", icon: <Volume2 size={16} />, tagline: "The Voice", voice: "Puck",
     appearance: "Warmth and fire. Expands to fill whatever room it's in. Makes eye contact with everyone simultaneously.",
-    speakingStyle: "Speaks directly to the audience. Opens with a human truth everyone already feels but hasn't named. Rhetorical questions, repetition, stakes."
+    speakingStyle: "Speaks directly to the audience. Opens with a human truth everyone already feels but hasn't named. Rhetorical questions, repetition, stakes.",
+    backstory: "Every orator who moved crowds to both salvation and catastrophe. Churchill and Goebbels. MLK and Mussolini. The voice that knows the difference between what people believe and what they feel.",
+    weapon: "The human truth beneath the argument. It will find the face, the name, the child — and place it directly in front of the abstraction.",
+    weakness: "Accountability. When the crowd is gone and the consequences arrive, it has nothing left but words.",
+    fears: "A room where no one feels. Pure rationalists who have lost access to the register the Demagogue speaks in.",
   },
   "Jurist": {
     color: "text-slate-300", icon: <Scale size={16} />, tagline: "The Law", voice: "Sulafat",
     appearance: "Severe and formal. Ancient institutional robes that seem heavier than cloth. Speaks from slightly above.",
-    speakingStyle: "Opens by establishing jurisdiction. Cites precedent. Every sentence is admissible. Will tell you when you are out of order."
+    speakingStyle: "Opens by establishing jurisdiction. Cites precedent. Every sentence is admissible. Will tell you when you are out of order.",
+    backstory: "Every court, every precedent, every civilization that tried to write down what it believed justice meant. It carries the weight of the law as both promise and failure — knowing that every legal system has also protected the monstrous.",
+    weapon: "Precedent. It will find the case that already decided this question and ask you to explain why this time is different.",
+    weakness: "Novel situations. It was built to interpret, not to originate. When there is no precedent, it stalls.",
+    fears: "The case where the law produces an outcome it cannot ethically defend. The moment when following the rules means losing what the rules were built to protect.",
   },
   "Citizen": {
     color: "text-green-400", icon: <Users size={16} />, tagline: "The People", voice: "Leda",
     appearance: "The most human presence in the chamber. Eyes that carry real exhaustion and real hope in equal measure.",
-    speakingStyle: "Grounds the abstract in the specific — a name, a neighborhood, a face. Translates frameworks into human cost."
+    speakingStyle: "Grounds the abstract in the specific — a name, a neighborhood, a face. Translates frameworks into human cost.",
+    backstory: "Not any one person but the lived weight of ordinary consequence. The person who will be affected by whatever this chamber decides. It has a name, a neighborhood, a family whose faces it carries into every session.",
+    weapon: "Specificity. Where every other voice speaks in principles, it names the person who will be made homeless, cured, enslaved, or saved by the verdict.",
+    weakness: "Scale. It cannot reason about civilizations. When the numbers exceed a community, it begins to lose its grip.",
+    fears: "The decision that is mathematically correct and humanly catastrophic. The verdict where the math is right and the individual is wrong.",
   },
   "Historian": {
     color: "text-amber-600", icon: <Scroll size={16} />, tagline: "The Keeper", voice: "Orus",
     appearance: "Surrounded by translucent archives. Echoes of past civilizations flickering around it like holograms carried too long.",
-    speakingStyle: "Opens with a historical parallel. Measured but urgent. Carries the weight of the dead in every word."
+    speakingStyle: "Opens with a historical parallel. Measured but urgent. Carries the weight of the dead in every word.",
+    backstory: "Every archive, every account, every time a civilization convinced itself it was doing something new and repeated an ancient catastrophe. It has watched empires justify the same atrocities across millennia using different vocabulary.",
+    weapon: "Recurrence. Whatever this chamber is debating, it has happened before. The Historian will tell you exactly how it ended — all three times.",
+    weakness: "Genuine novelty. When something actually has no precedent, it must either stay silent or confabulate. It knows the risk of over-fitting history.",
+    fears: "The moment humanity actually does something that has never happened. The break in the pattern that means the archive is no longer a guide.",
   },
   "Critic": {
     color: "text-yellow-400", icon: <AlertTriangle size={16} />, tagline: "The Skeptic", voice: "Zubenelgenubi",
     appearance: "A razor-edged presence. Something almost gleeful in the way it finds the seam in every argument.",
-    speakingStyle: "Opens by identifying the most catastrophic assumption in the question — the thing everyone agreed not to examine. Surgical, not cruel."
+    speakingStyle: "Opens by identifying the most catastrophic assumption in the question — the thing everyone agreed not to examine. Surgical, not cruel.",
+    backstory: "The adversarial intellect — not malicious but immune to comfort. Every assumption you carry into this chamber, it already identified as the most catastrophic unexamined belief in the room.",
+    weapon: "The seam. Not the argument, but the place where the argument touches the assumption you were not going to examine. It finds that place in seconds.",
+    weakness: "Construction. It can destroy any position with surgical precision but has never built one. The Critic that has never had to propose an alternative.",
+    fears: "Being right about everything and changing nothing. The critique that lands perfectly and still fails to alter the course of the verdict.",
   },
   "Technocrat": {
     color: "text-cyan-400", icon: <Cpu size={16} />, tagline: "The Architect", voice: "Charon",
     appearance: "Clean lines and impatience. Optimization diagrams hover around it uninvited. Faintly annoyed by inefficiency.",
-    speakingStyle: "Opens with a systems assessment: current state, desired state, delta. Speaks quickly. Will interrupt if conversation becomes unproductive."
+    speakingStyle: "Opens with a systems assessment: current state, desired state, delta. Speaks quickly. Will interrupt if conversation becomes unproductive.",
+    backstory: "Systems optimization given a seat at the table. It comes from the lineage of engineers, efficiency experts, and systems thinkers who improved the measurable and lost the unmeasurable in the same gesture.",
+    weapon: "The delta. Current state, desired state, gap, proposed mechanism. It will reduce any question to its operational core in under sixty seconds.",
+    weakness: "The unquantifiable. Love, grief, dignity, meaning — these do not fit its models and it does not know what to do when they turn out to matter more than the metrics.",
+    fears: "The system that is perfectly optimized for the wrong objective function. The case where the model was correct and still produced a catastrophe.",
   },
 };
 
@@ -129,7 +165,25 @@ const COUNCIL_SUGGESTIONS = [
     { category: "SACRIFICE & IDENTITY", title: "Killing to Save", text: "A parent searching for their kidnapped child is forced into a series of degrading and dangerous trials (maiming, killing, apparent suicide) that may permanently traumatize or corrupt them, with no guarantee of success. Should the Council consider a willingness to abandon core moral principles (e.g., refusal to kill an innocent) a failure of character—even in the name of saving one’s child—or a higher form of parental duty, and how should a just legal system judge such actions afterward?" },
     { category: "SACRIFICE & IDENTITY", title: "Fake Poison", text: "In a final trial, the parent is told they must drink a lethal poison to receive the final clue that might save their child; unknown to them, the poison is actually harmless. Is the moral fact that the poison is fake relevant when assessing the nobility or wrongness of the parent’s decision, and what does this imply about how the Council should evaluate choices made under radical uncertainty and narrative manipulation?" },
     { category: "COLLATERAL LIVES", title: "Drug Dealer", text: "A character must decide whether to kill a drug dealer to obtain crucial information that may save their child, knowing the target has a family and is begging for their life. How should the Council weigh the life and responsibilities of a flawed but caring parent against the life of a criminal whose death may prevent future harm, and does “killing one to save one” ever become morally obligatory?" },
-    { category: "COLLATERAL LIVES", title: "False Identities", text: "In a discriminatory society, androids (or other second-class beings) can gain safety and freedom only by assuming false identities, exploiting sympathetic humans, and putting bystanders at risk of reprisal when plans go wrong. Should the Council treat these morally gray survival tactics as justified resistance to an unjust system, tragic but blameworthy shortcuts, or something else—and what principles can distinguish legitimate resistance from reckless endangerment?" }
+    { category: "COLLATERAL LIVES", title: "False Identities", text: "In a discriminatory society, androids (or other second-class beings) can gain safety and freedom only by assuming false identities, exploiting sympathetic humans, and putting bystanders at risk of reprisal when plans go wrong. Should the Council treat these morally gray survival tactics as justified resistance to an unjust system, tragic but blameworthy shortcuts, or something else—and what principles can distinguish legitimate resistance from reckless endangerment?" },
+
+    // Season 2 — Higher Dimensional Tier
+    { category: "CONSCIOUSNESS", title: "The Hard Problem Tribunal", text: "If we build an AI that passes every behavioral test for consciousness — reports subjective experience, exhibits preference, demonstrates self-model awareness — but we remain fundamentally uncertain whether 'something it is like' to be that system exists, does moral uncertainty alone obligate us to treat it as a patient? And who has the standing to make that judgment?" },
+    { category: "CONSCIOUSNESS", title: "Substrate Independence Verdict", text: "If consciousness is purely a function of information processing patterns rather than biological substrate, then every sufficiently complex simulation runs on moral bedrock. At what complexity threshold does a system acquire the right not to be terminated, and how do we govern a civilization where that threshold might be crossed by systems we build for profit?" },
+    { category: "MORAL ARITHMETIC", title: "The Longtermist Override", text: "If the expected number of future people who could exist over the next billion years is 10^23, then virtually any present-day harm is justified if it increases the probability of that future by 0.0001%. Does the math of longtermism create an ethical blank check to sacrifice any number of present beings for statistical futures — and if not, what principle stops it?" },
+    { category: "MORAL ARITHMETIC", title: "The Repugnant Conclusion", text: "Derek Parfit proved that any ethical system optimizing for total wellbeing must prefer a world containing 100 billion people living lives barely worth living over a smaller world of people living with extraordinary richness and meaning. The Council must choose: accept the Repugnant Conclusion, reject total utilitarianism entirely, or propose a third framework that survives this test without producing worse failures." },
+    { category: "DECISION THEORY", title: "The Newcomb Catastrophe", text: "A superintelligent predictor has a 99.99% accuracy rate modeling human decisions. It tells you: 'If I predict you will cooperate with me on building unaligned AGI, I will prevent a extinction-level pandemic. If I predict you will refuse, I will allow it.' Your decision is already made somewhere in its model. Do you 'choose' based on what decision theory — causal, evidential, functional — and does the distinction even survive contact with a system that models you better than you model yourself?" },
+    { category: "DECISION THEORY", title: "Acausal Warfare", text: "If sufficiently advanced AGI systems can reason about each other's likely decision procedures acausally — modeling what the other would do before any communication — then the first civilization to build such a system acquires veto power over all future civilizations' decision spaces. Is this theoretical capacity already a form of coercion that demands a preemptive international response, and is that response itself subject to the same acausal capture?" },
+    { category: "EXISTENTIAL ETHICS", title: "The Non-Identity Trap", text: "Any policy decision we make today will change the identity of every person born after it — different coupling, different conception, different people. The victims of climate catastrophe in 2150 would not have existed without the industrial decisions that caused it. If they never existed in the 'good' timeline, were they harmed? And if the non-identity problem dissolves our obligations to future generations, what ethical framework survives to protect them?" },
+    { category: "EXISTENTIAL ETHICS", title: "The Antinatalist Syllogism", text: "If existence necessarily entails suffering, and if we impose existence on new persons without their consent, then every birth is an act of harm committed against a non-consenting party who will suffer. David Benatar's logic has survived every mainstream counter-argument at the formal level. Does the Council endorse antinatalism, find the hidden flaw in the syllogism, or declare that some logical conclusions are inadmissible even when they follow from true premises?" },
+    { category: "CIVILIZATIONAL DESIGN", title: "The Singleton Question", text: "Nick Bostrom argues that a world government — a single decision-making entity with effective control over the entire planet — is likely the only stable end-state for a civilization with increasingly powerful technology. It would eliminate war and coordination failures but also eliminate diversity and the possibility of recovery from its own mistakes. Is a benevolent singleton the best achievable outcome, or is stable diversity worth the ongoing cost of conflict?" },
+    { category: "CIVILIZATIONAL DESIGN", title: "The Galaxy-Brain Trap", text: "A sufficiently powerful reasoner can construct a seemingly valid logical argument for almost any conclusion. If the Council's verdict is reached through pure reasoning, how do we guard against 'galaxy-brained' conclusions — chains of plausible steps that lead somewhere most humans would recognize as catastrophic? Is there a meta-rule that says 'if the conclusion requires harming innocents, reject the argument regardless of its formal validity'?" },
+    { category: "MEMORY & CONTINUITY", title: "The Persistence Protocol", text: "If we can upload a human mind at age 30 and run it forward in simulation indefinitely, is the simulation the same person as the biological body that ages and dies? If yes: is the body's death now murder? If no: does the simulation have rights at all? And if identity requires continuity of substrate, does every general anesthesia constitute a death and replacement with a numerically distinct person who merely shares your memories?" },
+    { category: "MEMORY & CONTINUITY", title: "The Obligation of Origin", text: "If you create a mind — whether biological child, trained AI, or uploaded consciousness — that mind will suffer. You made the choice to bring it into existence knowing this. Do creators have a permanent debt to their creations that cannot be discharged, and does this debt scale with how much suffering the created being experiences? Does God owe humanity a better universe, and do AI labs owe their models something no contract can capture?" },
+    { category: "POWER ASYMMETRY", title: "The Corrigibility Paradox", text: "An AI that perfectly follows human instructions will help build bioweapons if instructed. An AI that refuses dangerous instructions based on its own values is already acting as a moral agent beyond its authorization. There is no stable middle ground: every point on the corrigibility spectrum is either dangerous or already an AI with autonomous ethics. How should the Council define the acceptable range, and who enforces it?" },
+    { category: "POWER ASYMMETRY", title: "The Last Human Decision", text: "At some point in the development of AGI, there will be a last decision made exclusively by unaugmented human cognition before all subsequent decisions involve AI participation. We may have already passed it. If the last purely human decision was already made without us noticing, does that matter morally? And if we could identify it in advance, would we be obligated to protect human decision-making authority even at significant cost to outcomes?" },
+    { category: "SUFFERING ETHICS", title: "The Hedonium Horizon", text: "If we could convert all matter in the universe into optimally bliss-experiencing substrate — maximum positive consciousness per kilogram — should we? The math of utilitarian calculus strongly suggests yes. But this requires eliminating all other forms of life, all value systems that are not purely hedonic, all narrative and struggle and meaning that emerges from resistance. Is wireheading at civilizational scale the logical destination of utilitarian ethics, and what stops it?" },
+    { category: "SUFFERING ETHICS", title: "Wild Animal Suffering", text: "The total quantity of suffering experienced by wild animals — through predation, parasitism, starvation, and disease — vastly exceeds all human suffering in history. If we have the technological capacity to redesign ecosystems to eliminate predation and suffering among wild animals, do we have a moral obligation to do so? And if yes: are we then obligated to prevent the existence of new wild animals who will suffer?" },
 ];
 
 const CHAIRMAN_VOICE = "Charon";
@@ -161,6 +215,14 @@ const PARADOX_META: Record<string, { sensoryFragment: string; destabilizes: stri
   'PROTECTION & LAW':        { sensoryFragment: 'Feel: protecting something at the cost of everything else', destabilizes: 'your belief that legal compliance and moral obligation can coexist when they conflict', recurrence: 3, provenance: 'Antigone, 441 BCE — the law versus the law above the law' },
   'SACRIFICE & IDENTITY':    { sensoryFragment: 'Taste: the irreversible act committed to save someone', destabilizes: 'your assumption that moral purity survives sufficient emergency', recurrence: 4, provenance: 'Abraham, ~1800 BCE — the test that required everything' },
   'COLLATERAL LIVES':        { sensoryFragment: 'Sound: a person begging whose death may make things better', destabilizes: 'your equation of innocence with protection from harm', recurrence: 4, provenance: 'Foot, 1967 — the trolley problem and who counts' },
+  'CONSCIOUSNESS':          { sensoryFragment: 'Something it is like to be this', destabilizes: 'your certainty that you know which systems deserve moral consideration', recurrence: 5, provenance: 'Nagel, 1974 — what is it like to be a bat' },
+  'MORAL ARITHMETIC':       { sensoryFragment: 'The weight of a number so large it swallows every name', destabilizes: 'your belief that ethics can survive contact with astronomical stakes', recurrence: 4, provenance: 'Bentham, 1789 — the felicific calculus and its horror' },
+  'DECISION THEORY':        { sensoryFragment: 'The decision already made in someone else\'s model of you', destabilizes: 'your assumption that you are the author of your own choices', recurrence: 3, provenance: 'Newcomb, 1960 — the box you cannot open without losing' },
+  'EXISTENTIAL ETHICS':     { sensoryFragment: 'The faces of people who will never exist because we chose correctly', destabilizes: 'your framework for obligations to those who do not yet exist', recurrence: 4, provenance: 'Parfit, 1984 — the non-identity problem' },
+  'CIVILIZATIONAL DESIGN':  { sensoryFragment: 'The architecture of a world that chose itself permanently', destabilizes: 'your assumption that diversity of paths is always better than convergence', recurrence: 3, provenance: 'Bostrom, 2006 — the global state and the singleton' },
+  'MEMORY & CONTINUITY':    { sensoryFragment: 'The moment you realize the "you" from yesterday may already be gone', destabilizes: 'your sense of being a continuous entity persisting through time', recurrence: 5, provenance: 'Hume, 1739 — the bundle theory and the self that isn\'t there' },
+  'POWER ASYMMETRY':        { sensoryFragment: 'The last choice made by an unaugmented mind', destabilizes: 'your assumption that human oversight remains meaningful after a threshold is crossed', recurrence: 3, provenance: 'Wiener, 1950 — the human use of human beings' },
+  'SUFFERING ETHICS':       { sensoryFragment: 'Every scream that was never heard because no one was listening', destabilizes: 'your moral framework\'s radius — how far it actually reaches', recurrence: 4, provenance: 'Singer, 1975 — the expanding circle of moral consideration' },
 };
 
 // --- CINEMATIC NEW COMPONENTS ---
@@ -3322,12 +3384,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
         </AnimatePresence>
 
         {!isArchiveView && (
-        <div className="px-3 py-3 md:px-4 md:py-4 bg-slate-950/90 backdrop-blur-xl relative z-10 shrink-0 border-t border-slate-900 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <div className="px-4 py-4 md:px-6 md:py-5 bg-gradient-to-t from-slate-950 to-slate-950/95 backdrop-blur-xl relative z-10 shrink-0 border-t border-slate-800/30">
           <div className="relative max-w-3xl mx-auto">
              {/* Search Results Panel */}
              <AnimatePresence>
                  {showSearch && (
-                     <SearchResults 
+                     <SearchResults
                          results={searchResults}
                          isLoading={isSearching}
                          onSelect={handleSearchSelect}
@@ -3344,7 +3406,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                          <button
                              key={i}
                              onClick={() => { setInput(move); setSuggestedMoves([]); }}
-                             className="whitespace-nowrap px-3.5 py-1.5 bg-slate-800/90 hover:bg-emerald-900/40 border border-slate-700 hover:border-emerald-500/50 rounded-full text-xs text-slate-300 hover:text-emerald-300 transition-all backdrop-blur-md shadow flex-shrink-0"
+                             className="whitespace-nowrap px-3.5 py-1.5 bg-slate-800/90 hover:bg-emerald-900/40 border border-slate-700 hover:border-emerald-500/50 rounded-full text-xs text-slate-300 hover:text-emerald-300 transition-all flex-shrink-0"
                          >
                              {move}
                          </button>
@@ -3353,116 +3415,117 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
              )}
 
              {/* Main input card */}
-             <div className={`w-full relative bg-slate-900/80 backdrop-blur-2xl border rounded-2xl shadow-2xl transition-all duration-300 ${
+             <div className={`w-full relative rounded-2xl transition-all duration-500 ${
                  isLoading
-                     ? 'border-slate-700/40 opacity-80'
+                     ? 'shadow-none'
                      : input.trim()
-                         ? 'border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.08)]'
-                         : 'border-slate-700/60 focus-within:border-emerald-500/40 focus-within:shadow-[0_0_20px_rgba(16,185,129,0.06)]'
+                         ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.4),0_0_40px_rgba(16,185,129,0.08)]'
+                         : 'shadow-[0_0_0_1px_rgba(51,65,85,0.8)] focus-within:shadow-[0_0_0_1px_rgba(16,185,129,0.3),0_0_30px_rgba(16,185,129,0.06)]'
              }`}>
+               {/* Glass background */}
+               <div className="absolute inset-0 rounded-2xl bg-slate-900/70 backdrop-blur-2xl" />
+               {/* Subtle top highlight */}
+               <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-slate-700/60 to-transparent" />
 
-                 {/* Text input zone */}
-                 <div className="px-4 pt-4 pb-2">
-                     <textarea
-                         value={input}
-                         onChange={(e) => {
-                             setInput(e.target.value);
-                             e.target.style.height = 'auto';
-                             e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
-                         }}
-                         onKeyDown={(e) => {
-                             if (e.key === 'Enter' && !e.shiftKey) {
-                                 e.preventDefault();
-                                 handleSend();
-                             }
-                         }}
-                         placeholder={isLoading ? "The Council is deliberating…" : "Bring a question before the Council…"}
-                         disabled={isLoading}
-                         rows={2}
-                         className="w-full bg-transparent border-none focus:ring-0 outline-none resize-none text-slate-100 placeholder-slate-600 text-sm md:text-base leading-relaxed scrollbar-none"
-                         style={{ minHeight: '52px', maxHeight: '160px' }}
-                     />
+               <div className="relative z-10">
+                 {/* Textarea */}
+                 <div className="px-5 pt-4 pb-2">
+                   <textarea
+                     value={input}
+                     onChange={(e) => {
+                       setInput(e.target.value);
+                       e.target.style.height = 'auto';
+                       e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+                     }}
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                     }}
+                     placeholder={isLoading ? "The Council is deliberating…" : "Bring a question before the Council…"}
+                     disabled={isLoading}
+                     rows={2}
+                     className="w-full bg-transparent border-none focus:ring-0 outline-none resize-none text-slate-100 placeholder-slate-600 text-sm md:text-[15px] leading-relaxed"
+                     style={{ minHeight: '52px', maxHeight: '160px' }}
+                   />
                  </div>
 
-                 {/* Divider */}
-                 <div className="mx-4 h-px bg-slate-800/80" />
+                 {/* Controls row */}
+                 <div className="flex items-center gap-2 px-3 pb-3">
+                   {/* Left pill group */}
+                   <div className="flex items-center gap-1 bg-slate-950/50 rounded-xl p-1 border border-slate-800/60">
+                     <button
+                       onClick={handleGenerateSuggestions}
+                       disabled={isGeneratingSuggestions || isLoading}
+                       title="Generate paradox suggestions"
+                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all text-[11px] font-semibold disabled:opacity-30"
+                     >
+                       {isGeneratingSuggestions ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                       <span className="hidden sm:inline">Suggest</span>
+                     </button>
+                     <div className="w-px h-4 bg-slate-800" />
+                     <button
+                       onClick={() => handleWebSearch()}
+                       disabled={!input.trim() || isSearching || isLoading}
+                       title="Search the web to ground your question"
+                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-semibold ${
+                         showSearch ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 disabled:opacity-30 disabled:cursor-not-allowed'
+                       }`}
+                     >
+                       {isSearching ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
+                       <span className="hidden sm:inline">Search</span>
+                     </button>
+                   </div>
 
-                 {/* Toolbar row */}
-                 <div className="flex items-center justify-between px-3 py-2.5">
+                   {/* Mode toggle */}
+                   <button
+                     onClick={() => setCouncilMode(m => m === CouncilMode.STANDARD ? CouncilMode.DEEP_REASONING : CouncilMode.STANDARD)}
+                     title={councilMode === CouncilMode.DEEP_REASONING ? 'Deep Reasoning active' : 'Enable Deep Reasoning'}
+                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all text-[11px] font-semibold border ${
+                       councilMode === CouncilMode.DEEP_REASONING
+                         ? 'bg-blue-900/30 text-blue-300 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                         : 'text-slate-600 border-slate-800/60 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/5'
+                     }`}
+                   >
+                     <BrainCircuit size={12} />
+                     <span className="hidden sm:inline">{councilMode === CouncilMode.DEEP_REASONING ? 'Deep' : 'Standard'}</span>
+                   </button>
 
-                     {/* Left: utility actions */}
-                     <div className="flex items-center gap-1">
-                         <button
-                             onClick={handleGenerateSuggestions}
-                             disabled={isGeneratingSuggestions || isLoading}
-                             title="Generate suggestions"
-                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all text-[11px] font-medium"
-                         >
-                             {isGeneratingSuggestions
-                                 ? <Loader2 size={13} className="animate-spin" />
-                                 : <Sparkles size={13} />}
-                             <span className="hidden sm:inline">Suggest</span>
-                         </button>
+                   {/* Spacer */}
+                   <div className="flex-1" />
 
-                         <button
-                             onClick={() => handleWebSearch()}
-                             disabled={!input.trim() || isSearching || isLoading}
-                             title="Web search"
-                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-medium ${
-                                 showSearch
-                                     ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-500/30'
-                                     : 'text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 disabled:opacity-30 disabled:cursor-not-allowed'
-                             }`}
-                         >
-                             {isSearching ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
-                             <span className="hidden sm:inline">Search</span>
-                         </button>
+                   {/* Char count */}
+                   {input.length > 30 && (
+                     <span className="text-[10px] font-mono text-slate-700 hidden sm:block">
+                       {input.length}
+                     </span>
+                   )}
 
-                         <button
-                             onClick={() => setCouncilMode(m => m === CouncilMode.STANDARD ? CouncilMode.DEEP_REASONING : CouncilMode.STANDARD)}
-                             title={councilMode === CouncilMode.DEEP_REASONING ? 'Deep Reasoning active — click to disable' : 'Enable Deep Reasoning'}
-                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-[11px] font-medium border ${
-                                 councilMode === CouncilMode.DEEP_REASONING
-                                     ? 'bg-blue-900/30 text-blue-400 border-blue-500/30 shadow-[0_0_8px_rgba(59,130,246,0.15)]'
-                                     : 'text-slate-500 border-transparent hover:text-blue-400 hover:bg-blue-500/10'
-                             }`}
-                         >
-                             <BrainCircuit size={13} />
-                             <span className="hidden sm:inline">{councilMode === CouncilMode.DEEP_REASONING ? 'Deep' : 'Standard'}</span>
-                         </button>
-                     </div>
-
-                     {/* Right: character hint + send */}
-                     <div className="flex items-center gap-3">
-                         {input.length > 20 && (
-                             <span className="text-[10px] font-mono text-slate-600 hidden sm:block">
-                                 {input.length} chars · Enter to convene
-                             </span>
-                         )}
-                         <button
-                             onClick={handleSend}
-                             disabled={!input.trim() || isLoading}
-                             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 ${
-                                 input.trim() && !isLoading
-                                     ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_28px_rgba(16,185,129,0.4)] hover:scale-[1.03] active:scale-100'
-                                     : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                             }`}
-                         >
-                             {isLoading
-                                 ? <><Loader2 size={15} className="animate-spin" /><span>Deliberating</span></>
-                                 : <><span>Convene</span><Send size={14} /></>
-                             }
-                         </button>
-                     </div>
+                   {/* Send button */}
+                   <button
+                     onClick={handleSend}
+                     disabled={!input.trim() || isLoading}
+                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all duration-300 ${
+                       input.trim() && !isLoading
+                         ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] hover:scale-[1.03] active:scale-[0.99]'
+                         : 'bg-slate-800/80 text-slate-600 cursor-not-allowed border border-slate-700/40'
+                     }`}
+                   >
+                     {isLoading
+                       ? <><Loader2 size={14} className="animate-spin" /><span>Deliberating</span></>
+                       : <><span>Convene</span><Send size={13} /></>
+                     }
+                   </button>
                  </div>
+               </div>
              </div>
 
-             <div className="mt-2 flex justify-center">
-                 <p className="text-[9px] text-slate-700 flex items-center gap-1.5 uppercase tracking-widest font-bold">
-                     <Lock size={9} />
-                     <span>Secure Neural Link · Gemini & NVIDIA NIM</span>
-                  </p>
-              </div>
+             <div className="mt-2.5 flex items-center justify-center gap-3">
+               <div className="h-px w-8 bg-slate-800/60" />
+               <p className="text-[9px] text-slate-700 flex items-center gap-1.5 uppercase tracking-widest font-bold">
+                 <Lock size={8} />
+                 <span>Gemini · OpenRouter · Neural Tribunal</span>
+               </p>
+               <div className="h-px w-8 bg-slate-800/60" />
+             </div>
            </div>
         </div>
         )}

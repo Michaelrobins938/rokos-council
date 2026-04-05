@@ -160,183 +160,232 @@ interface CharacterDossierProps {
 
 export const CharacterDossier: React.FC<CharacterDossierProps> = ({ personaName, onClose }) => {
   const [portrait, setPortrait] = useState<string | null>(getCachedPortrait(personaName));
-  const [generatingPortrait, setGeneratingPortrait] = useState(false);
-  const config = getPersonaConfig(personaName);
+  const config = getPersonaConfig(personaName) as any;
   const persona = PERSONALITIES.find(p => p.name === personaName);
   const memory = getCharacterMemory(personaName);
   const leaderboard = getLeaderboard();
   const rank = leaderboard.findIndex(e => e.persona === personaName) + 1;
-
-  // PORTRAIT GENERATION DISABLED to avoid 429 quota errors
-  // const generatePortrait = useCallback(async () => {
-  //   if (!persona?.portraitPrompt) return;
-  //   setGeneratingPortrait(true);
-  //   try {
-  //     const { generateImage } = await import('../services/geminiService');
-  //     const res = await generateImage(persona.portraitPrompt, '2:3', '1K');
-  //     const url = extractBase64(res);
-  //     if (url) { setPortrait(url); setCachedPortrait(personaName, url); }
-  //   } catch { /* silent */ }
-  //   finally { setGeneratingPortrait(false); }
-  // }, [persona, personaName]);
-
-  const generatePortrait = async () => {
-    console.log('Portrait generation disabled to prevent quota errors');
-  };
-
-  const topRival = Object.entries(memory.rivalries || {}).sort(([, a], [, b]) => b - a)[0];
+  const topRival = Object.entries(memory.rivalries || {}).sort(([, a], [, b]) => (b as number) - (a as number))[0];
   const topAlly = Object.entries(memory.alliances || {})
     .filter(([k]) => k !== 'None' && k !== 'Abstained')
-    .sort(([, a], [, b]) => b - a)[0];
+    .sort(([, a], [, b]) => (b as number) - (a as number))[0];
+
+  const colorBg = config.color.replace('text-', 'bg-');
+  const colorBorder = config.color.replace('text-', 'border-');
+  const colorFrom = config.color.replace('text-', 'from-');
+
+  const sections = [
+    config.backstory && { id: 'origin', label: 'Origin', icon: <BookOpen size={12} />, content: config.backstory, style: 'prose' },
+    config.weapon && { id: 'weapon', label: 'Rhetorical Weapon', icon: <Flame size={12} />, content: config.weapon, style: 'accent' },
+    config.weakness && { id: 'weakness', label: 'Structural Weakness', icon: <Sparkles size={12} />, content: config.weakness, style: 'muted' },
+    config.fears && { id: 'fears', label: 'What It Fears', icon: <Star size={12} />, content: config.fears, style: 'warning' },
+    config.appearance && { id: 'appearance', label: 'Appearance', icon: <Sparkles size={12} />, content: config.appearance, style: 'italic' },
+    config.speakingStyle && { id: 'voice', label: 'Voice Pattern', icon: <BookOpen size={12} />, content: config.speakingStyle, style: 'muted' },
+  ].filter(Boolean) as { id: string; label: string; icon: React.ReactNode; content: string; style: string }[];
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-3 md:p-6"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        initial={{ scale: 0.94, opacity: 0, y: 24 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.92, opacity: 0, y: 20 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        exit={{ scale: 0.94, opacity: 0, y: 24 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         onClick={e => e.stopPropagation()}
-        className="relative bg-slate-950 border border-slate-700/60 rounded-3xl overflow-hidden max-w-2xl w-full shadow-[0_0_80px_rgba(0,0,0,0.8)] max-h-[90vh] overflow-y-auto"
+        className="relative bg-slate-950 rounded-[2rem] overflow-hidden max-w-4xl w-full shadow-[0_0_120px_rgba(0,0,0,0.9)] max-h-[92vh] flex flex-col"
+        style={{ border: '1px solid rgba(255,255,255,0.06)' }}
       >
-        {/* Top accent */}
-        <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${config.color.replace('text-', 'from-')} via-transparent to-transparent`} />
+        {/* Ambient top glow matching character color */}
+        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${colorBg} to-transparent opacity-80`} />
+        <div className={`absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-64 blur-[120px] opacity-15 ${colorBg} pointer-events-none`} />
 
+        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-xl bg-slate-900/80 text-slate-500 hover:text-white border border-slate-800 transition-colors"
+          className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-slate-900/80 text-slate-500 hover:text-white border border-slate-800/60 transition-colors backdrop-blur-sm"
         >
           <X size={14} />
         </button>
 
-        <div className="flex flex-col md:flex-row">
-          {/* Portrait column */}
-          <div className="md:w-56 shrink-0 relative bg-slate-900/60">
-            {portrait ? (
-              <div className="relative group">
-                <img src={portrait} alt={personaName} className="w-full object-cover aspect-[2/3]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-                <button
-                  onClick={() => downloadImage(portrait, `${personaName.toLowerCase()}-portrait.png`)}
-                  className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white/70 hover:text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Download size={10} /> Save
-                </button>
-              </div>
-            ) : (
-              <div className="aspect-[2/3] flex flex-col items-center justify-center gap-3 p-6">
-                <div className={`p-5 rounded-full bg-slate-950 border border-slate-800 ${config.color}`}>
-                  <div className="w-8 h-8 flex items-center justify-center">{config.icon}</div>
-                </div>
-                <button
-                  onClick={generatePortrait}
-                  disabled={generatingPortrait || !persona?.portraitPrompt}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${
-                    generatingPortrait
-                      ? 'bg-slate-800 text-slate-500 border-slate-700'
-                      : `${config.color.replace('text-', 'bg-').replace('400', '900/30').replace('500', '900/30').replace('600', '900/30')} ${config.color} border-current/30 hover:scale-105`
-                  }`}
-                >
-                  {generatingPortrait ? <Loader2 size={11} className="animate-spin" /> : <ImageIcon size={11} />}
-                  {generatingPortrait ? 'Rendering…' : 'Generate Portrait'}
-                </button>
-              </div>
-            )}
-          </div>
+        {/* Layout: hero header + scrollable body */}
+        <div className="flex flex-col overflow-hidden">
 
-          {/* Content column */}
-          <div className="flex-1 p-6">
-            {/* Header */}
-            <div className="mb-5">
-              <p className="text-[9px] font-mono text-slate-600 uppercase tracking-[0.3em] mb-1">Council Member</p>
-              <h2 className={`text-2xl font-cinzel font-bold ${config.color} mb-0.5`}>{personaName}</h2>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{config.tagline}</p>
+          {/* ── HERO HEADER ── */}
+          <div className={`relative flex flex-col md:flex-row items-center md:items-end gap-6 px-8 pt-8 pb-6 border-b border-slate-800/40 overflow-hidden`}>
+            {/* BG atmosphere */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${colorFrom}/5 to-transparent pointer-events-none`} />
+
+            {/* Character orb */}
+            <div className="relative shrink-0">
+              <div className={`absolute inset-0 ${colorBg} blur-2xl opacity-20 rounded-full`} />
+              {portrait ? (
+                <img
+                  src={portrait}
+                  alt={personaName}
+                  className={`relative w-24 h-24 md:w-32 md:h-32 rounded-2xl object-cover border-2 ${colorBorder}/40 shadow-2xl`}
+                />
+              ) : (
+                <motion.div
+                  animate={{ boxShadow: [`0 0 20px rgba(0,0,0,0)`, `0 0 40px rgba(0,0,0,0.4)`, `0 0 20px rgba(0,0,0,0)`] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  className={`relative w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border-2 ${colorBorder}/40 flex items-center justify-center shadow-2xl`}
+                >
+                  <div className={`${config.color} scale-[2.5]`}>{config.icon}</div>
+                </motion.div>
+              )}
+              {/* Rank badge */}
+              {rank > 0 && (
+                <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-amber-500 border-2 border-slate-950 flex items-center justify-center shadow-lg">
+                  <span className="text-[9px] font-black text-slate-950">#{rank}</span>
+                </div>
+              )}
             </div>
 
-            {/* Appearance */}
-            {config.appearance && (
-              <div className="mb-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800/50">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Appearance</p>
-                <p className="text-xs text-slate-300 italic leading-relaxed">{config.appearance}</p>
+            {/* Identity block */}
+            <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`text-[9px] font-black uppercase tracking-[0.4em] ${config.color} opacity-70`}>Council Member</span>
+                <div className={`h-px w-8 ${colorBg} opacity-40`} />
               </div>
-            )}
+              <h2 className={`text-4xl md:text-5xl font-cinzel font-black ${config.color} leading-none mb-2`} style={{ letterSpacing: '0.1em' }}>
+                {personaName.toUpperCase()}
+              </h2>
+              <p className="text-base text-slate-400 font-light tracking-[0.2em] uppercase mb-3">{config.tagline}</p>
 
-            {/* Speaking style */}
-            {config.speakingStyle && (
-              <div className="mb-4 p-3 rounded-xl bg-slate-900/60 border border-slate-800/50">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Voice</p>
-                <p className="text-xs text-slate-400 leading-relaxed">{config.speakingStyle}</p>
+              {/* Stats strip */}
+              <div className="flex items-center gap-4 flex-wrap justify-center md:justify-start">
+                {config.voice && (
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border ${colorBorder}/30 text-[10px] font-mono ${config.color}`}>
+                    <span className="opacity-60">voice:</span> {config.voice}
+                  </div>
+                )}
+                {memory.sessionsParticipated > 0 && (
+                  <>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-900/20 border border-emerald-500/20 text-[10px] font-mono text-emerald-400">
+                      <Trophy size={8} /> {memory.wins}W
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-900/20 border border-red-500/20 text-[10px] font-mono text-red-400">
+                      {memory.losses}L
+                    </div>
+                  </>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* ── SCROLLABLE BODY ── */}
+          <div className="overflow-y-auto flex-1 p-6 md:p-8 space-y-4 custom-scrollbar">
+
+            {/* Character sections grid */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {sections.map((sec, i) => (
+                <motion.div
+                  key={sec.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className={`p-4 rounded-2xl border relative overflow-hidden ${
+                    sec.style === 'accent'
+                      ? `${colorBorder}/30 bg-slate-900/60`
+                      : sec.style === 'warning'
+                      ? 'border-red-500/20 bg-red-950/10'
+                      : 'border-slate-800/50 bg-slate-900/40'
+                  } ${sec.id === 'origin' ? 'md:col-span-2' : ''}`}
+                >
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className={`${sec.style === 'accent' ? config.color : sec.style === 'warning' ? 'text-red-400' : 'text-slate-500'}`}>{sec.icon}</div>
+                    <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${sec.style === 'accent' ? config.color : sec.style === 'warning' ? 'text-red-400' : 'text-slate-500'}`}>{sec.label}</span>
+                  </div>
+                  <p className={`text-sm leading-relaxed ${
+                    sec.style === 'italic' ? 'italic text-slate-300' :
+                    sec.style === 'accent' ? `text-slate-200` :
+                    sec.style === 'warning' ? 'text-slate-300' :
+                    'text-slate-400'
+                  }`}>
+                    {sec.content}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
 
             {/* Voice examples */}
             {persona?.voiceExamples && (
-              <div className="mb-4 space-y-2">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Example Lines</p>
-                <div className={`pl-3 border-l-2 ${config.color.replace('text-', 'border-')} opacity-80`}>
-                  <p className="text-xs text-slate-300 italic leading-relaxed">"{persona.voiceExamples.opening}"</p>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className={`p-4 rounded-2xl border ${colorBorder}/20 bg-slate-900/30`}
+              >
+                <p className={`text-[9px] font-black uppercase tracking-[0.3em] ${config.color} opacity-70 mb-3`}>In Its Own Words</p>
+                <div className="space-y-3">
+                  <div className={`pl-4 border-l-2 ${colorBorder}/60`}>
+                    <p className="text-sm text-slate-200 italic leading-relaxed">"{persona.voiceExamples.opening}"</p>
+                    <p className="text-[9px] text-slate-600 mt-1 font-mono uppercase tracking-widest">Opening</p>
+                  </div>
+                  <div className={`pl-4 border-l-2 ${colorBorder}/30`}>
+                    <p className="text-sm text-slate-400 italic leading-relaxed">"{persona.voiceExamples.closing}"</p>
+                    <p className="text-[9px] text-slate-600 mt-1 font-mono uppercase tracking-widest">Closing</p>
+                  </div>
                 </div>
-                <div className={`pl-3 border-l-2 ${config.color.replace('text-', 'border-')} opacity-50`}>
-                  <p className="text-xs text-slate-400 italic leading-relaxed">"{persona.voiceExamples.closing}"</p>
-                </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* Stats */}
+            {/* Council Record */}
             {memory.sessionsParticipated > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-800/50">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">Council Record</p>
-                <div className="grid grid-cols-3 gap-3 mb-3">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-4 rounded-2xl border border-slate-800/50 bg-slate-900/30"
+              >
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 mb-4">Council Record</p>
+                <div className="grid grid-cols-3 gap-3 mb-4">
                   {[
-                    { label: 'Sessions', value: memory.sessionsParticipated },
-                    { label: 'Wins', value: memory.wins, color: 'text-emerald-500' },
-                    { label: 'Losses', value: memory.losses, color: 'text-red-500' },
+                    { label: 'Sessions', value: memory.sessionsParticipated, color: 'text-slate-200' },
+                    { label: 'Victories', value: memory.wins, color: 'text-emerald-400' },
+                    { label: 'Defeats', value: memory.losses, color: 'text-red-400' },
                   ].map(stat => (
-                    <div key={stat.label} className="text-center p-2 rounded-lg bg-slate-900/60 border border-slate-800/40">
-                      <p className={`text-lg font-cinzel font-bold ${stat.color || 'text-slate-200'}`}>{stat.value}</p>
-                      <p className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">{stat.label}</p>
+                    <div key={stat.label} className="text-center p-3 rounded-xl bg-slate-950/50 border border-slate-800/40">
+                      <p className={`text-2xl font-cinzel font-bold ${stat.color}`}>{stat.value}</p>
+                      <p className="text-[8px] font-mono text-slate-600 uppercase tracking-widest mt-0.5">{stat.label}</p>
                     </div>
                   ))}
                 </div>
-
-                {rank > 0 && (
-                  <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mb-2">
-                    <Trophy size={9} className="text-amber-500" /> Ranked #{rank} on the council
-                  </p>
-                )}
-                {topRival && (
-                  <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mb-1">
-                    <Swords size={9} className="text-red-500" />
-                    Standing rival: <span className={`font-bold ${getPersonaConfig(topRival[0]).color}`}>{topRival[0]}</span>
-                    <span className="text-slate-700">({topRival[1]} clashes)</span>
-                  </p>
-                )}
-                {topAlly && (
-                  <p className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                    <Star size={9} className="text-amber-500" />
-                    Recurring ally: <span className={`font-bold ${getPersonaConfig(topAlly[0]).color}`}>{topAlly[0]}</span>
-                    <span className="text-slate-700">({topAlly[1]} agreements)</span>
-                  </p>
-                )}
-
+                <div className="space-y-2">
+                  {topRival && (
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <Swords size={10} className="text-red-400 shrink-0" />
+                      <span className="text-slate-600">Standing rival:</span>
+                      <span className={`font-bold ${getPersonaConfig(topRival[0]).color}`}>{topRival[0]}</span>
+                      <span className="text-slate-700 text-[10px]">{topRival[1]} clashes</span>
+                    </div>
+                  )}
+                  {topAlly && (
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <Star size={10} className="text-amber-400 shrink-0" />
+                      <span className="text-slate-600">Recurring ally:</span>
+                      <span className={`font-bold ${getPersonaConfig(topAlly[0]).color}`}>{topAlly[0]}</span>
+                      <span className="text-slate-700 text-[10px]">{topAlly[1]} agreements</span>
+                    </div>
+                  )}
+                </div>
                 {memory.notablePositions.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-800/40">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Last Position</p>
+                  <div className="mt-4 pt-4 border-t border-slate-800/40">
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Last Recorded Position</p>
                     <p className="text-xs text-slate-400 italic leading-relaxed">
                       "{memory.notablePositions[0].position}…"
-                      <span className={`ml-2 text-[9px] font-bold ${memory.notablePositions[0].won ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {memory.notablePositions[0].won ? '(prevailed)' : '(defeated)'}
-                      </span>
                     </p>
+                    <span className={`text-[9px] font-bold ${memory.notablePositions[0].won ? 'text-emerald-500' : 'text-red-500'} uppercase tracking-widest`}>
+                      {memory.notablePositions[0].won ? '↑ Prevailed' : '↓ Defeated'}
+                    </span>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
