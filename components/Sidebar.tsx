@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CouncilMode, Session, CouncilResult } from '../types';
+import { Session } from '../types';
 import { Users, X, Clock, Trash2, Plus, Crown, ScrollText, BrainCircuit, Podcast, Download, FileText, Mic, Newspaper, FileArchive } from 'lucide-react';
 import PodcastPlayer from './PodcastPlayer';
 import { getLeaderboard, getEpisodeCounter } from '../services/councilMemoryService';
@@ -165,30 +165,41 @@ const Sidebar: React.FC<SidebarProps> = ({
              </div>
              
              <div className="space-y-1.5">
-                 {sessions.map(session => (
-                     <div 
+                 {sessions.map(session => {
+                     const winner = session.messages?.find(m => m.councilResult?.winner)?.councilResult?.winner;
+                     const winnerConfig = winner ? getPersonaConfig(winner) : null;
+                     return (
+                     <div
                         key={session.id}
                         onClick={() => onSelectSession(session.id)}
-                        className={`group flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer transition-all border 
-                        ${activeSessionId === session.id 
-                            ? 'bg-gradient-to-r from-slate-900 to-slate-900/50 border-yellow-900/30 text-emerald-100 shadow-sm border-l-2 border-l-emerald-500' 
-                            : 'border-transparent text-slate-500 hover:bg-slate-900/30 hover:text-slate-300 border-l-2 border-l-transparent'}`}
+                        className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all border
+                        ${activeSessionId === session.id
+                            ? 'bg-gradient-to-r from-slate-900 to-slate-900/50 border-yellow-900/30 text-emerald-100 shadow-sm'
+                            : 'border-transparent text-slate-500 hover:bg-slate-900/40 hover:text-slate-300 hover:border-slate-800/60'}`}
                      >
-                         <div className="flex items-center gap-3 overflow-hidden">
-                             <ScrollText size={14} className={activeSessionId === session.id ? 'text-emerald-500' : 'text-slate-700'} />
+                         <div className="flex items-center gap-2.5 overflow-hidden flex-1 min-w-0">
+                             {winnerConfig ? (
+                                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${winnerConfig.color.replace('text-', 'bg-')} opacity-80`} />
+                             ) : (
+                                 <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-700" />
+                             )}
                              <div className="flex flex-col min-w-0">
-                                 <span className="text-xs font-bold truncate font-cinzel tracking-wide">{session.title}</span>
-                                 <span className="text-[10px] opacity-60 truncate font-mono">{new Date(session.lastModified).toLocaleDateString()}</span>
+                                 <span className="text-[11px] font-bold truncate font-cinzel tracking-wide">{session.title}</span>
+                                 <div className="flex items-center gap-1.5">
+                                     <span className="text-[9px] opacity-50 font-mono">{new Date(session.lastModified).toLocaleDateString()}</span>
+                                     {winner && <span className={`text-[9px] font-bold ${winnerConfig?.color} opacity-60`}>· {winner}</span>}
+                                 </div>
                              </div>
                          </div>
-                         <button 
+                         <button
                             onClick={(e) => onDeleteSession(session.id, e)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-red-900/20 text-slate-600 hover:text-red-400 transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-900/20 text-slate-700 hover:text-red-400 transition-all shrink-0"
                          >
-                             <Trash2 size={12} />
+                             <Trash2 size={11} />
                          </button>
                      </div>
-                 ))}
+                     );
+                 })}
                  {sessions.length === 0 && (
                      <div className="text-center py-6 border border-dashed border-slate-800 rounded-xl">
                         <Clock size={24} className="mx-auto text-slate-700 mb-2" />
