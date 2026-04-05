@@ -1524,10 +1524,10 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
 
                                         {/* Voices in this branch */}
                                         <div className="flex flex-wrap gap-1.5 mb-3">
-                                            {ops.map(op => {
+                                            {ops.map((op, opi) => {
                                                 const voterConfig = getPersonaConfig(op.persona);
                                                 return (
-                                                    <div key={op.persona} className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${isWinner ? 'border-indigo-500/30 text-indigo-300 bg-indigo-900/20' : 'border-slate-700 text-slate-500 bg-slate-900/40'}`}>
+                                                    <div key={op.persona || `op-${opi}`} className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${isWinner ? 'border-indigo-500/30 text-indigo-300 bg-indigo-900/20' : 'border-slate-700 text-slate-500 bg-slate-900/40'}`}>
                                                         {op.persona}
                                                     </div>
                                                 );
@@ -2166,10 +2166,10 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
                 const votes = voteCounts[name] || 0;
                 const isPlaying = playingId === name;
                 const isSpeaking = activeSpeakers.includes(name) && phase === 'DELIBERATING';
-                
+
                 return (
                     <motion.div
-                        key={name}
+                        key={name || `member-${idx}`}
                         initial={{ opacity: 0, y: 50, scale: 0.8 }}
                         animate={{ 
                             opacity: phase !== 'DOORS' ? 1 : 0, 

@@ -7,6 +7,18 @@ export default defineConfig(() => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/api/nvidia': {
+            target: 'https://integrate.api.nvidia.com/v1',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api\/nvidia/, ''),
+          },
+          '/api/openrouter': {
+            target: 'https://openrouter.ai/api/v1',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api\/openrouter/, ''),
+          },
+        },
       },
       plugins: [react()],
       define: {
