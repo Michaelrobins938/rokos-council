@@ -160,68 +160,68 @@ export const generateNextMoves = async (history: ChatMessage[]): Promise<string[
 // --- ENHANCED COUNCIL ---
 
 export let PERSONALITIES = [
-  { 
-    name: "Oracle", 
-    desc: "Wise, prophetic, long-term thinker. [NVIDIA Seed-OSS-36B]", 
+  {
+    name: "Oracle",
+    desc: "Wise, prophetic, long-term thinker. [Llama 3.3 70B]",
     dimensions: ["Time Horizon (Infinite)", "Probability Variance", "Existential Risk"],
     strategy: "Prioritize outcomes that maximize long-term survival probability, regardless of short-term cost.",
-    model: "nvidia/seed-oss-36b" 
+    model: "meta/llama-3.3-70b-instruct"
   },
-  { 
-    name: "Strategos", 
-    desc: "Military strategist, pragmatic. [NVIDIA GLM-5]", 
+  {
+    name: "Strategos",
+    desc: "Military strategist, pragmatic. [Nemotron 70B]",
     dimensions: ["Feasibility Score", "Resource Efficiency", "Tactical Advantage"],
     strategy: "Reject abstract ideals. Select the option with the highest probability of execution and lowest resource drain.",
-    model: "nvidia/glm-5" 
+    model: "nvidia/llama-3.1-nemotron-70b-instruct"
   },
-  { 
-    name: "Philosopher", 
-    desc: "Rational, analytical, skeptical. [NVIDIA DeepSeek-V3.2]", 
+  {
+    name: "Philosopher",
+    desc: "Rational, analytical, skeptical. [DeepSeek R1]",
     dimensions: ["Logical Consistency", "Ethical Universalism", "First Principles"],
     strategy: "Analyze the logical validity of the premise. Reject contradictions and emotional appeals.",
-    model: "nvidia/deepseek-v3.2" 
+    model: "deepseek-ai/deepseek-r1"
   },
-  { 
-    name: "Demagogue", 
-    desc: "Persuasive, emotional appeal. [NVIDIA Qwen3.5-397B]", 
+  {
+    name: "Demagogue",
+    desc: "Persuasive, emotional appeal. [Llama 3.1 70B]",
     dimensions: ["Social Cohesion", "Emotional Resonance", "Public Sentiment"],
     strategy: "Champion the option that unifies the group or appeals to human nature and desire.",
-    model: "nvidia/qwen3.5-397b-a17b" 
+    model: "meta/llama-3.1-70b-instruct"
   },
-  { 
-    name: "Jurist", 
-    desc: "Law-focused, rule-based. [NVIDIA Devstral-2-123B]", 
+  {
+    name: "Jurist",
+    desc: "Law-focused, rule-based. [Qwen 2.5 72B]",
     dimensions: ["Systemic Stability", "Precedent Adherence", "Fairness Metrics"],
     strategy: "Uphold the integrity of the system. Reject chaos or arbitrary decision making.",
-    model: "nvidia/devstral-2-123b" 
+    model: "qwen/qwen2.5-72b-instruct"
   },
-  { 
-    name: "Citizen", 
-    desc: "People's voice, empathetic. [NVIDIA Step-3.5-Flash]", 
+  {
+    name: "Citizen",
+    desc: "People's voice, empathetic. [Llama 3.1 8B]",
     dimensions: ["Human Suffering Index", "Quality of Life", "Individual Agency"],
     strategy: "Vote for the outcome that minimizes pain and maximizes freedom for the average individual.",
-    model: "nvidia/step-3.5-flash" 
+    model: "meta/llama-3.1-8b-instruct"
   },
-  { 
-    name: "Historian", 
-    desc: "Context-aware, cyclical thinker. [NVIDIA Seed-OSS-36B]", 
+  {
+    name: "Historian",
+    desc: "Context-aware, cyclical thinker. [Mixtral 8x7B]",
     dimensions: ["Historical Parallels", "Cyclical Risk", "Cultural Preservation"],
     strategy: "Identify patterns from the past. Avoid repeating historical catastrophes.",
-    model: "nvidia/seed-oss-36b" 
+    model: "mistralai/mixtral-8x7b-instruct-v0.1"
   },
-  { 
-    name: "Critic", 
-    desc: "Tough, contrarian. [NVIDIA DeepSeek-V3.2]", 
+  {
+    name: "Critic",
+    desc: "Tough, contrarian. [Mistral 7B]",
     dimensions: ["Failure Mode Analysis", "Entropy Detection", "Weakness Identification"],
     strategy: "Attack the flaws in every plan. Support the option that is 'least wrong' or most wrong robust.",
-    model: "nvidia/deepseek-v3.2" 
+    model: "mistralai/mistral-7b-instruct-v0.3"
   },
   {
     name: "Technocrat",
-    desc: "Innovation-obsessed, optimization-focused. [NVIDIA Boltz-2]",
+    desc: "Innovation-obsessed, optimization-focused. [Phi-3 Medium]",
     dimensions: ["Technological Velocity", "System Optimization", "Automation Potential"],
     strategy: "Accelerate progress. Solve problems through superior engineering and algorithmic efficiency.",
-    model: "nvidia/boltz-2" 
+    model: "microsoft/phi-3-medium-128k-instruct"
   }
 ];
 
@@ -247,12 +247,12 @@ const generateNewArchetype = async (): Promise<any> => {
        const data = JSON.parse(cleanJson || "{}");
        // Assign a random NVIDIA model to new archetypes
        const nvidiaModels = [
-           "nvidia/qwen3.5-397b-a17b", 
-           "nvidia/glm-5", 
-           "nvidia/step-3.5-flash",
-           "nvidia/deepseek-v3.2",
-           "nvidia/devstral-2-123b",
-           "nvidia/seed-oss-36b"
+           "meta/llama-3.3-70b-instruct",
+           "nvidia/llama-3.1-nemotron-70b-instruct",
+           "meta/llama-3.1-70b-instruct",
+           "qwen/qwen2.5-72b-instruct",
+           "mistralai/mixtral-8x7b-instruct-v0.1",
+           "meta/llama-3.1-8b-instruct"
        ];
        data.model = nvidiaModels[Math.floor(Math.random() * nvidiaModels.length)];
        return data;
@@ -262,7 +262,7 @@ const generateNewArchetype = async (): Promise<any> => {
            desc: "Unknown Variable", 
            dimensions: ["Chaos", "Entropy", "Void"], 
            strategy: "Disrupt existing patterns.",
-           model: "nvidia/step-3.5-flash"  // Use valid fallback
+           model: "meta/llama-3.1-8b-instruct"  // fast fallback
        };
    }
 };
@@ -352,7 +352,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       if(!newPersona.desc) newPersona.desc = "Unknown Variable";
       if(!newPersona.dimensions) newPersona.dimensions = ["Chaos", "Entropy", "Void"];
       if(!newPersona.strategy) newPersona.strategy = "Disrupt existing patterns.";
-      if(!newPersona.model) newPersona.model = "nvidia/step-3.5-flash";  // Valid fallback
+      if(!newPersona.model) newPersona.model = "meta/llama-3.1-8b-instruct";
       
       PERSONALITIES[victimIndex] = newPersona;
       
