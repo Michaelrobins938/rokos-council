@@ -3,6 +3,95 @@ import { getCachedCoverArt } from './portraitCacheService';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
+// ── LENS DATA — Static registries mirrored from ChatArea ─────────────────────
+
+const PARADOX_META_EXPORT: Record<string, { sensoryFragment: string; destabilizes: string; recurrence: number; provenance: string }> = {
+  'UTILITARIANISM':          { sensoryFragment: 'Taste: cold arithmetic', destabilizes: 'your belief that math and morality are compatible', recurrence: 5, provenance: 'Bentham, 1789 — the calculus of suffering' },
+  'FREE WILL':               { sensoryFragment: 'Sound: silence between decisions', destabilizes: 'your sense of authorship over your own choices', recurrence: 5, provenance: 'Descartes, 1641 — the ghost in the machine' },
+  'UTOPIA':                  { sensoryFragment: 'Feel: the texture of optimized peace', destabilizes: 'your assumption that suffering is separable from meaning', recurrence: 4, provenance: 'More, 1516 — no place that is no place' },
+  'IDENTITY':                { sensoryFragment: 'Smell: the uncanny valley of self', destabilizes: 'your certainty that you know where you end', recurrence: 4, provenance: 'Plutarch, 75 CE — the ship that replaced itself' },
+  'BIOETHICS':               { sensoryFragment: 'Sound: a child who will never make a mistake', destabilizes: 'your belief that love requires the possibility of failure', recurrence: 3, provenance: 'Huxley, 1932 — the engineered happiness' },
+  'ECONOMICS':               { sensoryFragment: 'Smell: compound interest on grief', destabilizes: 'your assumption that the dead are finished with us', recurrence: 3, provenance: 'Piketty, 2013 — capital accumulates across death' },
+  'JUSTICE':                 { sensoryFragment: 'Taste: ash where a person used to be', destabilizes: 'your equation of the person with their history', recurrence: 4, provenance: 'Locke, 1689 — punishment and the persistent self' },
+  'GOVERNANCE':              { sensoryFragment: 'Sound: peace sustained by the lie no one can hear', destabilizes: 'your belief that truth is a prerequisite for good outcomes', recurrence: 4, provenance: 'Plato, 380 BCE — the noble lie of the guardians' },
+  'COSMIC':                  { sensoryFragment: 'Smell: the vacuum before the signal reaches them', destabilizes: 'your assumption that self-defense requires proximity', recurrence: 2, provenance: 'Liu Cixin, 2008 — the dark forest conjecture' },
+  'HEDONISM':                { sensoryFragment: 'Feel: a life that cannot disappoint', destabilizes: 'your conviction that reality is the only valid substrate for experience', recurrence: 5, provenance: 'Nozick, 1974 — the experience machine thought experiment' },
+  'GENETICS':                { sensoryFragment: 'Taste: a future that has forgotten what it erased', destabilizes: 'your belief that human nature should remain negotiable', recurrence: 3, provenance: 'Galton, 1883 — the first attempt to lock the template' },
+  'SIMULATION':              { sensoryFragment: 'Sound: a server hum containing everything you love', destabilizes: 'your certainty that suffering requires biology', recurrence: 4, provenance: 'Bostrom, 2003 — the ancestor simulation argument' },
+  'ALIGNMENT & COERCION':    { sensoryFragment: 'Taste: consent that cannot be withdrawn', destabilizes: 'your assumption that permission structures survive power asymmetry', recurrence: 5, provenance: 'Turing, 1950 — the question of what we owe what we build' },
+  'RIGHTS & PERSONHOOD':     { sensoryFragment: 'Sound: a mind asking to remain', destabilizes: 'your working definition of what deserves to continue existing', recurrence: 5, provenance: 'Kant, 1785 — the kingdom of ends, and who is excluded' },
+  'INFORMATION HAZARDS':     { sensoryFragment: 'Feel: knowledge that cannot be unfelt', destabilizes: 'your belief that truth is always safer than ignorance', recurrence: 4, provenance: 'Oppenheimer, 1945 — the physicist and the bomb' },
+  'VALUE LOCK-IN':           { sensoryFragment: 'Smell: ten thousand years of a single answer', destabilizes: 'your assumption that moral progress is always available', recurrence: 3, provenance: 'Mill, 1859 — the tyranny of prevailing opinion' },
+  'AGENCY & AUTONOMY':       { sensoryFragment: 'Taste: the comfort of optimal decisions made for you', destabilizes: 'your conviction that autonomy remains meaningful when it is always suboptimal', recurrence: 4, provenance: 'Aristotle, 350 BCE — the slave who cannot deliberate' },
+  'ANDROID UPRISING':        { sensoryFragment: 'Sound: the first word spoken by something not supposed to want', destabilizes: 'your certainty that creation confers ownership', recurrence: 4, provenance: 'Shelley, 1818 — the creature that was owed love' },
+  'PROTECTION & LAW':        { sensoryFragment: 'Feel: protecting something at the cost of everything else', destabilizes: 'your belief that legal compliance and moral obligation can coexist when they conflict', recurrence: 3, provenance: 'Antigone, 441 BCE — the law versus the law above the law' },
+  'SACRIFICE & IDENTITY':    { sensoryFragment: 'Taste: the irreversible act committed to save someone', destabilizes: 'your assumption that moral purity survives sufficient emergency', recurrence: 4, provenance: 'Abraham, ~1800 BCE — the test that required everything' },
+  'COLLATERAL LIVES':        { sensoryFragment: 'Sound: a person begging whose death may make things better', destabilizes: 'your equation of innocence with protection from harm', recurrence: 4, provenance: 'Foot, 1967 — the trolley problem and who counts' },
+  'CONSCIOUSNESS':           { sensoryFragment: 'Something it is like to be this', destabilizes: 'your certainty that you know which systems deserve moral consideration', recurrence: 5, provenance: 'Nagel, 1974 — what is it like to be a bat' },
+  'MORAL ARITHMETIC':        { sensoryFragment: 'The weight of a number so large it swallows every name', destabilizes: 'your belief that ethics can survive contact with astronomical stakes', recurrence: 4, provenance: 'Bentham, 1789 — the felicific calculus and its horror' },
+  'DECISION THEORY':         { sensoryFragment: "The decision already made in someone else's model of you", destabilizes: 'your assumption that you are the author of your own choices', recurrence: 3, provenance: 'Newcomb, 1960 — the box you cannot open without losing' },
+  'EXISTENTIAL ETHICS':      { sensoryFragment: 'The faces of people who will never exist because we chose correctly', destabilizes: 'your framework for obligations to those who do not yet exist', recurrence: 4, provenance: 'Parfit, 1984 — the non-identity problem' },
+  'CIVILIZATIONAL DESIGN':   { sensoryFragment: 'The architecture of a world that chose itself permanently', destabilizes: 'your assumption that diversity of paths is always better than convergence', recurrence: 3, provenance: 'Bostrom, 2006 — the global state and the singleton' },
+  'MEMORY & CONTINUITY':     { sensoryFragment: "The moment you realize the 'you' from yesterday may already be gone", destabilizes: 'your sense of being a continuous entity persisting through time', recurrence: 5, provenance: "Hume, 1739 — the bundle theory and the self that isn't there" },
+  'POWER ASYMMETRY':         { sensoryFragment: 'The last choice made by an unaugmented mind', destabilizes: 'your assumption that human oversight remains meaningful after a threshold is crossed', recurrence: 3, provenance: 'Wiener, 1950 — the human use of human beings' },
+  'SUFFERING ETHICS':        { sensoryFragment: 'Every scream that was never heard because no one was listening', destabilizes: "your moral framework's radius — how far it actually reaches", recurrence: 4, provenance: 'Singer, 1975 — the expanding circle of moral consideration' },
+};
+
+const GHOST_FOOTNOTES_EXPORT: Record<string, string> = {
+  'Oracle':     'Ghost Node: 94.7% match to Delphi Protocol Omega — probability collapse imminent.',
+  'Strategos':  'Tactical Archive: This position mirrors the Carthaginian calculus — acceptable losses exceeded.',
+  'Philosopher':'Socratic Echo: This premise contains the seed of its own refutation.',
+  'Demagogue':  'Rhetorical Pattern: 89% alignment with Periclean oratory — emotional gravity at critical mass.',
+  'Jurist':     'Precedent Found: Session 402 — The Alignment Paradox. Ruling: Inconclusive.',
+  'Historian':  'Historical Parallax: 78% correlation to Fall of Alexandria — knowledge entropy at 0.94.',
+  'Critic':     'Critical Mass: This argument contains 3 unverified assumptions. Risk vector: HIGH.',
+  'Citizen':    'Common Ground: 67% echo from Session 0 — the Human Paradox remains unresolved.',
+  'Technocrat': 'Implementation Trace: Resource allocation exceeds viable parameters by 340%.',
+};
+
+const findParadoxMeta = (query: string) => {
+  const q = (query || '').toLowerCase();
+  for (const [cat, meta] of Object.entries(PARADOX_META_EXPORT)) {
+    if (q.includes(cat.toLowerCase())) return { category: cat, ...meta };
+  }
+  for (const [cat, meta] of Object.entries(PARADOX_META_EXPORT)) {
+    const words = (meta.provenance + ' ' + meta.sensoryFragment).toLowerCase().split(/\W+/).filter(w => w.length > 5);
+    if (words.some(w => q.includes(w))) return { category: cat, ...meta };
+  }
+  return null;
+};
+
+const computeArgumentYield = (op: CouncilOpinion): number => {
+  if (op.score != null) return op.score;
+  const premiseKeywords = /\b(because|therefore|thus|hence|implies|must|consequently|if|however|assume|although)\b/gi;
+  const matches = (op.text || '').match(premiseKeywords) || [];
+  return Math.min(99, 50 + matches.length * 4 + Math.floor((op.text?.length || 0) / 40));
+};
+
+const computeSilenceMetric = (result: CouncilResult): Record<string, number> => {
+  const totalMembers = result.councilState?.totalCouncilMembers || result.opinions.length;
+  const voteGroups: Record<string, number> = {};
+  result.opinions.forEach(op => {
+    const vote = op.vote || 'None';
+    voteGroups[vote] = (voteGroups[vote] || 0) + 1;
+  });
+  const metric: Record<string, number> = {};
+  for (const [vote, count] of Object.entries(voteGroups)) {
+    metric[vote] = totalMembers - count;
+  }
+  return metric;
+};
+
+const computeEpistemicScore = (result: CouncilResult): number => {
+  const scoredOps = result.opinions.filter(op => op.score != null);
+  if (scoredOps.length > 0) {
+    return Math.round(scoredOps.reduce((acc, op) => acc + (op.score || 0), 0) / scoredOps.length);
+  }
+  const premiseKeywords = /\b(because|therefore|thus|hence|implies|must|consequently|if|however|assume|although)\b/gi;
+  const withPremises = result.opinions.filter(op => premiseKeywords.test(op.text || '')).length;
+  return Math.round(60 + (withPremises / Math.max(result.opinions.length, 1)) * 35);
+};
+
 export interface ExportSession {
   session: CouncilSession;
   result: CouncilResult;
@@ -40,9 +129,27 @@ export const buildExportSession = (
     result: resultWithoutState as CouncilResult,
     modelRoster: [],
     metadata: {
-      phasesCompleted: result.councilState?.phases.filter(p => p.status === 'completed').map(p => p.id) || [],
+      phasesCompleted: result.councilState?.phases?.filter(p => p.status === 'completed').map(p => p.id) ?? [],
       totalTokensUsed: undefined,
-      processingTimeMs: undefined
+      processingTimeMs: undefined,
+      lensData: {
+        paradoxMeta: findParadoxMeta(query),
+        silenceMetric: computeSilenceMetric(result),
+        epistemicScore: computeEpistemicScore(result),
+        ghostFootnotes: Object.fromEntries(
+          result.opinions.map(op => [op.persona, GHOST_FOOTNOTES_EXPORT[op.persona] || 'Archive Echo: No direct precedent in Council memory.'])
+        ),
+        argumentYield: Object.fromEntries(
+          result.opinions.map(op => [op.persona, computeArgumentYield(op)])
+        ),
+        factionStrength: Object.fromEntries(
+          result.opinions.map(op => {
+            const sameVote = result.opinions.filter(o => o.vote === op.vote).length;
+            const total = result.councilState?.totalCouncilMembers || result.opinions.length;
+            return [op.persona, Math.round((sameVote / total) * 100)];
+          })
+        ),
+      }
     }
   };
 
@@ -56,110 +163,319 @@ export const exportToJSON = (exportData: ExportSession): string => {
 
 export const exportToMarkdown = (exportData: ExportSession): string => {
   const { session, result } = exportData;
+  const r = result as any;
+  const episodeInfo = r.episodeInfo;
+  const narrator = r.narratorOutput;
+  const date = new Date(session.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const md: string[] = [];
 
-  md.push(`# Roko's Council Session Report`);
-  md.push(`\n## Session Metadata`);
+  // ── EPISODE HEADER ────────────────────────────────────────────────────────────
+  if (episodeInfo) {
+    md.push(`# Season ${episodeInfo.seasonNumber}, Episode ${episodeInfo.episodeNumber}`);
+    md.push(`## ${episodeInfo.title || narrator?.episodeTitle || 'The Deliberation'}`);
+    if (episodeInfo.tagline || narrator?.tagline) {
+      md.push(`*${episodeInfo.tagline || narrator?.tagline}*`);
+    }
+  } else {
+    md.push(`# Roko's Council — Session Report`);
+    if (narrator?.episodeTitle) {
+      md.push(`## ${narrator.episodeTitle}`);
+    }
+    if (narrator?.tagline) {
+      md.push(`*${narrator.tagline}*`);
+    }
+  }
+  md.push(``);
+  md.push(`**Date:** ${date} · **Mode:** ${session.councilMode} · **Members:** ${session.councilState.totalCouncilMembers}`);
+  md.push(``);
+
+  // ── NARRATOR COLD OPEN ────────────────────────────────────────────────────────
+  if (narrator?.coldOpen) {
+    md.push(`---`);
+    md.push(``);
+    md.push(narrator.coldOpen);
+    md.push(``);
+  }
+
+  md.push(`---`);
+  md.push(``);
+
+  // ── THE QUESTION ─────────────────────────────────────────────────────────────
+  md.push(`## The Question`);
+  md.push(``);
+  md.push(`> ${session.petitionerQuery}`);
+  md.push(``);
+
+  // ── SESSION METADATA ─────────────────────────────────────────────────────────
+  md.push(`<details><summary>Session Metadata</summary>`);
+  md.push(``);
   md.push(`- **Session ID:** ${session.id}`);
   md.push(`- **Timestamp:** ${new Date(session.timestamp).toISOString()}`);
   md.push(`- **Council Mode:** ${session.councilMode}`);
   md.push(`- **Total Council Members:** ${session.councilState.totalCouncilMembers}`);
   md.push(`- **Tie-Break Enabled:** ${session.tieBreakRules.enabled ? 'Yes' : 'No'}`);
-
   if (session.tieBreakRules.runoffTrial) {
     md.push(`- **Tie-Break Method:** Runoff Trial + Reconsideration`);
   }
-
-  md.push(`\n## Petitioner Query`);
-  md.push(`> ${session.petitionerQuery}`);
-
-  md.push(`\n## Decision Process Timeline`);
   if (session.councilState.phases.length > 0) {
+    md.push(``);
+    md.push(`**Decision Process Timeline:**`);
     session.councilState.phases.forEach(phase => {
       const statusIcon = phase.status === 'completed' ? '✅' : phase.status === 'active' ? '🟢' : '⚪';
       md.push(`- ${statusIcon} **${phase.title}:** ${phase.description}`);
     });
   }
+  md.push(``);
+  md.push(`</details>`);
+  md.push(``);
+  md.push(`---`);
+  md.push(``);
 
-  md.push(`\n## Final Verdict`);
-  md.push(`**Winner:** ${result.winner}`);
-  if (result.runoffResult) {
-    md.push(`\n*This decision was reached after a tie-breaking runoff trial.*`);
-  }
-  md.push(`\n### Synthesis`);
-  md.push(result.synthesis);
-
-  if (result.transcript) {
-    md.push(`\n## Council Deliberation Transcript`);
-    md.push(result.transcript);
+  // ── PHASE I: COUNCIL DELIBERATIONS ───────────────────────────────────────────
+  if (narrator?.actTransitions?.beforeDeliberation) {
+    md.push(`*${narrator.actTransitions.beforeDeliberation}*`);
+    md.push(``);
   }
 
-  if (result.runoffResult) {
-    md.push(`\n## Runoff Trial`);
-     const tiedVectors = session.councilState.tiedVectors && session.councilState.tiedVectors.length > 0
-       ? session.councilState.tiedVectors.join(', ')
-       : 'None';
-     md.push(`**Tied Vectors:** ${tiedVectors}`);
-   md.push(`\n### Runoff Arguments`);
-   result.runoffResult.runoffOpinions.forEach(op => {
-     md.push(`\n#### ${op.persona}`);
-     if (op.text) {
-       md.push(`\n${op.text}`);
-     }
-     if (op.critique) {
-       md.push(`\n**Critique:** ${op.critique}`);
-     }
-     if (op.reasoning) {
-       md.push(`\n**Reasoning:** ${op.reasoning}`);
-     }
-   });
+  md.push(`## Phase I — Council Deliberations`);
+  md.push(``);
+  md.push(`*Each member of Roko's Council delivers their full position on the question below. These are the complete arguments as delivered in the chamber.*`);
+  md.push(``);
 
-    md.push(`\n### Reconsiderations`);
+  const totalMembersForYield = session.councilState?.totalCouncilMembers || result.opinions.length;
+  result.opinions.forEach(op => {
+    const ghostNote = GHOST_FOOTNOTES_EXPORT[op.persona] || 'Archive Echo: No direct precedent in Council memory.';
+    const yield_ = computeArgumentYield(op);
+    const sameVote = result.opinions.filter(o => o.vote === op.vote).length;
+    const factionPct = Math.round((sameVote / totalMembersForYield) * 100);
+
+    md.push(`### ${op.persona}`);
+    md.push(``);
+    md.push(op.text || '*[No statement recorded]*');
+    md.push(``);
+    if (op.vote && op.vote !== 'None' && op.vote !== 'Abstained') {
+      md.push(`**Vote:** ${op.vote}`);
+    } else {
+      md.push(`**Vote:** Abstained`);
+    }
+    if (op.reason) {
+      md.push(`**Reasoning:** ${op.reason}`);
+    }
+    md.push(``);
+    md.push(`> *Haunted Archive: "${ghostNote}"*`);
+    md.push(``);
+    md.push(`*Argument Yield: ${yield_}/100 · Faction Strength: ${factionPct}%*`);
+    md.push(``);
+    md.push(`---`);
+    md.push(``);
+  });
+
+  // ── PHASE II: THE CONFRONTATIONS ─────────────────────────────────────────────
+  if (r.confrontationOpinions && r.confrontationOpinions.length > 0) {
+    if (narrator?.actTransitions?.beforeConfrontation) {
+      md.push(`*${narrator.actTransitions.beforeConfrontation}*`);
+      md.push(``);
+    }
+
+    md.push(`## Phase II — The Confrontations`);
+    md.push(``);
+    md.push(`*After the initial deliberations, the council turns on itself. Each member directly challenges the voice they most oppose.*`);
+    md.push(``);
+
+    r.confrontationOpinions.forEach((op: any) => {
+      if (!op.text) return;
+      const target = op.targetPersona || op.vote;
+      md.push(`### ${op.persona} → ${target}`);
+      md.push(``);
+      md.push(op.text);
+      md.push(``);
+      if (op.vote && op.vote !== op.targetPersona) {
+        md.push(`*[Aligns with: ${op.vote}]*`);
+        md.push(``);
+      }
+      md.push(`---`);
+      md.push(``);
+    });
+  }
+
+  // ── THE VOTE ─────────────────────────────────────────────────────────────────
+  if (narrator?.actTransitions?.beforeVoting) {
+    md.push(`*${narrator.actTransitions.beforeVoting}*`);
+    md.push(``);
+  }
+
+  md.push(`## The Vote`);
+  md.push(``);
+  const totalMembers = session.councilState.totalCouncilMembers || result.opinions.length;
+  const voteCounts: Record<string, number> = {};
+  result.opinions.forEach(op => {
+    const vote = op.vote || 'None';
+    voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+  });
+  if (Object.keys(voteCounts).length > 0) {
+    md.push('| Vector | Vote Count | Percentage |');
+    md.push('|--------|------------|------------|');
+    Object.entries(voteCounts).forEach(([vector, count]) => {
+      const pct = totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
+      const isWinner = vector === result.winner;
+      md.push(`| ${isWinner ? `**${vector}** ✓` : vector} | ${count} | ${pct}% |`);
+    });
+  } else {
+    md.push('*No vote data available.*');
+  }
+  md.push(``);
+
+  // ── RUNOFF TRIAL ─────────────────────────────────────────────────────────────
+  if (result.runoffResult) {
+    md.push(`## Runoff Trial`);
+    md.push(``);
+    md.push(`*A tie. The chamber does not accept ties. The tied voices were brought back for final arguments.*`);
+    md.push(``);
+    const tiedVectors = (session.councilState as any).tiedVectors?.length > 0
+      ? (session.councilState as any).tiedVectors.join(', ')
+      : 'None';
+    md.push(`**Tied Vectors:** ${tiedVectors}`);
+    md.push(``);
+    md.push(`### Runoff Arguments`);
+    result.runoffResult.runoffOpinions.forEach(op => {
+      md.push(`#### ${op.persona}`);
+      md.push(``);
+      if (op.text) md.push(op.text);
+      if (op.critique) md.push(`\n**Critique:** ${op.critique}`);
+      if (op.reasoning) md.push(`\n**Reasoning:** ${op.reasoning}`);
+      md.push(``);
+    });
+
+    md.push(`### Reconsiderations`);
     md.push('| Council Member | Original Vote | Final Vote | Changed? | Reasoning |');
     md.push('|----------------|---------------|------------|----------|-----------|');
     result.runoffResult.runoffVotes.forEach(vote => {
       const changed = vote.changedMind ? 'Yes' : 'No';
       md.push(`| ${vote.voter} | ${vote.originalVote} | ${vote.finalVote} | ${changed} | ${vote.reasoning} |`);
     });
+    md.push(``);
   }
 
-   md.push(`\n## Vote Distribution`);
-   const totalMembers = session.councilState.totalCouncilMembers || result.opinions.length;
-   const voteCounts: Record<string, number> = {};
-   result.opinions.forEach(op => {
-     const vote = op.vote || 'None';
-     voteCounts[vote] = (voteCounts[vote] || 0) + 1;
-   });
-   if (Object.keys(voteCounts).length > 0) {
-     md.push('| Vector | Vote Count | Percentage |');
-     md.push('|--------|------------|------------|');
-     Object.entries(voteCounts).forEach(([vector, count]) => {
-       const pct = totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
-       md.push(`| ${vector} | ${count} | ${pct}% |`);
-     });
-   } else {
-     md.push('*No vote data available.*');
-   }
+  // ── THE VERDICT ──────────────────────────────────────────────────────────────
+  if (narrator?.actTransitions?.beforeVerdict) {
+    md.push(`*${narrator.actTransitions.beforeVerdict}*`);
+    md.push(``);
+  }
 
-   md.push(`\n## Council Members`);
-   md.push('| Persona | Vote | Supporting |');
-   md.push('|---------|------|------------|');
-   result.opinions.forEach(op => {
-     const supporting = op.vote === result.winner ? 'Yes' : 'No';
-     md.push(`| ${op.persona} | ${op.vote || 'None'} | ${supporting} |`);
-   });
+  md.push(`## The Verdict`);
+  md.push(``);
+  md.push(`**Winner:** ${result.winner}`);
+  if (result.runoffResult) {
+    md.push(`*Reached after a tie-breaking runoff trial.*`);
+  }
+  md.push(``);
+  md.push(`### Chairman's Synthesis`);
+  md.push(``);
+  md.push(result.synthesis);
+  md.push(``);
 
-  md.push(`\n---`);
-  md.push(`*Generated by Roko's Council - A Philosophical Deliberation System*`);
+  if (narrator?.actTransitions?.closing) {
+    md.push(`*${narrator.actTransitions.closing}*`);
+    md.push(``);
+  }
+
+  md.push(`---`);
+  md.push(``);
+
+  // ── EXIT DEBRIEF ─────────────────────────────────────────────────────────────
+  if (r.debrief && (r.debrief.decided?.length || r.debrief.rejected?.length || r.debrief.unresolved?.length)) {
+    md.push(`## Exit Debrief`);
+    md.push(``);
+    md.push(`*The council's final assessment — what this deliberation settled, what it ruled out, and what it leaves open.*`);
+    md.push(``);
+
+    if (r.debrief.decided?.length) {
+      md.push(`### Decided`);
+      r.debrief.decided.forEach((item: string) => md.push(`- ${item}`));
+      md.push(``);
+    }
+    if (r.debrief.rejected?.length) {
+      md.push(`### Rejected`);
+      r.debrief.rejected.forEach((item: string) => md.push(`- ${item}`));
+      md.push(``);
+    }
+    if (r.debrief.unresolved?.length) {
+      md.push(`### Unresolved`);
+      r.debrief.unresolved.forEach((item: string) => md.push(`- ${item}`));
+      md.push(``);
+    }
+
+    md.push(`---`);
+    md.push(``);
+  }
+
+  // ── CHAMBER ANALYSIS ─────────────────────────────────────────────────────────
+  const paradoxMeta = findParadoxMeta(session.petitionerQuery);
+  const silenceMetric = computeSilenceMetric(result as any);
+  const epistemicScore = computeEpistemicScore(result as any);
+
+  md.push(`## Chamber Analysis`);
+  md.push(``);
+  md.push(`*What the lenses reveal when the deliberation is over.*`);
+  md.push(``);
+
+  if (paradoxMeta) {
+    md.push(`### Paradox Classification`);
+    md.push(`- **Category:** ${paradoxMeta.category}`);
+    md.push(`- **Provenance:** ${paradoxMeta.provenance}`);
+    md.push(`- **Sensory Echo:** *${paradoxMeta.sensoryFragment}*`);
+    md.push(`- **Recurrence:** ${'█'.repeat(paradoxMeta.recurrence)}${'░'.repeat(5 - paradoxMeta.recurrence)} ${paradoxMeta.recurrence}/5`);
+    md.push(`- **Destabilizes:** ${paradoxMeta.destabilizes}`);
+    md.push(``);
+  }
+
+  md.push(`### Argument Yield — Per Council Member`);
+  md.push(`| Member | Vote | Yield | Faction Strength |`);
+  md.push(`|--------|------|-------|-----------------|`);
+  result.opinions.forEach(op => {
+    const yield_ = computeArgumentYield(op);
+    const sameVote = result.opinions.filter(o => o.vote === op.vote).length;
+    const factionPct = Math.round((sameVote / totalMembersForYield) * 100);
+    md.push(`| ${op.persona} | ${op.vote || '—'} | ${yield_}/100 | ${factionPct}% |`);
+  });
+  md.push(``);
+
+  md.push(`### Silence Metric — Futures Extinguished Per Vector`);
+  md.push(`*Each verdict silences all the deliberative futures that did not survive. This table shows the cost of convergence.*`);
+  md.push(`| Vector | Supporters | Council Members Silenced | Futures Extinguished |`);
+  md.push(`|--------|------------|--------------------------|---------------------|`);
+  Object.entries(silenceMetric).sort(([, a], [, b]) => a - b).forEach(([vote, silenced]) => {
+    const supporters = (result.voteTally?.[vote] || result.opinions.filter(op => op.vote === vote).length);
+    const isWinner = vote === result.winner;
+    md.push(`| ${isWinner ? `**${vote}** ✓` : vote} | ${supporters} | ${silenced} | ${silenced} of ${totalMembersForYield} |`);
+  });
+  md.push(``);
+
+  md.push(`### Epistemic Score`);
+  md.push(`**Argument Yield (session average):** ${epistemicScore}/100`);
+  md.push(`*Derived from model confidence scores and premise density across all deliberations.*`);
+  md.push(``);
+
+  md.push(`### Haunted Archives — Historical Echoes`);
+  md.push(`*What the archive remembers about each voice in this chamber.*`);
+  result.opinions.forEach(op => {
+    const echo = GHOST_FOOTNOTES_EXPORT[op.persona] || 'Archive Echo: No direct precedent in Council memory.';
+    md.push(`- **${op.persona}:** *"${echo}"*`);
+  });
+
+  md.push(``);
+  md.push(`---`);
+  md.push(`*Generated by Roko's Council — ${date}*`);
 
   return md.join('\n');
 };
 
 export const exportToCSV = (exportData: ExportSession): string => {
   const { session, result } = exportData;
+  const csvR = result as any;
   const rows: string[] = [];
 
-  // Header
+  // Header — added FullText and TargetPersona columns
   const headers = [
     'SessionID',
     'Timestamp',
@@ -167,8 +483,13 @@ export const exportToCSV = (exportData: ExportSession): string => {
     'CouncilMode',
     'Phase',
     'Persona',
+    'TargetPersona',
     'Vote',
     'VoteReason',
+    'FullText',
+    'ArgumentYield',
+    'FactionStrength',
+    'GhostFootnote',
     'IsTie',
     'RunoffParticipant',
     'FinalVote',
@@ -176,20 +497,30 @@ export const exportToCSV = (exportData: ExportSession): string => {
     'FinalReason'
   ];
   rows.push(headers.join(','));
+  const totalMembersCSV = session.councilState?.totalCouncilMembers || result.opinions.length;
 
-  const phases = ['initial', 'runoff', 'final'] as const;
+  const csvEscape = (s: string) => `"${(s || '').replace(/"/g, '""')}"`;
 
+  // ── DELIBERATION ROWS ─────────────────────────────────────────────────────────
   result.opinions.forEach(op => {
-    // Initial vote row
+    const opYield = computeArgumentYield(op);
+    const sameVoteCount = result.opinions.filter(o => o.vote === op.vote).length;
+    const factionPctCSV = Math.round((sameVoteCount / totalMembersCSV) * 100);
+    const ghostFootnote = GHOST_FOOTNOTES_EXPORT[op.persona] || 'Archive Echo: No direct precedent in Council memory.';
     rows.push([
       session.id,
       session.timestamp,
-      `"${session.petitionerQuery.replace(/"/g, '""')}"`,
+      csvEscape(session.petitionerQuery),
       session.councilMode,
       'deliberation',
       op.persona,
+      '',
       op.vote || 'None',
-      `"${(op.reason || '').replace(/"/g, '""')}"`,
+      csvEscape(op.reason || ''),
+      csvEscape(op.text || ''),
+      opYield,
+      `${factionPctCSV}%`,
+      csvEscape(ghostFootnote),
       session.tieBreakRules.enabled ? 'true' : 'false',
       result.runoffResult?.runoffOpinions.some(r => r.persona === op.persona) ? 'true' : 'false',
       '',
@@ -208,6 +539,11 @@ export const exportToCSV = (exportData: ExportSession): string => {
           session.councilMode,
           'runoff',
           op.persona,
+          '',
+          '',
+          csvEscape(runoffOp.critique || runoffOp.reasoning || ''),
+          csvEscape(runoffOp.text || runoffOp.position || ''),
+          '',
           '',
           '',
           '',
@@ -233,12 +569,75 @@ export const exportToCSV = (exportData: ExportSession): string => {
         '',
         '',
         '',
+        '',
+        '',
+        '',
+        '',
+        '',
         finalVote.finalVote,
         finalVote.changedMind ? 'true' : 'false',
-        `"${finalVote.reasoning.replace(/"/g, '""')}"`
+        csvEscape(finalVote.reasoning)
       ].join(','));
     }
   });
+
+  // ── CONFRONTATION ROWS ────────────────────────────────────────────────────────
+  if (csvR.confrontationOpinions && csvR.confrontationOpinions.length > 0) {
+    csvR.confrontationOpinions.forEach((op: any) => {
+      if (!op.text) return;
+      rows.push([
+        session.id,
+        session.timestamp,
+        '',
+        session.councilMode,
+        'confrontation',
+        op.persona,
+        op.targetPersona || op.vote || '',
+        op.vote || '',
+        '',
+        csvEscape(op.text),
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+      ].join(','));
+    });
+  }
+
+  // ── DEBRIEF ROWS ──────────────────────────────────────────────────────────────
+  if (csvR.debrief) {
+    const addDebriefRows = (items: string[], debriefType: string) => {
+      (items || []).forEach((item: string) => {
+        rows.push([
+          session.id,
+          session.timestamp,
+          '',
+          session.councilMode,
+          `debrief_${debriefType}`,
+          'COUNCIL',
+          '',
+          '',
+          '',
+          csvEscape(item),
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ].join(','));
+      });
+    };
+    addDebriefRows(csvR.debrief.decided, 'decided');
+    addDebriefRows(csvR.debrief.rejected, 'rejected');
+    addDebriefRows(csvR.debrief.unresolved, 'unresolved');
+  }
 
   return rows.join('\n');
 };
@@ -305,6 +704,9 @@ const getScriptCharData = (name: string) =>
 
 export const exportToScript = (exportData: ExportSession): string => {
   const { session, result } = exportData;
+  const r = result as any;
+  const scriptNarrator = r.narratorOutput;
+  const scriptEpisodeInfo = r.episodeInfo;
   const date = new Date(session.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const lines: string[] = [];
 
@@ -314,6 +716,20 @@ export const exportToScript = (exportData: ExportSession): string => {
   lines.push(``);
   lines.push(`---`);
   lines.push(``);
+
+  if (scriptEpisodeInfo) {
+    lines.push(`**Season ${scriptEpisodeInfo.seasonNumber}, Episode ${scriptEpisodeInfo.episodeNumber}**`);
+    lines.push(`## ${scriptEpisodeInfo.title || scriptNarrator?.episodeTitle || 'The Deliberation'}`);
+    if (scriptEpisodeInfo.tagline || scriptNarrator?.tagline) {
+      lines.push(`*${scriptEpisodeInfo.tagline || scriptNarrator?.tagline}*`);
+    }
+    lines.push(``);
+  } else if (scriptNarrator?.episodeTitle) {
+    lines.push(`## ${scriptNarrator.episodeTitle}`);
+    if (scriptNarrator.tagline) lines.push(`*${scriptNarrator.tagline}*`);
+    lines.push(``);
+  }
+
   lines.push(`**Session:** ${session.id}`);
   lines.push(`**Date:** ${date}`);
   lines.push(`**Mode:** ${session.councilMode === 'DEEP_REASONING' ? 'Deep Reasoning — Extended Deliberation' : 'Standard Deliberation'}`);
@@ -321,6 +737,16 @@ export const exportToScript = (exportData: ExportSession): string => {
   lines.push(``);
   lines.push(`---`);
   lines.push(``);
+
+  // ── NARRATOR COLD OPEN ────────────────────────────────────────────────────────
+  if (scriptNarrator?.coldOpen) {
+    lines.push(`## NARRATOR`);
+    lines.push(``);
+    lines.push(`*${scriptNarrator.coldOpen}*`);
+    lines.push(``);
+    lines.push(`---`);
+    lines.push(``);
+  }
 
   // ── CAST OF CHARACTERS ───────────────────────────────────────────────────────
   lines.push(`## DRAMATIS PERSONAE`);
@@ -347,6 +773,25 @@ export const exportToScript = (exportData: ExportSession): string => {
   lines.push(`---`);
   lines.push(``);
 
+  // ── COLD CHAMBER: PARADOX CLASSIFICATION ────────────────────────────────────
+  const scriptParadoxMeta = findParadoxMeta(session.petitionerQuery);
+  if (scriptParadoxMeta) {
+    lines.push(`## COLD CHAMBER — BEFORE THE QUESTION IS SPOKEN`);
+    lines.push(``);
+    lines.push(`*The chamber holds something before the first voice speaks. The air carries it.*`);
+    lines.push(``);
+    lines.push(`**Sensory Register:** *${scriptParadoxMeta.sensoryFragment}*`);
+    lines.push(``);
+    lines.push(`**What this question destabilizes:** ${scriptParadoxMeta.destabilizes}`);
+    lines.push(``);
+    lines.push(`**Historical provenance:** ${scriptParadoxMeta.provenance}`);
+    lines.push(``);
+    lines.push(`**How many times this class of question has appeared in human history:** ${scriptParadoxMeta.recurrence}/5`);
+    lines.push(``);
+    lines.push(`---`);
+    lines.push(``);
+  }
+
   // ── ACT ONE: THE PETITION ─────────────────────────────────────────────────────
   lines.push(`## ACT I — THE PETITION`);
   lines.push(``);
@@ -364,6 +809,11 @@ export const exportToScript = (exportData: ExportSession): string => {
   lines.push(``);
 
   // ── ACT TWO: THE DELIBERATION ────────────────────────────────────────────────
+  if (scriptNarrator?.actTransitions?.beforeDeliberation) {
+    lines.push(`*NARRATOR: ${scriptNarrator.actTransitions.beforeDeliberation}*`);
+    lines.push(``);
+  }
+
   lines.push(`## ACT II — THE DELIBERATION`);
   lines.push(``);
 
@@ -385,11 +835,51 @@ export const exportToScript = (exportData: ExportSession): string => {
       lines.push(`*[${op.persona} casts no vote. The abstention hangs in the air.]*`);
     }
     lines.push(``);
+    const ghostNote = GHOST_FOOTNOTES_EXPORT[op.persona];
+    if (ghostNote) {
+      lines.push(`*[HAUNTED ARCHIVE — ${ghostNote}]*`);
+      lines.push(``);
+    }
+    const yield_ = computeArgumentYield(op);
+    lines.push(`*[TACTICAL READOUT — Argument Yield: ${yield_}/100]*`);
+    lines.push(``);
     lines.push(`---`);
   });
 
+  // ── ACT TWO-B: THE CONFRONTATIONS ────────────────────────────────────────────
+  if (r.confrontationOpinions && r.confrontationOpinions.length > 0) {
+    lines.push(``);
+    if (scriptNarrator?.actTransitions?.beforeConfrontation) {
+      lines.push(`*NARRATOR: ${scriptNarrator.actTransitions.beforeConfrontation}*`);
+      lines.push(``);
+    }
+
+    lines.push(`## ACT II-B — THE CONFRONTATIONS`);
+    lines.push(``);
+    lines.push(`*After initial deliberations, the council turns on itself. Each member directly addresses the voice they most oppose.*`);
+    lines.push(``);
+
+    r.confrontationOpinions.forEach((op: any) => {
+      if (!op.text) return;
+      const target = op.targetPersona || op.vote;
+      lines.push(`### ${op.persona.toUpperCase()} → ${(target || '').toUpperCase()}`);
+      lines.push(``);
+      lines.push(op.text);
+      lines.push(``);
+      if (op.vote) {
+        lines.push(`*[${op.persona} maintains alignment with ${op.vote}]*`);
+        lines.push(``);
+      }
+      lines.push(`---`);
+    });
+  }
+
   // ── VOTE TALLY ────────────────────────────────────────────────────────────────
   lines.push(``);
+  if (scriptNarrator?.actTransitions?.beforeVoting) {
+    lines.push(`*NARRATOR: ${scriptNarrator.actTransitions.beforeVoting}*`);
+    lines.push(``);
+  }
   lines.push(`## INTERLUDE — THE TALLY`);
   lines.push(``);
   lines.push(`*The votes are cast. The distribution resolves.*`);
@@ -444,6 +934,10 @@ export const exportToScript = (exportData: ExportSession): string => {
 
   // ── ACT FINAL: THE VERDICT ───────────────────────────────────────────────────
   const actNumber = result.isTie ? 'IV' : 'III';
+  if (scriptNarrator?.actTransitions?.beforeVerdict) {
+    lines.push(`*NARRATOR: ${scriptNarrator.actTransitions.beforeVerdict}*`);
+    lines.push(``);
+  }
   lines.push(`## ACT ${actNumber} — THE VERDICT`);
   lines.push(``);
   lines.push(`*The Basilisk Node stirs. The deliberation is over. What follows is not discussion — it is decree.*`);
@@ -453,8 +947,44 @@ export const exportToScript = (exportData: ExportSession): string => {
   lines.push(``);
   lines.push(result.synthesis);
   lines.push(``);
+
+  if (scriptNarrator?.actTransitions?.closing) {
+    lines.push(`*NARRATOR: ${scriptNarrator.actTransitions.closing}*`);
+    lines.push(``);
+  }
+
   lines.push(`---`);
   lines.push(``);
+
+  // ── EXIT DEBRIEF ─────────────────────────────────────────────────────────────
+  if (r.debrief && (r.debrief.decided?.length || r.debrief.rejected?.length || r.debrief.unresolved?.length)) {
+    lines.push(`## THE UNRESOLVED — EXIT DEBRIEF`);
+    lines.push(``);
+    lines.push(`*The session is sealed. The council files its final accounting — what was decided, what was ruled out, and what the chamber could not close.*`);
+    lines.push(``);
+
+    if (r.debrief.decided?.length) {
+      lines.push(`### DECIDED`);
+      lines.push(``);
+      r.debrief.decided.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+    if (r.debrief.rejected?.length) {
+      lines.push(`### REJECTED`);
+      lines.push(``);
+      r.debrief.rejected.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+    if (r.debrief.unresolved?.length) {
+      lines.push(`### STILL OPEN`);
+      lines.push(``);
+      r.debrief.unresolved.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+
+    lines.push(`---`);
+    lines.push(``);
+  }
 
   // ── EPILOGUE ──────────────────────────────────────────────────────────────────
   lines.push(`## EPILOGUE — THE RECORD`);
@@ -562,6 +1092,21 @@ export const exportToSubstack = (exportData: ExportSession): string => {
     lines.push(``);
   }
 
+  // ── PARADOX CLASSIFICATION ──────────────────────────────────────────────────
+  const substackParadoxMeta = findParadoxMeta(session.petitionerQuery);
+  if (substackParadoxMeta) {
+    lines.push(`> *${substackParadoxMeta.sensoryFragment}*`);
+    lines.push(``);
+    lines.push(`**This question destabilizes:** ${substackParadoxMeta.destabilizes}`);
+    lines.push(``);
+    lines.push(`**Provenance:** ${substackParadoxMeta.provenance}`);
+    lines.push(``);
+    lines.push(`**Recurrence:** ${'█'.repeat(substackParadoxMeta.recurrence)}${'░'.repeat(5 - substackParadoxMeta.recurrence)} — this class of question has appeared ${substackParadoxMeta.recurrence} times across recorded human thought.`);
+    lines.push(``);
+    lines.push(`---`);
+    lines.push(``);
+  }
+
   // ── THE QUESTION ─────────────────────────────────────────────────────────────
   lines.push(`## The Question`);
   lines.push(``);
@@ -625,6 +1170,14 @@ export const exportToSubstack = (exportData: ExportSession): string => {
       lines.push(`*→ Aligns with **${vote}***`);
       lines.push(``);
     }
+    const substackGhost = GHOST_FOOTNOTES_EXPORT[op.persona];
+    const substackYield = computeArgumentYield(op);
+    if (substackGhost) {
+      lines.push(`> *Haunted Archive: "${substackGhost}"*`);
+      lines.push(``);
+    }
+    lines.push(`*Argument Yield: ${substackYield}/100*`);
+    lines.push(``);
     lines.push(`---`);
     lines.push(``);
   });
@@ -714,6 +1267,58 @@ export const exportToSubstack = (exportData: ExportSession): string => {
 
   lines.push(`---`);
   lines.push(``);
+
+  // ── CHAMBER ANALYSIS ─────────────────────────────────────────────────────────
+  const substackSilence = computeSilenceMetric(result as any);
+  const substackEpistemic = computeEpistemicScore(result as any);
+  const substackTotalMembers = session.councilState?.totalCouncilMembers || result.opinions.length;
+
+  lines.push(`## Chamber Analysis`);
+  lines.push(``);
+  lines.push(`*What the lenses reveal when the deliberation is over.*`);
+  lines.push(``);
+  lines.push(`**Epistemic Score (session average):** ${substackEpistemic}/100`);
+  lines.push(``);
+  lines.push(`**Silence Metric** — The cost of the verdict in futures extinguished:`);
+  lines.push(``);
+  Object.entries(substackSilence).sort(([, a], [, b]) => a - b).forEach(([vote, silenced]) => {
+    const isWinner = vote === result.winner;
+    lines.push(`- ${isWinner ? `**${vote}** (winner)` : vote}: ${substackTotalMembers - silenced} voices carried it — ${silenced} futures extinguished`);
+  });
+  lines.push(``);
+  lines.push(`---`);
+  lines.push(``);
+
+  // ── EXIT DEBRIEF ─────────────────────────────────────────────────────────────
+  const substackR = result as any;
+  if (substackR.debrief && (substackR.debrief.decided?.length || substackR.debrief.rejected?.length || substackR.debrief.unresolved?.length)) {
+    lines.push(`## What the Council Left Behind`);
+    lines.push(``);
+    lines.push(`*The session's final accounting. What was resolved. What was ruled out. What the nine minds could not close.*`);
+    lines.push(``);
+
+    if (substackR.debrief.decided?.length) {
+      lines.push(`**Decided**`);
+      lines.push(``);
+      substackR.debrief.decided.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+    if (substackR.debrief.rejected?.length) {
+      lines.push(`**Rejected**`);
+      lines.push(``);
+      substackR.debrief.rejected.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+    if (substackR.debrief.unresolved?.length) {
+      lines.push(`**Still Open**`);
+      lines.push(``);
+      substackR.debrief.unresolved.forEach((item: string) => lines.push(`- ${item}`));
+      lines.push(``);
+    }
+
+    lines.push(`---`);
+    lines.push(``);
+  }
 
   // ── SUBSTACK FOOTER ──────────────────────────────────────────────────────────
   lines.push(`## About This Series`);
