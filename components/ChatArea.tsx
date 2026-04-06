@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Play, Menu, Square, ThumbsUp, Lock, Users, Gavel, Sword, BrainCircuit, Volume2, Scale, Scroll, AlertTriangle, Eye, Crown, Globe, Mic, Zap, Sparkles, Activity, Aperture, Cpu, TrendingUp, Palette, Copy, Check, ChevronUp, ChevronDown, BarChart3, Search, Download, Share2, FileText, BarChart2, Newspaper, BookOpen, Trophy, Flame, Swords, Image as ImageIcon, X as XIcon, ChevronRight } from 'lucide-react';
 import { CouncilMode, ChatMessage, CouncilResult, CouncilOpinion } from '../types';
-import { runCouncil, generateSpeech, LiveClient, generateNextMoves, getCurrentCouncil, generateImage, PERSONALITIES } from '../services/geminiService';
+import { runCouncil, generateSpeech, LiveClient, generateNextMoves, getCurrentCouncil, generateImage, PERSONALITIES, DeliberationEvent } from '../services/geminiService';
 import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, calculateTraceSize, exportAllAsZip } from '../services/exportService';
 import { loadSeasons, getLeaderboard, loadAllMemory, clearAllMemory, getEpisodeCounter } from '../services/councilMemoryService';
 import { performWebSearch } from '../services/searchService';
@@ -2278,6 +2278,252 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
   );
 };
 
+// --- LIVE DELIBERATION TYPES ---
+
+interface LiveAnalysis {
+  persona: string
+  model: string
+  text: string
+  status: 'pending' | 'thinking' | 'complete' | 'failed'
+}
+
+interface LiveVote {
+  voter: string
+  votedFor: string
+  reason: string
+  scores: Array<{ target: string; score: number; notes: string }>
+  status: 'pending' | 'reading' | 'voted'
+}
+
+interface LiveDelibState {
+  phase: 'idle' | 'analysis' | 'voting' | 'synthesis' | 'complete'
+  analyses: LiveAnalysis[]
+  votes: LiveVote[]
+  synthesis: string
+  winner: string
+}
+
+// --- LIVE DELIBERATION FEED COMPONENT ---
+
+const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof PERSONALITIES }> = ({ state, personas }) => {
+  const phaseLabels: Record<LiveDelibState['phase'], string> = {
+    idle: '',
+    analysis: 'PHASE I — INDEPENDENT ANALYSIS',
+    voting: 'PHASE II — CROSS-EXAMINATION & VOTING',
+    synthesis: 'PHASE III — CHAIRMAN SYNTHESIS',
+    complete: 'DELIBERATION COMPLETE',
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 7) return 'text-emerald-400 bg-emerald-900/30 border-emerald-700/50';
+    if (score >= 4) return 'text-amber-400 bg-amber-900/30 border-amber-700/50';
+    return 'text-red-400 bg-red-900/30 border-red-700/50';
+  };
+
+  return (
+    <div className="w-full max-w-6xl mx-auto my-4 rounded-2xl border border-slate-700/60 bg-slate-950/90 backdrop-blur overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-slate-800/60 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">Live Feed</span>
+        </div>
+        <div className="h-px flex-1 bg-gradient-to-r from-emerald-700/30 to-transparent" />
+        <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-[0.25em]">
+          {phaseLabels[state.phase]}
+        </span>
+      </div>
+
+      <div className="p-4 md:p-6 space-y-6">
+
+        {/* Phase I: Analysis Cards */}
+        {(state.phase === 'analysis' || state.phase === 'voting' || state.phase === 'synthesis' || state.phase === 'complete') && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-6 bg-amber-500/60" />
+              <span className="text-[9px] font-black text-amber-500/80 uppercase tracking-[0.35em]">I — Independent Analysis</span>
+              <div className="h-px flex-1 bg-amber-500/20" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <AnimatePresence>
+                {state.analyses.map((analysis) => {
+                  const config = getPersonaConfig(analysis.persona);
+                  return (
+                    <motion.div
+                      key={analysis.persona}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className={`rounded-xl border p-3 transition-all duration-500 ${
+                        analysis.status === 'thinking'
+                          ? 'border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
+                          : analysis.status === 'complete'
+                          ? 'border-slate-700/50 bg-slate-900/50'
+                          : 'border-slate-800/40 bg-slate-900/30 opacity-50'
+                      }`}
+                    >
+                      {/* Member header */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`p-1 rounded-lg bg-slate-800/80 ${config.color}`}>
+                          {config.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-cinzel font-bold truncate ${config.color}`}>{analysis.persona}</div>
+                          <div className="text-[9px] text-slate-600 font-mono truncate">{analysis.model.split('/').pop()}</div>
+                        </div>
+                        {analysis.status === 'thinking' && (
+                          <div className="flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        )}
+                        {analysis.status === 'complete' && (
+                          <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                        )}
+                        {analysis.status === 'pending' && (
+                          <div className="w-2 h-2 rounded-full bg-slate-600" />
+                        )}
+                      </div>
+
+                      {/* Status / text */}
+                      {analysis.status === 'thinking' && (
+                        <p className="text-[10px] text-emerald-400/70 italic">Analyzing...</p>
+                      )}
+                      {analysis.status === 'complete' && analysis.text && (
+                        <div className="overflow-y-auto max-h-[120px] custom-scrollbar">
+                          <p className="text-[10px] text-slate-400 leading-relaxed">{analysis.text.substring(0, 400)}{analysis.text.length > 400 ? '…' : ''}</p>
+                        </div>
+                      )}
+                      {analysis.status === 'pending' && (
+                        <p className="text-[10px] text-slate-600 italic">Standing by…</p>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Phase II: Voting Matrix */}
+        {(state.phase === 'voting' || state.phase === 'synthesis' || state.phase === 'complete') && state.votes.length > 0 && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-6 bg-emerald-500/60" />
+              <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-[0.35em]">II — Cross-Examination & Voting</span>
+              <div className="h-px flex-1 bg-emerald-500/20" />
+            </div>
+            <div className="space-y-2">
+              <AnimatePresence>
+                {state.votes.map((vote) => {
+                  const voterConfig = getPersonaConfig(vote.voter);
+                  const targetConfig = vote.votedFor && vote.votedFor !== 'None' ? getPersonaConfig(vote.votedFor) : null;
+                  return (
+                    <motion.div
+                      key={vote.voter}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className={`rounded-xl border px-4 py-3 transition-all duration-500 ${
+                        vote.status === 'reading'
+                          ? 'border-cyan-500/30 bg-cyan-950/10'
+                          : 'border-slate-800/50 bg-slate-900/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {/* Voter */}
+                        <div className="flex items-center gap-1.5">
+                          <div className={`p-1 rounded-md bg-slate-800 ${voterConfig.color}`}>{voterConfig.icon}</div>
+                          <span className={`text-[11px] font-cinzel font-bold ${voterConfig.color}`}>{vote.voter}</span>
+                        </div>
+
+                        {/* Arrow */}
+                        <ChevronRight size={12} className="text-slate-600 shrink-0" />
+
+                        {/* Status / Target */}
+                        {vote.status === 'reading' ? (
+                          <span className="text-[10px] text-cyan-400/70 italic flex items-center gap-1">
+                            <Loader2 size={10} className="animate-spin" /> Reading peers…
+                          </span>
+                        ) : vote.votedFor && vote.votedFor !== 'None' && targetConfig ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className={`p-1 rounded-md bg-slate-800 ${targetConfig.color}`}>{targetConfig.icon}</div>
+                            <span className={`text-[11px] font-cinzel font-bold ${targetConfig.color}`}>{vote.votedFor}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 italic">Abstained</span>
+                        )}
+
+                        {/* Score chips */}
+                        {vote.status === 'voted' && vote.scores && vote.scores.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap ml-auto">
+                            {vote.scores.slice(0, 4).map((s) => (
+                              <span
+                                key={s.target}
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded border font-mono ${getScoreColor(s.score)}`}
+                                title={`${s.target}: ${s.notes}`}
+                              >
+                                {s.target.slice(0, 3)} {s.score}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Reason */}
+                      {vote.status === 'voted' && vote.reason && (
+                        <p className="text-[10px] text-slate-500 mt-2 italic leading-relaxed line-clamp-2">"{vote.reason}"</p>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Phase III: Chairman Synthesis */}
+        {(state.phase === 'synthesis' || state.phase === 'complete') && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-6 bg-purple-500/60" />
+              <span className="text-[9px] font-black text-purple-500/80 uppercase tracking-[0.35em]">III — Chairman Synthesis</span>
+              <div className="h-px flex-1 bg-purple-500/20" />
+            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="rounded-xl border border-purple-700/30 bg-purple-950/10 p-4"
+            >
+              {state.phase === 'synthesis' && !state.synthesis && (
+                <div className="flex items-center gap-2 text-purple-400/70">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span className="text-[11px] italic">The Chairman is synthesizing the verdict…</span>
+                </div>
+              )}
+              {state.synthesis && (
+                <>
+                  {state.winner && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <Crown size={14} className="text-amber-400" />
+                      <span className="text-xs font-cinzel font-bold text-amber-400 uppercase tracking-widest">{state.winner} — Victorious Vector</span>
+                    </div>
+                  )}
+                  <div className="overflow-y-auto max-h-[180px] custom-scrollbar">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">{state.synthesis.substring(0, 800)}{state.synthesis.length > 800 ? '…' : ''}</p>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN COMPONENT ---
 
 const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMessages, onClearInitial, onToggleSidebar }) => {
@@ -2310,6 +2556,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
 
   // Track active council members dynamically
   const [councilMembers, setCouncilMembers] = useState(getCurrentCouncil());
+
+  // Live deliberation feed state
+  const [deliberationLive, setDeliberationLive] = useState<LiveDelibState | null>(null);
 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -2597,6 +2846,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
     onUpdateMessages(newMessages);
     setInput('');
     setSuggestedMoves([]);
+    setDeliberationLive(null); // Reset live feed for new session
     setIsLoading(true);
 
     try {
@@ -2605,7 +2855,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
       onUpdateMessages([...newMessages, placeholderMsg]);
 
       let councilResult;
-      
+
       if (isDevMode) {
         // DEV MODE: Use mock data instead of calling LLM
         console.log("🛠️ DEV MODE ACTIVE: Bypassing LLMs, injecting mock data...");
@@ -2613,8 +2863,56 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
         const { MOCK_COUNCIL_RESULT } = await import('../services/mockSessionData');
         councilResult = MOCK_COUNCIL_RESULT;
       } else {
-        // LIVE MODE: Call actual LLM
-        councilResult = await runCouncil(pendingQuery, councilMode);
+        // LIVE MODE: Initialize deliberation state and call actual LLM with progress callbacks
+        setDeliberationLive({
+          phase: 'analysis',
+          analyses: PERSONALITIES.map(p => ({ persona: p.name, model: p.model, text: '', status: 'pending' as const })),
+          votes: [],
+          synthesis: '',
+          winner: ''
+        });
+
+        councilResult = await runCouncil(pendingQuery, councilMode, (event: DeliberationEvent) => {
+          setDeliberationLive(prev => {
+            if (!prev) return prev;
+            switch (event.type) {
+              case 'analysis_start':
+                return { ...prev, analyses: prev.analyses.map(a =>
+                  a.persona === event.persona ? { ...a, status: 'thinking' as const } : a
+                )};
+              case 'analysis_complete':
+                return { ...prev, analyses: prev.analyses.map(a =>
+                  a.persona === event.persona ? { ...a, text: event.text || '', status: 'complete' as const } : a
+                )};
+              case 'vote_start':
+                return {
+                  ...prev,
+                  phase: 'voting' as const,
+                  votes: prev.votes.find(v => v.voter === event.persona) ? prev.votes :
+                    [...prev.votes, { voter: event.persona!, votedFor: '', reason: '', scores: [], status: 'reading' as const }]
+                };
+              case 'vote_complete':
+                return {
+                  ...prev,
+                  votes: prev.votes.find(v => v.voter === event.persona)
+                    ? prev.votes.map(v => v.voter === event.persona
+                        ? { ...v, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const }
+                        : v
+                      )
+                    : [...prev.votes, { voter: event.persona!, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const }]
+                };
+              case 'synthesis_start':
+                return { ...prev, phase: 'synthesis' as const };
+              case 'synthesis_complete':
+                return { ...prev, phase: 'complete' as const, synthesis: event.text || '' };
+              default:
+                return prev;
+            }
+          });
+        });
+
+        // After result: set winner and mark complete
+        setDeliberationLive(prev => prev ? { ...prev, winner: councilResult.winner, phase: 'complete' as const } : null);
       }
       
       setCouncilMembers([...getCurrentCouncil()]);
@@ -3345,6 +3643,20 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                 </div>
              </div>
           ))}
+          {/* Live Deliberation Feed */}
+          <AnimatePresence>
+            {deliberationLive && deliberationLive.phase !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                className="w-full"
+              >
+                <LiveDeliberationFeed state={deliberationLive} personas={PERSONALITIES} />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
        </div>
 

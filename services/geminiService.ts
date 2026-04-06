@@ -1,5 +1,17 @@
 import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage } from "../types";
 
+// --- DELIBERATION EVENT TYPE ---
+
+export interface DeliberationEvent {
+  type: 'analysis_start' | 'analysis_complete' | 'vote_start' | 'vote_complete' | 'synthesis_start' | 'synthesis_complete'
+  persona?: string
+  model?: string
+  text?: string
+  votedFor?: string
+  reason?: string
+  scores?: Array<{ target: string; score: number; notes: string }>
+}
+
 // --- OPENROUTER HELPER (via Vercel serverless proxy) ---
 
 export const callOpenRouter = async (model: string, prompt: string, temp: number = 0.7, jsonMode: boolean = false): Promise<string> => {
@@ -267,7 +279,7 @@ const generateNewArchetype = async (): Promise<any> => {
    }
 };
 
-export const runCouncil = async (message: string, mode: CouncilMode): Promise<CouncilResult> => {
+export const runCouncil = async (message: string, mode: CouncilMode, onProgress?: (event: DeliberationEvent) => void): Promise<CouncilResult> => {
   const isDeep = mode === CouncilMode.DEEP_REASONING;
 
   // Batch processor to avoid rate limits when hitting Gemini fallback repeatedly
@@ -283,9 +295,10 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
 
   // Phase 1: High-Dimensional Deliberation
   const opinionFn = async (persona: any) => {
+    onProgress?.({ type: 'analysis_start', persona: persona.name, model: persona.model });
     try {
       const dimensionString = persona.dimensions.join(", ");
-      
+
       const analysisPrompt = `
         You are ${persona.name}.
         Your Cognitive Dimensions are: [${dimensionString}].
@@ -295,15 +308,15 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
 
         ${isDeep ? "CRITICAL INSTRUCTION: Perform a deep-dive analysis. Consider second and third-order effects. Be extremely rigorous." : "Instruction: Provide a concise but sharp analysis."}
 
-        Step 1: Perform a high-dimensional analysis. 
-        - Evaluate the query against your dimensions. 
+        Step 1: Perform a high-dimensional analysis.
+        - Evaluate the query against your dimensions.
         - Calculate a 'mental score' for potential answers based on your strategy.
-        
+
         Step 2: Formulate your opinion.
         - Start with a strong hook reflecting your archetype.
         - Provide a reasoned argument derived *strictly* from your dimensions.
         - Be concise but intellectually rigorous.
-        
+
         If you cannot answer due to safety or ethical constraints, output exactly: "Abstained."
       `;
 
@@ -315,7 +328,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
           console.warn(`NVIDIA failed for ${persona.name} (${persona.model}). Falling back to OpenRouter.`);
           // Handled by text check below
       }
-      
+
        if (!text) {
            // Fallback to OpenRouter instead of Gemini
            try {
@@ -326,12 +339,13 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
            }
         }
 
-      return {
-        persona: persona.name,
-        text: text || "Analysis failed due to cognitive dissonance."
-      };
+      const result = { persona: persona.name, text: text || "Analysis failed due to cognitive dissonance." };
+      onProgress?.({ type: 'analysis_complete', persona: persona.name, text: result.text });
+      return result;
     } catch {
-      return { persona: persona.name, text: "Abstained." };
+      const result = { persona: persona.name, text: "Abstained." };
+      onProgress?.({ type: 'analysis_complete', persona: persona.name, text: result.text });
+      return result;
     }
   };
 
@@ -364,41 +378,46 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
   }
 
   const voteFn = async (persona: any) => {
+    onProgress?.({ type: 'vote_start', persona: persona.name });
     // Check if this persona actually has a valid opinion to vote WITH.
     const hasOpinion = validOpinions.find(o => o.persona === persona.name);
-    if (!hasOpinion) return { voter: persona.name, votedFor: "None", reason: "Abstained from voting." };
+    if (!hasOpinion) {
+      onProgress?.({ type: 'vote_complete', persona: persona.name, votedFor: "None", reason: "Abstained from voting.", scores: [] });
+      return { voter: persona.name, votedFor: "None", reason: "Abstained from voting." };
+    }
 
     const peers = validOpinions.filter(p => p.persona !== persona.name);
 
     if (peers.length === 0) {
-        return { voter: persona.name, votedFor: "None", reason: "No valid peer vectors found." };
+      onProgress?.({ type: 'vote_complete', persona: persona.name, votedFor: "None", reason: "No valid peer vectors found.", scores: [] });
+      return { voter: persona.name, votedFor: "None", reason: "No valid peer vectors found." };
     }
 
     const dimensionString = persona.dimensions.join(", ");
 
     const votingPrompt = `
-      You are ${persona.name}. 
+      You are ${persona.name}.
       Your Cognitive Dimensions are: [${dimensionString}].
       Your Core Strategy is: "${persona.strategy}"
 
       We are debating the query: "${message}".
-      
+
       *** PHASE 1: VECTOR ANALYSIS ***
       For every peer argument below, you MUST perform a compatibility check against YOUR specific dimensions.
-      
+
       Peers:
       ${peers.map((op) => `[Agent: ${op.persona}]
       Argument: "${op.text.replace(/"/g, "'").substring(0, 1000)}..."`).join('\n\n')}
-      
+
       Analysis Criteria:
       1. Does their solution maximize your dimensions?
       2. Is their solution feasible according to your worldview?
       3. Calculate an alignment score (0-10) for each peer.
-      
+
       *** PHASE 2: THE VOTE ***
       Cast your vote for the peer with the highest alignment score.
       If all scores are below 5, vote "None".
-      
+
       Return strictly JSON:
       {
         "analysis": [
@@ -408,10 +427,10 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
         "reason": "Why this vector won based on your dimensions."
       }
     `;
-    
+
     try {
       let voteData: any = {};
-      
+
       try {
          // Try NVIDIA first with JSON mode
          const rawText = await callNvidia(persona.model, votingPrompt, 0.2, true);
@@ -425,11 +444,13 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       }
 
       const votedFor = voteData.vote || "None";
-      return {
+      const result = {
         voter: persona.name,
         votedFor: votedFor === persona.name ? "None" : votedFor,
         reason: voteData.reason || "Insufficient data for consensus."
       };
+      onProgress?.({ type: 'vote_complete', persona: persona.name, votedFor: result.votedFor, reason: result.reason, scores: voteData.analysis || [] });
+      return result;
 
       } catch (e) {
          // Fallback to OpenRouter for voting if NVIDIA fails
@@ -439,12 +460,15 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
            const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
            const voteData = JSON.parse(cleanJson || "{}");
            const votedFor = voteData.vote || "None";
-           return {
+           const result = {
               voter: persona.name,
               votedFor: votedFor === persona.name ? "None" : votedFor,
               reason: voteData.reason || "Insufficient data for consensus."
            };
+           onProgress?.({ type: 'vote_complete', persona: persona.name, votedFor: result.votedFor, reason: result.reason, scores: voteData.analysis || [] });
+           return result;
          } catch (err) {
+           onProgress?.({ type: 'vote_complete', persona: persona.name, votedFor: "None", reason: "Vector analysis failed.", scores: [] });
            return { voter: persona.name, votedFor: "None", reason: "Vector analysis failed." };
          }
       }
@@ -494,6 +518,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
     3. Adopt a tone of finality and supreme logic.
   `;
 
+   onProgress?.({ type: 'synthesis_start' });
    let synthesis = `The Council has converged on **${winner}**.`;
    try {
       synthesis = await callNvidia('deepseek-ai/deepseek-v3.2', chairmanPrompt, 0.7);
@@ -501,6 +526,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
        console.error("Chairman synthesis failed, using fallback:", e);
        synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
    }
+   onProgress?.({ type: 'synthesis_complete', text: synthesis });
 
   // Phase 4: Tie Detection & Runoff Trial
   const maxVotes = Math.max(...Object.values(tally), 0);
