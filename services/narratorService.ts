@@ -42,7 +42,7 @@ export const generateNarration = async (
     }
     
     if (!responseText && process.env.VITE_NVIDIA_API_KEY) {
-      responseText = await callNvidia("meta/llama-3.3-70b-instruct", prompt, 0.92, true);
+      responseText = await callNvidia("nvidia/deepseek-v3.2", prompt, 0.92, true);
     }
     
     if (!responseText) {

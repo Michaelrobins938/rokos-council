@@ -1,56 +1,54 @@
-export const config = {
-  runtime: 'edge',
-};
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(request: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
   const keys = [
     process.env.NVIDIA_API_KEY,
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-  ].filter((k): k is string => Boolean(k) && k.startsWith('nvapi-'));
-  
+  ].filter((k): k is string => typeof k === 'string' && k.trim().startsWith('nvapi-'));
+
+  console.log(`[nvidia] keys found: ${keys.length}`);
+
   if (keys.length === 0) {
-    return new Response(JSON.stringify({ error: "No NVIDIA keys" }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    return res.status(500).json({ error: 'No NVIDIA keys configured' });
   }
-  
-  const apiKey = keys[0];
+
+  const apiKey = keys[0].trim();
+  const body = req.body;
+
+  console.log(`[nvidia] calling model: ${body?.model}`);
 
   try {
-    const body = await request.json();
-
-    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-      method: "POST",
+    const upstream = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
-    const responseText = await response.text();
-    
-    // Try to parse as JSON, otherwise return raw text
+    const text = await upstream.text();
+    console.log(`[nvidia] upstream status: ${upstream.status}, body: ${text.slice(0, 200)}`);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.status(upstream.status);
+
     try {
-      const data = JSON.parse(responseText);
-      return new Response(JSON.stringify(data), {
-        status: response.status,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return res.json(JSON.parse(text));
     } catch {
-      // Return as plain text if not JSON
-      return new Response(responseText, {
-        status: response.status,
-        headers: { 'Content-Type': 'text/plain' }
-      });
+      return res.send(text);
     }
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: `NVIDIA proxy error: ${error.message}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+  } catch (err: any) {
+    console.error(`[nvidia] fetch error: ${err.message}`);
+    return res.status(500).json({ error: err.message });
   }
 }
