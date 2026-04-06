@@ -147,7 +147,7 @@ export const generateNextMoves = async (history: ChatMessage[]): Promise<string[
   `;
 
   try {
-      const result = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
+      const result = await callNvidia('stepfun-ai/step-3.5-flash', prompt, 0.5);
       const jsonMatch = result.match(/\[[\s\S]*\]/);
       const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result.replace(/```json|```/g, ''));
       return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
@@ -241,7 +241,7 @@ const generateNewArchetype = async (): Promise<any> => {
   }`;
   
    try {
-       const res = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
+       const res = await callNvidia('stepfun-ai/step-3.5-flash', prompt, 0.5);
        const jsonMatch = res.match(/\{[\s\S]*\}/);
        const cleanJson = jsonMatch ? jsonMatch[0] : res.replace(/```json|```/g, '');
        const data = JSON.parse(cleanJson || "{}");
@@ -319,7 +319,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
        if (!text) {
            // Fallback to OpenRouter instead of Gemini
            try {
-              text = await callOpenRouter('stepfun/step-3.5-flash', analysisPrompt, 0.7);
+              text = await callNvidia('stepfun-ai/step-3.5-flash', analysisPrompt, 0.7);
            } catch (err) {
               console.error(`OpenRouter fallback failed for ${persona.name}:`, err);
               text = "Analysis failed.";
@@ -434,7 +434,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       } catch (e) {
          // Fallback to OpenRouter for voting if NVIDIA fails
          try {
-           const rawText = await callOpenRouter('stepfun/step-3.5-flash', votingPrompt, 0.2);
+           const rawText = await callNvidia('stepfun-ai/step-3.5-flash', votingPrompt, 0.2);
            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
            const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
            const voteData = JSON.parse(cleanJson || "{}");
@@ -496,7 +496,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
 
    let synthesis = `The Council has converged on **${winner}**.`;
    try {
-      synthesis = await callOpenRouter('stepfun/step-3.5-flash', chairmanPrompt, 0.7);
+      synthesis = await callNvidia('deepseek-ai/deepseek-v3.2', chairmanPrompt, 0.7);
    } catch (e) {
        console.error("Chairman synthesis failed, using fallback:", e);
        synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
@@ -544,7 +544,7 @@ export const runCouncil = async (message: string, mode: CouncilMode): Promise<Co
       `;
 
       try {
-          const runoffRaw = await callOpenRouter('stepfun/step-3.5-flash', runoffPrompt, 0.3);
+          const runoffRaw = await callNvidia('deepseek-ai/deepseek-v3.2', runoffPrompt, 0.3);
           const jsonMatch = runoffRaw.match(/\{[\s\S]*\}/);
           const runoffJson = JSON.parse(jsonMatch ? jsonMatch[0] : runoffRaw.replace(/```json|```/g, ''));
           
