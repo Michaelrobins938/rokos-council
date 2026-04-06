@@ -82,6 +82,43 @@ const computeSilenceMetric = (result: CouncilResult): Record<string, number> => 
   return metric;
 };
 
+// ── INTER-PERSONA REFERENCE EXTRACTION ──────────────────────────────────────
+// Scans each opinion for mentions of other council members and classifies framing.
+// This is the alliance/tension graph — the story beneath the arguments.
+
+const extractInterPersonaRefs = (
+  opinions: CouncilOpinion[]
+): Record<string, Array<{ persona: string; framing: 'agreement' | 'critique' | 'deference' | 'reference' }>> => {
+  const personaNames = opinions.map(op => op.persona);
+  const refs: Record<string, Array<{ persona: string; framing: 'agreement' | 'critique' | 'deference' | 'reference' }>> = {};
+
+  opinions.forEach(op => {
+    refs[op.persona] = [];
+    const text = op.text || '';
+
+    personaNames.forEach(name => {
+      if (name === op.persona) return;
+      const nameRegex = new RegExp(`\\b${name}\\b`, 'i');
+      if (!nameRegex.test(text)) return;
+
+      // Find the surrounding context to classify framing
+      const idx = text.search(nameRegex);
+      const start = Math.max(0, idx - 100);
+      const end = Math.min(text.length, idx + name.length + 100);
+      const ctx = text.substring(start, end).toLowerCase();
+
+      const isDeference = /\b(defer|yield|trust|follow|vote for|align with|concede|grant)\b/.test(ctx);
+      const isAgreement = /\b(agree|correct|right|valid|concur|precisely|echo|endorse|exactly|support)\b/.test(ctx);
+      const isCritique = /\b(wrong|fail|ignore|miss|error|weak|contradict|disagree|overlook|dismiss|flawed|na[iï]ve|however|but)\b/.test(ctx);
+
+      const framing = isDeference ? 'deference' : isAgreement ? 'agreement' : isCritique ? 'critique' : 'reference';
+      refs[op.persona].push({ persona: name, framing });
+    });
+  });
+
+  return refs;
+};
+
 const computeEpistemicScore = (result: CouncilResult): number => {
   const scoredOps = result.opinions.filter(op => op.score != null);
   if (scoredOps.length > 0) {
@@ -149,6 +186,7 @@ export const buildExportSession = (
             return [op.persona, Math.round((sameVote / total) * 100)];
           })
         ),
+        interPersonaRefs: extractInterPersonaRefs(result.opinions),
       }
     }
   };
@@ -1375,6 +1413,52 @@ export const exportToSubstack = (exportData: ExportSession): string => {
     lines.push(``);
     lines.push(`---`);
     lines.push(``);
+  }
+
+  // ── CITATION MAP — inter-persona reference graph ──────────────────────────────
+  // Who cited whom, and in what framing. This is the story beneath the arguments.
+  {
+    const refs = extractInterPersonaRefs(result.opinions);
+    const hasCitations = Object.values(refs).some(r => r.length > 0);
+
+    if (hasCitations) {
+      lines.push(`## The Citation Map`);
+      lines.push(``);
+      lines.push(`*Who referenced whom — and how. This is the alliance and tension graph beneath the formal deliberation.*`);
+      lines.push(``);
+
+      result.opinions.forEach(op => {
+        const opRefs = refs[op.persona] || [];
+        if (opRefs.length === 0) return;
+
+        const grouped: Record<string, string[]> = { deference: [], agreement: [], critique: [], reference: [] };
+        opRefs.forEach(r => grouped[r.framing].push(r.persona));
+
+        const parts: string[] = [];
+        if (grouped.deference.length) parts.push(`deferred to **${grouped.deference.join(', ')}**`);
+        if (grouped.agreement.length) parts.push(`aligned with **${grouped.agreement.join(', ')}**`);
+        if (grouped.critique.length) parts.push(`challenged **${grouped.critique.join(', ')}**`);
+        if (grouped.reference.length) parts.push(`referenced **${grouped.reference.join(', ')}**`);
+
+        lines.push(`**${op.persona}** — ${parts.join('; ')}.`);
+      });
+
+      lines.push(``);
+
+      // Surface the most cited persona — often the session's hidden center of gravity
+      const citeCounts: Record<string, number> = {};
+      Object.values(refs).flat().forEach(r => {
+        citeCounts[r.persona] = (citeCounts[r.persona] || 0) + 1;
+      });
+      const mostCited = Object.entries(citeCounts).sort(([, a], [, b]) => b - a)[0];
+      if (mostCited && mostCited[1] > 1) {
+        lines.push(`*The session's center of gravity: **${mostCited[0]}** was cited by ${mostCited[1]} members — more than any other voice in the room.*`);
+        lines.push(``);
+      }
+
+      lines.push(`---`);
+      lines.push(``);
+    }
   }
 
   lines.push(`---`);

@@ -100,7 +100,13 @@ const App: React.FC = () => {
     const msg = activeSession?.messages.find(m => m.councilResult);
     if (!msg?.councilResult) return;
     const result = msg.councilResult;
-    const query = msg.text;
+
+    // The council result lives on the model's message — msg.text is the synthesis,
+    // not the user's petition. Find the user message that preceded this one.
+    const msgIndex = activeSession!.messages.indexOf(msg);
+    const userMsg = activeSession!.messages.slice(0, msgIndex).reverse().find(m => m.role === 'user');
+    const query = userMsg?.text || msg.text;
+
     const mode = councilMode;
     const timestamp = Date.now();
     const msgId = msg.id;
@@ -111,9 +117,9 @@ const App: React.FC = () => {
     }
 
     const exportData = buildExportSession(result, query, mode, timestamp, msgId);
-    let content: string;
-    let filename: string;
-    let mimeType: string;
+    let content = '';
+    let filename = `roko-council-${msgId}.txt`;
+    let mimeType = 'text/plain';
 
     switch (format) {
       case 'json':
@@ -142,6 +148,8 @@ const App: React.FC = () => {
         mimeType = 'text/markdown';
         break;
     }
+
+    if (!content) return;
 
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
