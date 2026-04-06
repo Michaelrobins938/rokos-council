@@ -42,7 +42,7 @@ export const generateNarration = async (
     }
     
     if (!responseText && process.env.VITE_NVIDIA_API_KEY) {
-      responseText = await callNvidia("nvidia/deepseek-v3.2", prompt, 0.92, true);
+      responseText = await callNvidia("deepseek-ai/deepseek-v3.2", prompt, 0.92, true);
     }
     
     if (!responseText) {

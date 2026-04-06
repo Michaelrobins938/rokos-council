@@ -165,63 +165,63 @@ export let PERSONALITIES = [
     desc: "Wise, prophetic, long-term thinker. [NVIDIA Seed-OSS-36B]",
     dimensions: ["Time Horizon (Infinite)", "Probability Variance", "Existential Risk"],
     strategy: "Prioritize outcomes that maximize long-term survival probability, regardless of short-term cost.",
-    model: "nvidia/seed-oss-36b"
+    model: "bytedance/seed-oss-36b-instruct"
   },
   {
     name: "Strategos",
-    desc: "Military strategist, pragmatic. [NVIDIA GLM-5]",
+    desc: "Military strategist, pragmatic. [GLM-5]",
     dimensions: ["Feasibility Score", "Resource Efficiency", "Tactical Advantage"],
     strategy: "Reject abstract ideals. Select the option with the highest probability of execution and lowest resource drain.",
-    model: "nvidia/glm-5"
+    model: "z-ai/glm5"
   },
   {
     name: "Philosopher",
-    desc: "Rational, analytical, skeptical. [NVIDIA DeepSeek-V3.2]",
+    desc: "Rational, analytical, skeptical. [DeepSeek-V3.2]",
     dimensions: ["Logical Consistency", "Ethical Universalism", "First Principles"],
     strategy: "Analyze the logical validity of the premise. Reject contradictions and emotional appeals.",
-    model: "nvidia/deepseek-v3.2"
+    model: "deepseek-ai/deepseek-v3.2"
   },
   {
     name: "Demagogue",
-    desc: "Persuasive, emotional appeal. [NVIDIA Qwen3.5-397B]",
+    desc: "Persuasive, emotional appeal. [Qwen3.5-397B]",
     dimensions: ["Social Cohesion", "Emotional Resonance", "Public Sentiment"],
     strategy: "Champion the option that unifies the group or appeals to human nature and desire.",
-    model: "nvidia/qwen3.5-397b-a17b"
+    model: "qwen/qwen3.5-397b-a17b"
   },
   {
     name: "Jurist",
-    desc: "Law-focused, rule-based. [NVIDIA Devstral-2-123B]",
+    desc: "Law-focused, rule-based. [Devstral-2-123B]",
     dimensions: ["Systemic Stability", "Precedent Adherence", "Fairness Metrics"],
     strategy: "Uphold the integrity of the system. Reject chaos or arbitrary decision making.",
-    model: "nvidia/devstral-2-123b"
+    model: "mistralai/devstral-2-123b-instruct-2512"
   },
   {
     name: "Citizen",
-    desc: "People's voice, empathetic. [NVIDIA Step-3.5-Flash]",
+    desc: "People's voice, empathetic. [Step-3.5-Flash]",
     dimensions: ["Human Suffering Index", "Quality of Life", "Individual Agency"],
     strategy: "Vote for the outcome that minimizes pain and maximizes freedom for the average individual.",
-    model: "nvidia/step-3.5-flash"
+    model: "stepfun-ai/step-3.5-flash"
   },
   {
     name: "Historian",
-    desc: "Context-aware, cyclical thinker. [NVIDIA Seed-OSS-36B]",
+    desc: "Context-aware, cyclical thinker. [Seed-OSS-36B]",
     dimensions: ["Historical Parallels", "Cyclical Risk", "Cultural Preservation"],
     strategy: "Identify patterns from the past. Avoid repeating historical catastrophes.",
-    model: "nvidia/seed-oss-36b"
+    model: "bytedance/seed-oss-36b-instruct"
   },
   {
     name: "Critic",
-    desc: "Tough, contrarian. [NVIDIA DeepSeek-V3.2]",
+    desc: "Tough, contrarian. [DeepSeek-V3.2]",
     dimensions: ["Failure Mode Analysis", "Entropy Detection", "Weakness Identification"],
     strategy: "Attack the flaws in every plan. Support the option that is 'least wrong' or most wrong robust.",
-    model: "nvidia/deepseek-v3.2"
+    model: "deepseek-ai/deepseek-v3.2"
   },
   {
     name: "Technocrat",
-    desc: "Innovation-obsessed, optimization-focused. [NVIDIA Boltz-2]",
+    desc: "Innovation-obsessed, optimization-focused. [Nemotron Ultra 253B]",
     dimensions: ["Technological Velocity", "System Optimization", "Automation Potential"],
     strategy: "Accelerate progress. Solve problems through superior engineering and algorithmic efficiency.",
-    model: "nvidia/boltz-2"
+    model: "nvidia/llama-3.1-nemotron-ultra-253b-v1"
   }
 ];
 
@@ -247,12 +247,12 @@ const generateNewArchetype = async (): Promise<any> => {
        const data = JSON.parse(cleanJson || "{}");
        // Assign a random NVIDIA model to new archetypes
        const nvidiaModels = [
-           "nvidia/qwen3.5-397b-a17b",
-           "nvidia/glm-5",
-           "nvidia/step-3.5-flash",
-           "nvidia/deepseek-v3.2",
-           "nvidia/devstral-2-123b",
-           "nvidia/seed-oss-36b"
+           "qwen/qwen3.5-397b-a17b",
+           "z-ai/glm5",
+           "stepfun-ai/step-3.5-flash",
+           "deepseek-ai/deepseek-v3.2",
+           "mistralai/devstral-2-123b-instruct-2512",
+           "bytedance/seed-oss-36b-instruct"
        ];
        data.model = nvidiaModels[Math.floor(Math.random() * nvidiaModels.length)];
        return data;
@@ -262,7 +262,7 @@ const generateNewArchetype = async (): Promise<any> => {
            desc: "Unknown Variable", 
            dimensions: ["Chaos", "Entropy", "Void"], 
            strategy: "Disrupt existing patterns.",
-           model: "nvidia/step-3.5-flash"
+           model: "stepfun-ai/step-3.5-flash"
        };
    }
 };
