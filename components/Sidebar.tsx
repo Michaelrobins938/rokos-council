@@ -270,7 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </button>
            <div className="mt-3 text-[9px] text-center text-slate-600 font-mono">
-             Gemini & OpenRouter Connected
+             NVIDIA NIM · Active
            </div>
         </div>
       </div>

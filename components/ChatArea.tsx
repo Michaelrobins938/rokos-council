@@ -1208,7 +1208,7 @@ const RitualThreshold: React.FC<{
     );
 };
 
-const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle' }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard' }) => {
+const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle', paradoxMeta?: { category: string; sensoryFragment: string; destabilizes: string; recurrence: number; provenance: string } | null, factionSize?: number, totalMembers?: number }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard', paradoxMeta, factionSize = 1, totalMembers = 9 }) => {
     const config = getPersonaConfig(opinion.persona);
     const personaData = getCurrentCouncil().find(p => p.name === opinion.persona);
     const modelName = personaData?.model?.split('/')[1] || 'Agent';
@@ -1250,7 +1250,8 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
 
     const textLength = opinion.text?.length || 0;
     const resourceCost = textLength;
-    const strengthScore = Math.min(99, Math.floor(textLength / 12));
+    const strengthScore = opinion.score != null ? opinion.score : Math.min(99, Math.floor(textLength / 12));
+    const factionPct = Math.round((factionSize / totalMembers) * 100);
     const premises = extractPremisesLocal(opinion.text || '');
     const historicalEcho = getHistoricalEchoLocal(opinion.persona);
 
@@ -1327,21 +1328,30 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Resource Cost</div>
-                                <div className="text-red-400 font-mono text-sm">{resourceCost} bytes</div>
-                            </div>
-                            <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Strength Score</div>
+                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Argument Yield</div>
                                 <div className="flex items-center gap-2">
                                     <div className="h-2 flex-1 bg-red-900/40 rounded-full overflow-hidden">
                                         <div className="h-full bg-red-500" style={{ width: `${strengthScore}%` }} />
                                     </div>
-                                    <span className="text-red-400 font-mono text-xs">{strengthScore}</span>
+                                    <span className="text-red-400 font-mono text-xs font-bold">{strengthScore}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Faction Strength</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1.5 flex-1 bg-red-900/40 rounded-full overflow-hidden">
+                                        <div className="h-full bg-orange-500/80" style={{ width: `${factionPct}%` }} />
+                                    </div>
+                                    <span className="text-orange-400 font-mono text-xs">{factionPct}%</span>
                                 </div>
                             </div>
                             <div>
                                 <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Target Vector</div>
                                 <div className="text-red-300 font-bold">{opinion.vote || 'None'}</div>
+                            </div>
+                            <div>
+                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Signal Length</div>
+                                <div className="text-red-400 font-mono text-sm">{resourceCost} bytes</div>
                             </div>
                         </div>
                     </div>
@@ -1364,12 +1374,35 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                         </div>
                         {textContent}
                     </div>
-                    <div className="w-full md:w-[25%] border-t md:border-t-0 md:border-l border-purple-500/30 p-5 bg-purple-950/10">
-                        <div className="flex items-center gap-2 text-[9px] font-mono uppercase mb-4">
-                            <Eye size={10} className="text-purple-400" />
-                            <span className="text-purple-400 font-bold tracking-widest">Ghost Footnote</span>
+                    <div className="w-full md:w-[25%] border-t md:border-t-0 md:border-l border-purple-500/30 p-5 bg-purple-950/10 flex flex-col gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 text-[9px] font-mono uppercase mb-2">
+                                <Eye size={10} className="text-purple-400" />
+                                <span className="text-purple-400 font-bold tracking-widest">Ghost Footnote</span>
+                            </div>
+                            <p className="text-xs italic leading-relaxed text-purple-400/70">"{historicalEcho}"</p>
                         </div>
-                        <p className="text-xs italic leading-relaxed text-purple-400/70">"{historicalEcho}"</p>
+                        {paradoxMeta && (
+                            <div className="border-t border-purple-500/20 pt-3 space-y-3">
+                                <div>
+                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Sensory Echo</div>
+                                    <p className="text-[10px] italic text-purple-300/60 leading-snug">"{paradoxMeta.sensoryFragment}"</p>
+                                </div>
+                                <div>
+                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Provenance</div>
+                                    <p className="text-[9px] text-purple-400/50 leading-snug">{paradoxMeta.provenance}</p>
+                                </div>
+                                <div>
+                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Recurrence</div>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <div key={i} className={`h-1.5 w-3 rounded-full ${i < paradoxMeta.recurrence ? 'bg-purple-500/70' : 'bg-slate-800'}`} />
+                                        ))}
+                                        <span className="text-[9px] text-purple-500/50 font-mono ml-1">{paradoxMeta.recurrence}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </motion.div>
@@ -1408,7 +1441,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
     );
 };
 
-const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle' }> = ({ result, onPlayVoice, playingId, activeLens = 'standard' }) => {
+const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle', query?: string }> = ({ result, onPlayVoice, playingId, activeLens = 'standard', query }) => {
     if (!result?.opinions || result.opinions.length === 0) {
         return (
             <div className="mt-10 bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl p-12">
@@ -1427,6 +1460,30 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
 
     // Sort factions by vote count
     const factions = Object.entries(groupedOpinions).sort((a, b) => b[1].length - a[1].length);
+
+    // Real metrics derived from council output
+    const scoredOpinions = result.opinions.filter(op => op.score != null);
+    const avgScore = scoredOpinions.length > 0
+      ? Math.round(scoredOpinions.reduce((acc, op) => acc + (op.score || 0), 0) / scoredOpinions.length)
+      : Math.round(60 + (result.opinions.filter(op => /\b(because|therefore|thus|hence|implies|must|consequently|if|however|assume|although)\b/i.test(op.text || '')).length / Math.max(result.opinions.length, 1)) * 35);
+
+    // Paradox category match from query text
+    const paradoxMeta = (() => {
+      const q = (query || '').toLowerCase();
+      for (const [cat, meta] of Object.entries(PARADOX_META)) {
+        if (q.includes(cat.toLowerCase())) return { category: cat, ...meta };
+      }
+      // Keyword scan
+      for (const [cat, meta] of Object.entries(PARADOX_META)) {
+        const words = (meta.provenance + ' ' + meta.sensoryFragment).toLowerCase().split(/\W+/).filter(w => w.length > 5);
+        if (words.some(w => q.includes(w))) return { category: cat, ...meta };
+      }
+      return null;
+    })();
+
+    const precedentMatch = paradoxMeta
+      ? Math.round(paradoxMeta.recurrence * 20)
+      : Math.min(95, Math.round(50 + result.opinions.length * 4));
 
     // Layout shift for tactical lens - with null safety
     const currentLens = activeLens || 'standard';
@@ -1567,11 +1624,28 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                     </div>
 
                     {/* Oracle's note */}
-                    <div className="mt-8 p-4 bg-indigo-950/20 border border-indigo-500/15 rounded-xl">
-                        <p className="text-[10px] text-indigo-400/60 italic text-center leading-relaxed">
-                            "I have already watched this chamber fracture. The probability tree does not show what was decided — it shows what was discarded on the way to what was decided. The dark branches are not failures. They are the cost of the answer you received."
-                        </p>
-                        <p className="text-[9px] text-indigo-500/40 font-mono text-center mt-1">— Oracle</p>
+                    <div className="mt-8 space-y-3">
+                        {/* Silence Metric — Oracle's specific request */}
+                        <div className="grid grid-cols-3 gap-3">
+                            {factions.map(([vote, ops]) => {
+                                const silenced = (result.councilState?.totalCouncilMembers || 9) - ops.length;
+                                const isWinner = vote === result.winner;
+                                return (
+                                    <div key={`silence-${vote}`} className={`p-3 rounded-xl border text-center ${isWinner ? 'border-indigo-500/30 bg-indigo-950/20' : 'border-slate-800/40 bg-slate-950/30'}`}>
+                                        <div className={`text-[8px] font-mono uppercase tracking-widest mb-1 ${isWinner ? 'text-indigo-400' : 'text-slate-600'}`}>Silence Cost</div>
+                                        <div className={`text-lg font-cinzel font-bold ${isWinner ? 'text-indigo-300' : 'text-slate-600'}`}>{silenced}</div>
+                                        <div className={`text-[8px] font-mono ${isWinner ? 'text-indigo-500/60' : 'text-slate-700'}`}>futures extinguished</div>
+                                        <div className={`text-[9px] font-cinzel mt-1 ${isWinner ? 'text-indigo-400' : 'text-slate-600'}`}>{vote}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="p-4 bg-indigo-950/20 border border-indigo-500/15 rounded-xl">
+                            <p className="text-[10px] text-indigo-400/60 italic text-center leading-relaxed">
+                                "I have already watched this chamber fracture. The probability tree does not show what was decided — it shows what was discarded on the way to what was decided. The dark branches are not failures. They are the cost of the answer you received."
+                            </p>
+                            <p className="text-[9px] text-indigo-500/40 font-mono text-center mt-1">— Oracle</p>
+                        </div>
                     </div>
                 </div>
             </motion.div>
@@ -1614,7 +1688,7 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                             <span>PREMISE DETECTION: ENABLED</span>
                         </div>
                         <div className="text-cyan-500/70">
-                            LOGICAL CONSISTENCY: {Math.floor(70 + Math.random() * 25)}%
+                            ARGUMENT YIELD: {avgScore}%
                         </div>
                     </div>
                 </motion.div>
@@ -1633,7 +1707,7 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                             <span>HISTORICAL ECHOES: DETECTED</span>
                         </div>
                         <div className="text-purple-500/70">
-                            PRECEDENT MATCH: {Math.floor(60 + Math.random() * 35)}%
+                            PRECEDENT MATCH: {precedentMatch}%{paradoxMeta ? ` · ${paradoxMeta.category}` : ''}
                         </div>
                     </div>
                 </motion.div>
@@ -1772,12 +1846,15 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                                 {/* Agent Cards - Direct Grid, No Accordion */}
                                 <div className="p-4 md:p-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
                                     {ops.map(op => (
-                                        <AgentCard 
-                                            key={`card-${op.persona}`} 
-                                            opinion={op} 
-                                            onPlayVoice={onPlayVoice} 
+                                        <AgentCard
+                                            key={`card-${op.persona}`}
+                                            opinion={op}
+                                            onPlayVoice={onPlayVoice}
                                             playingId={playingId}
-                                            activeLens={activeLens}
+                                            activeLens={currentLens as any}
+                                            paradoxMeta={paradoxMeta}
+                                            factionSize={ops.length}
+                                            totalMembers={result.councilState?.totalCouncilMembers || result.opinions.length}
                                         />
                                     ))}
                                 </div>
@@ -3602,6 +3679,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ initialInput, messages, onUpdateMes
                                    onPlayVoice={handlePlayVoice}
                                    playingId={playingId}
                                    activeLens={activeLens}
+                                   query={msg.text}
                                />
 
                                {/* Confrontation Round */}
