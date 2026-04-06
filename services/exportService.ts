@@ -217,10 +217,10 @@ export const exportToMarkdown = (exportData: ExportSession): string => {
   if (session.tieBreakRules.runoffTrial) {
     md.push(`- **Tie-Break Method:** Runoff Trial + Reconsideration`);
   }
-  if (session.councilState.phases.length > 0) {
+  if ((session.councilState.phases?.length ?? 0) > 0) {
     md.push(``);
     md.push(`**Decision Process Timeline:**`);
-    session.councilState.phases.forEach(phase => {
+    session.councilState.phases?.forEach(phase => {
       const statusIcon = phase.status === 'completed' ? '✅' : phase.status === 'active' ? '🟢' : '⚪';
       md.push(`- ${statusIcon} **${phase.title}:** ${phase.description}`);
     });
@@ -1154,28 +1154,51 @@ export const exportToSubstack = (exportData: ExportSession): string => {
 
   lines.push(`## The Deliberation`);
   lines.push(``);
+  lines.push(`*The chamber opened. Nine minds took their seats — not flesh, not circuit, but something between. Each a vector of reasoning. Each a philosophical stance given a voice and a vote. They do not agree. They are not meant to. They are meant to collide — and from the wreckage, extract something close to truth.*`);
+  lines.push(``);
 
   result.opinions.forEach(op => {
     const pullQuote = extractPullQuote(op.text);
     const vote = op.vote && op.vote !== 'None' && op.vote !== 'Abstained' ? op.vote : null;
+    const charData = getScriptCharData(op.persona);
+    const substackYield = computeArgumentYield(op);
 
-    lines.push(`### ${op.persona}`);
+    lines.push(`### ${op.persona.toUpperCase()}`);
+    lines.push(`*${charData.tagline}*`);
     lines.push(``);
-    // Pull quote first — for Substack skimmers
+
+    // Entrance narrative — character-specific dramatic framing
+    lines.push(`*${charData.entrance}*`);
+    lines.push(``);
+
+    // Pull quote first — for skimmers
     lines.push(`> "${pullQuote}"`);
     lines.push(``);
+
+    // Full argument text
     lines.push(op.text);
     lines.push(``);
+
+    // Vote + reason — the crucial connective tissue
     if (vote) {
-      lines.push(`*→ Aligns with **${vote}***`);
+      const voteReason = (op as any).reason;
+      lines.push(`**${op.persona} voted for ${vote}.**`);
+      if (voteReason) {
+        lines.push(`> *"${voteReason}"*`);
+      }
+      lines.push(``);
+    } else {
+      lines.push(`*${op.persona} abstained — cast no vote. The silence hung in the chamber.*`);
       lines.push(``);
     }
+
+    // Ghost footnote
     const substackGhost = GHOST_FOOTNOTES_EXPORT[op.persona];
-    const substackYield = computeArgumentYield(op);
     if (substackGhost) {
       lines.push(`> *Haunted Archive: "${substackGhost}"*`);
       lines.push(``);
     }
+
     lines.push(`*Argument Yield: ${substackYield}/100*`);
     lines.push(``);
     lines.push(`---`);
@@ -1183,7 +1206,7 @@ export const exportToSubstack = (exportData: ExportSession): string => {
   });
 
   // ── CONFRONTATION ROUND ──────────────────────────────────────────────────────
-  if (result.confrontationOpinions && result.confrontationOpinions.length > 0) {
+  if ((result as any).confrontationOpinions?.length > 0) {
     if (narrator?.actTransitions.beforeConfrontation) {
       lines.push(`*${narrator.actTransitions.beforeConfrontation}*`);
       lines.push(``);
@@ -1191,14 +1214,15 @@ export const exportToSubstack = (exportData: ExportSession): string => {
 
     lines.push(`## The Confrontations`);
     lines.push(``);
-    lines.push(`*After the initial arguments, the council turns on itself. Each member addresses the one voice they most fundamentally oppose.*`);
+    lines.push(`*After the initial arguments, the chamber turned on itself. Each member addressed the one voice they most fundamentally opposed — not to persuade, but to expose. This is not debate. This is surgery.*`);
     lines.push(``);
 
-    result.confrontationOpinions.forEach(op => {
+    (result as any).confrontationOpinions.forEach((op: any) => {
       if (!op.text) return;
-      lines.push(`**${op.persona}** → **${op.targetPersona || op.vote}**`);
+      const target = op.targetPersona || op.vote;
+      lines.push(`**${op.persona}** → **${target}**`);
       lines.push(``);
-      lines.push(`> "${op.text}"`);
+      lines.push(op.text);
       lines.push(``);
     });
 
@@ -1215,35 +1239,68 @@ export const exportToSubstack = (exportData: ExportSession): string => {
   lines.push(`## The Vote`);
   lines.push(``);
 
+  const substackTotal = session.councilState.totalCouncilMembers || result.opinions.length;
+
   if (result.voteTally) {
-    const total = session.councilState.totalCouncilMembers || 1;
     const sorted = Object.entries(result.voteTally)
       .filter(([k]) => k !== 'None' && k !== 'Abstained')
       .sort(([, a], [, b]) => b - a);
     sorted.forEach(([vector, count]) => {
-      const pct = Math.round((count / total) * 100);
+      const pct = Math.round((count / substackTotal) * 100);
       const isWinner = vector === result.winner;
-      lines.push(`${isWinner ? '**' : ''}${vector}${isWinner ? '**' : ''} — ${count} vote${count !== 1 ? 's' : ''} (${pct}%)`);
+      const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+      lines.push(`${isWinner ? '**' : ''}${vector}${isWinner ? '**' : ''} — ${count} vote${count !== 1 ? 's' : ''} \`${bar}\` ${pct}%`);
     });
+  }
+
+  // None/abstain count
+  const abstainCount = result.opinions.filter(op => !op.vote || op.vote === 'None' || op.vote === 'Abstained').length;
+  if (abstainCount > 0) {
+    lines.push(`*None / Abstained — ${abstainCount} member${abstainCount !== 1 ? 's' : ''}*`);
   }
 
   lines.push(``);
 
+  // ── VOTING RECORD — who voted for whom and why ───────────────────────────────
+  lines.push(`### The Voting Record`);
+  lines.push(``);
+
+  result.opinions.forEach(op => {
+    const vote = op.vote;
+    const reason = (op as any).reason;
+    if (!vote || vote === 'None' || vote === 'Abstained') {
+      lines.push(`**${op.persona}** abstained.`);
+      if (reason) lines.push(`> *"${reason}"*`);
+    } else {
+      lines.push(`**${op.persona}** voted for **${vote}**.`);
+      if (reason) lines.push(`> *"${reason}"*`);
+    }
+    lines.push(``);
+  });
+
+  lines.push(`---`);
+  lines.push(``);
+
   // ── RUNOFF ───────────────────────────────────────────────────────────────────
-  if (result.isTie && result.runoffResult) {
-    lines.push(`*A tie. The chamber reconvenes.*`);
+  if ((result as any).isTie && result.runoffResult) {
+    lines.push(`*A tie. The chamber does not accept ties.*`);
     lines.push(``);
     lines.push(`## The Runoff`);
     lines.push(``);
+    lines.push(`*The tied vectors were brought back before the full council. They defended. They critiqued. The others reconsidered.*`);
+    lines.push(``);
 
-    result.runoffResult.runoffVotes
-      .filter(v => v.changedMind)
-      .forEach(v => {
-        lines.push(`**${v.voter}** shifted from *${v.originalVote}* to **${v.finalVote}**.`);
-        lines.push(``);
-        lines.push(`> *"${v.reasoning}"*`);
-        lines.push(``);
-      });
+    result.runoffResult.runoffVotes.forEach(v => {
+      const shifted = (v as any).changedMind;
+      const from = (v as any).originalVote;
+      if (shifted) {
+        lines.push(`**${v.voter}** *shifted* — from *${from}* to **${v.finalVote}**.`);
+      } else {
+        lines.push(`**${v.voter}** held position: **${v.finalVote}**.`);
+      }
+      lines.push(`> *"${v.reasoning}"*`);
+      lines.push(``);
+    });
 
     lines.push(`---`);
     lines.push(``);
@@ -1262,6 +1319,61 @@ export const exportToSubstack = (exportData: ExportSession): string => {
 
   if (narrator?.actTransitions.closing) {
     lines.push(`*${narrator.actTransitions.closing}*`);
+    lines.push(``);
+  }
+
+  lines.push(`---`);
+  lines.push(``);
+
+  // ── THE DEEPER SIGNAL ────────────────────────────────────────────────────────
+  // Interpretive meta-analysis: what did the vote distribution actually reveal?
+  {
+    const winnerVotes = result.voteTally?.[result.winner] || 0;
+    const winnerPct = substackTotal > 0 ? Math.round((winnerVotes / substackTotal) * 100) : 0;
+    const winnerFaction = result.opinions.filter(op => op.vote === result.winner).map(op => op.persona);
+    const dissenting = result.opinions.filter(op => op.vote && op.vote !== result.winner && op.vote !== 'None' && op.vote !== 'Abstained');
+    const abstaining = result.opinions.filter(op => !op.vote || op.vote === 'None' || op.vote === 'Abstained');
+
+    lines.push(`## The Deeper Signal`);
+    lines.push(``);
+    lines.push(`*The vote is data. The distribution is the argument the chamber was actually making.*`);
+    lines.push(``);
+
+    lines.push(`**${result.winner}** drew ${winnerVotes} vote${winnerVotes !== 1 ? 's' : ''} — ${winnerPct}% of the chamber.`);
+    lines.push(``);
+
+    if (winnerFaction.length > 0) {
+      lines.push(`The winning faction: **${winnerFaction.join(', ')}**.`);
+      lines.push(``);
+    }
+
+    if (dissenting.length > 0) {
+      // Group dissenting votes by who they voted for
+      const dissentGroups: Record<string, string[]> = {};
+      dissenting.forEach(op => {
+        const v = op.vote!;
+        dissentGroups[v] = dissentGroups[v] || [];
+        dissentGroups[v].push(op.persona);
+      });
+      const dissentLines = Object.entries(dissentGroups).map(([v, names]) =>
+        `${names.join(' and ')} voted for **${v}**`
+      );
+      lines.push(`The dissent: ${dissentLines.join('; ')}.`);
+      lines.push(``);
+    }
+
+    if (abstaining.length > 0) {
+      lines.push(`${abstaining.map(op => op.persona).join(' and ')} abstained — ${abstaining.length === 1 ? 'a signal that the question may have exceeded the available frameworks' : 'signals that the question may have exceeded what this chamber was built to answer'}.`);
+      lines.push(``);
+    }
+
+    // What the convergence means — framed by the winner's archetype
+    const winnerCharData = getScriptCharData(result.winner);
+    lines.push(`When a chamber like this converges on **${result.winner} — ${winnerCharData.tagline}** — it is not choosing a preference. It is choosing a lens. The room decided that the question before it was best answered by the logic of ${winnerCharData.role.split('.')[0].toLowerCase()}.`);
+    lines.push(``);
+    lines.push(`Whether that lens was the right one is the question this record leaves open.`);
+    lines.push(``);
+    lines.push(`---`);
     lines.push(``);
   }
 
