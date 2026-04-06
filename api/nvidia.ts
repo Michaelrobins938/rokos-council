@@ -8,23 +8,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const keys = [
+  const rawKeys = [
     process.env.NVIDIA_API_KEY,
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-  ].filter((k): k is string => typeof k === 'string' && k.trim().startsWith('nvapi-'));
-
-  console.log(`[nvidia] keys found: ${keys.length}`);
+  ];
+  const keys = rawKeys.filter((k): k is string => typeof k === 'string' && k.trim().startsWith('nvapi-'));
 
   if (keys.length === 0) {
+    const preview = rawKeys.map(k => k ? k.substring(0, 8) + '...' : 'undefined').join(', ');
+    console.error(`[nvidia] NO VALID KEYS. Raw key previews: ${preview}`);
     return res.status(500).json({ error: 'No NVIDIA keys configured' });
   }
 
   const apiKey = keys[0].trim();
   const body = req.body;
-
-  console.log(`[nvidia] calling model: ${body?.model}`);
+  const model = body?.model ?? '(no model in body)';
 
   try {
     const upstream = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -37,18 +37,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const text = await upstream.text();
-    console.log(`[nvidia] upstream status: ${upstream.status}, body: ${text.slice(0, 200)}`);
+    console.log(`[nvidia] model=${model} status=${upstream.status} body=${text.slice(0, 300)}`);
 
     res.setHeader('Content-Type', 'application/json');
     res.status(upstream.status);
-
     try {
       return res.json(JSON.parse(text));
     } catch {
       return res.send(text);
     }
   } catch (err: any) {
-    console.error(`[nvidia] fetch error: ${err.message}`);
+    console.error(`[nvidia] fetch error model=${model}: ${err.message}`);
     return res.status(500).json({ error: err.message });
   }
 }
