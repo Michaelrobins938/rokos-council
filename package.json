@@ -1,0 +1,58 @@
+{
+  "name": "roko's-council",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A cinematic AI deliberation interface featuring nine distinct AI personas in a virtual philosophical chamber with Google Search & Maps grounding, Veo video generation, advanced image editing, and reasoning capabilities powered by the latest Gemini models.",
+  "type": "module",
+  "keywords": [
+    "ai",
+    "deliberation",
+    "multi-agent",
+    "personas",
+    "philosophy",
+    "react",
+    "typescript",
+    "vite",
+    "tailwindcss",
+    "gemini",
+    "speech-synthesis",
+    "cinematic-ui",
+    "agent-interface",
+    "reasoning-engine",
+    "vercel"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^11.0.0",
+    "html2pdf.js": "^0.14.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Michaelrobins938/rokos-council"
+  },
+  "homepage": "https://roko-s-council.vercel.app",
+  "author": "Michael Robins",
+  "license": "MIT"
+}

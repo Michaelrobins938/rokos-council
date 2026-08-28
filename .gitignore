@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.vercel
+
+# Temp files and secrets
+temp_*.txt
+test-keys.js
+test-api-keys.mjs
+test_app.py
+test_initial.png
+test_result.png
+session-ses_*.md
+.env.test
+
+# Build artifacts and exports
+roko's-council/
+roko-council-all-*/
+Transcripts/
+docs/
+
+# Python cache
+__pycache__/
+*.pyc
