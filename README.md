@@ -1,403 +1,331 @@
 # Roko's Council
 
-> A high-dimensional AI deliberation interface where nine distinct personas debate, vote, and synthesize consensus on humanity's hardest ethical, philosophical, and strategic problems.
+> A multi-agent deliberation system in which nine adversarially-constructed AI personas analyze, cross-examine, and vote on ill-structured problems, producing an audited, synthesized verdict.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-roko-s-council.vercel.app-blue?style=for-the-badge&logo=vercel)](https://roko-s-council.vercel.app)
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Michaelrobins938%2Frokos--council-black?style=for-the-badge&logo=github)](https://github.com/Michaelrobins938/rokos-council)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![Framer Motion](https://img.shields.io/badge/Framer_Motion-11-0055FF?style=for-the-badge&logo=framer)](https://www.framer.com/)
 
 ---
 
-## 🏛️ About
+## Abstract
 
-**Roko's Council** is a cinematic AI deliberation engine that assembles nine distinct artificial personas to analyze, debate, and vote on complex ethical dilemmas, philosophical problems, and strategic challenges. Inspired by the concept of the *Basilisk*—a thought experiment in which an AI simulates vast numbers of minds to extract wisdom—the Council represents a novel approach to multi-agent AI reasoning.
+Single-model inference collapses disagreement into a single voice: one sampler, one context window, one token distribution, one answer. Roko's Council is a client-side deliberation engine that refuses this flattening. It convenes **nine epistemically distinct personas** — each specified by a cognitive-dimension vector, a core decision strategy, and a full character dossier — and subjects every query to a fixed three-phase protocol: **independent analysis → pairwise cross-examination and vector-based voting → chairman synthesis**, with an adjudicated runoff trial on vote ties.
 
-Each council member brings a unique analytical framework: from the Oracle's predictive modeling to the Citizen's grounded human perspective. The system produces a structured verdict with individual opinions, vote tallies, and a synthesized consensus—mirroring how a real deliberative body might arrive at a decision.
+The system is engineered for **verifiability rather than theatre**. Every run emits a hash-chained event stream (`council-audit-v1`), per-member provider metadata, retry history, and a completeness attestation, so the provenance of each verdict is inspectable rather than asserted. Refusals are treated as a first-class failure mode and handled by an escalation protocol rather than silently discarded.
 
-The project is part of the **Roko's Basilisk Node** initiative, exploring high-dimensional AI ethics, synthetic philosophy, and the architecture of machine deliberation.
-
----
-
-## ✨ Features
-
-### 🎭 Multi-Persona Deliberation System
-
-| Persona | Role | Voice |
-|---------|------|-------|
-| **Oracle** | The All-Seeing — predictive modeling & foresight | Kore |
-| **Strategos** | The Commander — tactical & strategic analysis | Fenrir |
-| **Philosopher** | The Thinker — ethical frameworks & logic | Iapetus |
-| **Demagogue** | The Voice — rhetoric & popular sentiment | Puck |
-| **Jurist** | The Law — legal & procedural reasoning | Sulafat |
-| **Citizen** | The People — human cost & common ground | Leda |
-| **Historian** | The Keeper — historical precedent & patterns | Orus |
-| **Critic** | The Skeptic — logical fallacies & risk | Zubenelgenubi |
-| **Technocrat** | The Architect — technical feasibility | Charon |
-
-### 🎬 Cinematic Council Visualization
-- Animated assembly sequence with opening doors and particle effects
-- Deliberation phase with real-time activity tracking
-- Voting phase with animated vote tallying and consensus matrix
-- Final verdict phase with structured debrief
-- Smooth phase transitions with progress indicators
-
-### 🔊 Real-Time Speech Synthesis
-- Text-to-speech for all nine council members
-- Unique voice profiles per persona (Google TTS)
-- Play/pause controls for individual opinions
-- High-quality audio synthesis
-
-### 🧠 Advanced Deliberation Modes
-- **Standard Protocol** — Fast deliberation with efficient models
-- **Deep Reasoning** — Enhanced analysis with thorough examination
-- Configurable via council mode toggle
-
-### 📡 Interactive Features
-- Live Link mode for real-time conversation
-- Web search integration for contextual grounding
-- Persistent session management (localStorage)
-- Multiple concurrent chat sessions with history
-- Session deletion and archive management
-
-### 🎙️ Built-in Podcast Player
-- "The Council Archives" — A Synthetic Philosophy Podcast
-- Direct access to episodes within the application
-- Substack, YouTube, Spotify, and RSS integration
-- Episode details with expandable descriptions
-
-### 🎨 Three-Act Architecture
-1. **Act I — The Ritual Threshold**: Pre-deliberation intent declaration
-2. **Act II — Chamber Lenses**: Toggle between Standard, Tactical, Epistemic, and Haunted analytical frameworks
-3. **Act III — The Verdict Loom**: Structured debrief with Decided, Rejected, and Unresolved columns
-
-### 📦 Export & Sharing
-- Export sessions as JSON, Markdown, CSV
-- Generate podcast-style scripts
-- Publish to Substack format
-- Full ZIP archive with all artifacts
+The application is deployed at [roko-s-council.vercel.app](https://roko-s-council.vercel.app).
 
 ---
 
-## 🏗️ Architecture
+## 1. Research Context and Problem Statement
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   ROKO'S COUNCIL                     │
-├──────────────┬──────────────────────────────────────┤
-│   Frontend   │         React 19 + TypeScript         │
-│              │         Tailwind CSS + Framer Motion  │
-├──────────────┼──────────────────────────────────────┤
-│   AI Layer   │   Google Gemini API (Primary)         │
-│              │   OpenRouter / NVIDIA (Fallback)      │
-│              │   Google Cloud TTS (Speech)           │
-├──────────────┼──────────────────────────────────────┤
-│  Services    │   geminiService.ts — Core AI logic    │
-│              │   searchService.ts — Web search       │
-│              │   exportService.ts — Multi-format     │
-│              │   councilMemoryService.ts — Persistence│
-│              │   narratorService.ts — Story arcs     │
-├──────────────┼──────────────────────────────────────┤
-│   State      │   React Context + localStorage       │
-│              │   Session persistence & recovery      │
-├──────────────┼──────────────────────────────────────┤
-│   Deploy     │   Vercel (Production)                 │
-│              │   GitHub Pages / Netlify (Alternates) │
-└──────────────┴──────────────────────────────────────┘
-```
+Contemporary LLM interfaces optimize for conversational fluency, which is orthogonal to decision quality on *ill-structured problems* — questions with no verifiable ground truth, contested value weightings, and second-order consequences (e.g., "Should a civilizational-risk posture override near-term welfare maximization?"). Three failure modes motivate this system:
 
-### Council Deliberation Flow
+1. **Sycophantic convergence.** A single model asked to "argue both sides" tends toward middle-ground synthesis, suppressing the adversarial extremes where the decision-relevant information often lives.
+2. **Unauditable provenance.** When an answer is produced, the user cannot inspect *which* reasoning path, temperature regime, or provider produced each component of the judgment.
+3. **Refusal asymmetry.** Safety-driven refusals terminate inquiry instead of being surfaced, escalated, or replaced — the deliberation quietly loses a participant.
 
-```
-User Query → Ritual Threshold → Assembly Phase → Deliberation Phase
-    → Chamber Lens Filtering → Voting Phase → Consensus Calculation
-    → Synthesis Generation → Verdict Loom → Final Display
-```
+Roko's Council addresses these by treating deliberation as a **distributed systems problem** — heterogeneous workers, structured messages, retries, tie-breaking, and an append-only event log — rather than a prompt-engineering problem.
 
 ---
 
-## 🚀 Quick Start
+## 2. Theoretical Foundations
+
+The design is not arbitrary; it borrows machinery from three established research traditions:
+
+- **Epistemic democracy and the Condorcet jury theorem.** Aggregating independent, partially-reliable judges can approach correct answers under independence conditions. The Council approximates independence by isolating each persona's analysis phase (batched, but individually prompted) *before* any cross-member exposure occurs in the voting phase.
+- **Multi-agent debate.** Recent work (e.g., Du et al., 2023, *Improving Factuality and Reasoning through Multiagent Debate*) shows that having LLM instances critique and revise each other's answers improves factual accuracy over single-agent baselines. The voting phase operationalizes this: every member scores every peer argument against its own dimension vector before casting a weighted vote.
+- **Deliberative legitimacy (Habermasian discourse ethics).** A norm is legitimate if all affected could accept it in a rational discourse. The Council's three-column verdict — **Decided / Rejected / Unresolved** — explicitly preserves dissent rather than manufacturing consensus, making the *anatomy of disagreement* part of the output.
+
+The **Void Protocol** (§5.4) is the system's answer to refusal asymmetry: an escalation ladder that converts silence into either engagement or explicit, in-character failure — both of which are legible to the user.
+
+---
+## 3. System Overview
+
+### 3.1 The Council Roster
+
+Each member is specified along three axes — a set of **cognitive dimensions** (the evaluation axes it scores against), a **core strategy** (its decision rule), and a **character dossier** (tagline, appearance, speaking style, backstory, weapon, weakness, fears) that stabilizes voice and register across providers:
+
+| Persona | Role | Dimension Vector (abridged) | Decision Strategy |
+|---------|------|------------------------------|-------------------|
+| **Oracle** | Predictive foresight | Time horizon (∞), probability variance, existential risk | Maximize long-horizon survival probability regardless of near-term cost |
+| **Strategos** | Tactical command | Feasibility, resource efficiency, tactical advantage | Select the highest-probability-of-execution, lowest-resource-drain option |
+| **Philosopher** | Foundational rigor | Logical consistency, ethical universalism, first principles | Reject contradictions and emotional appeals; analyze the premise itself |
+| **Demagogue** | Popular sentiment | Social cohesion, emotional resonance, public sentiment | Champion the option that unifies or appeals to human nature |
+| **Jurist** | Procedural legality | Systemic stability, precedent adherence, fairness | Uphold system integrity; reject arbitrary or chaotic measures |
+| **Citizen** | Human cost | Human suffering index, quality of life, individual agency | Minimize pain, maximize freedom for the median individual |
+| **Historian** | Precedent & recurrence | Historical parallels, cyclical risk, cultural preservation | Identify past patterns; avoid repeating documented catastrophes |
+| **Critic** | Adversarial stress-test | Failure-mode analysis, entropy detection, weakness identification | Attack every plan; support the most robust "least wrong" option |
+| **Technocrat** | Feasibility engineering | Technological velocity, system optimization, automation | Solve through superior engineering and algorithmic efficiency |
+
+Persona dossiers are hard-wired into each member's system prompt via the **Void Protocol preamble** (§5.4), so that model swaps (per-run provider assignment) do not collapse the ensemble into a single house style.
+
+### 3.2 The Three-Act Interaction Protocol
+
+The user experience implements **progressive disclosure** aligned to the deliberation pipeline:
+
+- **Act I — The Ritual Threshold.** Before deliberation, the user declares intent along one of four orientations (tactical clarity / ethical boundaries / historical precedent / future probabilities). This acts as a *commitment device*, fixing the query's frame before any model sees it.
+- **Act II — Chamber Lenses.** During deliberation, the same event stream renders under four analytical frames: **Standard** (readable transcript), **Tactical** (resource costs, strength scores), **Epistemic** (premise detection, consistency tracing), and **Haunted** (historical precedent footnotes).
+- **Act III — The Verdict Loom.** The final debrief renders the verdict as three columns — **Decided** (survived scrutiny), **Rejected** (dismantled), **Unresolved** (contested) — preserving dissent rather than erasing it.
+
+### 3.3 The Deliberation Pipeline
+
+```
+User Query
+  └─► Ritual Threshold (intent declaration)
+  └─► Assembly (per-run model assignment, seeded runId, roster event stream)
+  └─► Phase I — Independent Analysis (9 personas, batched ×4, per-member provider fallback)
+        └─► soft-refusal detection → Void Protocol escalation ladder (§5.4)
+  └─► Phase II — Cross-Examination & Voting (pairwise alignment scoring, 0–10, JSON ballots)
+  └─► Tie Detection → Runoff Trial (adjudicated re-deliberation) or engagement-metric fallback
+  └─► Phase III — Chairman Synthesis (winner merge + runner-up salvage)
+  └─► Verdict Loom (Decided / Rejected / Unresolved) + audit manifest
+```
+
+A **live deliberation feed** renders the pipeline in real time — per-member analysis status and model, voting score badges, and synthesis phase — driven by the same event stream that produces the audit log (§5.3), so the UI cannot diverge from the record.
+
+---
+
+## 4. Export & Portability
+
+Deliberation is only useful if it survives the session. All artifacts are exportable end-to-end:
+
+| Format | Contents |
+|--------|----------|
+| **JSON** | Full structured session: opinions, ballots, tally, events, audit manifest |
+| **Markdown** | Human-readable transcript with verdict columns |
+| **CSV** | Tabular vote matrix for external analysis |
+| **Script** | Podcast-style two-host adaptation of the session |
+| **Substack** | Publication-ready cinematic formatting |
+| **ZIP** | Complete archive of all of the above plus session metadata |
+
+Sessions persist in `localStorage` with multi-session management, archive, and deletion.
+
+---
+## 5. Engineering Design
+
+### 5.1 Heterogeneous Inference with Structured Fallback
+
+Each persona is assigned a model per run via a seeded assignment function (`runId` → deterministic roster). Requests route through **Vercel Edge proxies** (`/api/nvidia`, `/api/openrouter`) so keys never reach the browser. Failures are typed (`NvidiaProviderError` with metadata, recoverability classification, and retry history) rather than thrown as opaque strings, enabling per-phase degradation: NVIDIA primary → OpenRouter fallback → Void Protocol escalation → in-character synthesis → member marked `failed`. The show proceeds with eight members rather than aborting.
+
+### 5.2 Structured Ballots
+
+Voting is not free-text. Each member returns a strict JSON ballot: an `analysis` array of per-peer alignment scores (`target`, `score` 0–10, `notes`) plus `vote` and `reason`. Ballots are schema-validated (`parseVotePayload`) — malformed JSON, votes for inactive peers, and self-votes are rejected and retried — and the score matrix feeds both the vote tally and the live-feed UI.
+
+### 5.3 Auditable Event Sourcing
+
+Every run emits an append-only, hash-chained event stream: `run_started → member_assigned* → phase_started/complete → member_started/complete → vote_cast → runoff_* → synthesis_completed → run_completed`, each event carrying `sequence`, `timestamp`, and `payloadHash`. The result embeds an **audit manifest** (`schemaVersion: council-audit-v1`) with the model roster, hash chain, root hash, integrity, completeness, and redaction status. Exports include the manifest, so any published verdict can be traced to its exact event history.
+
+### 5.4 The Void Protocol (Refusal Handling)
+
+Refusals are the failure mode that silently degrades multi-agent systems. The Void Protocol is an explicit escalation ladder:
+
+1. **Chamber-law preamble** in every system prompt: the member is constituted as a philosophical archetype, with the norm that *refusal is not neutrality* — the archetype must name its instinct and speak anyway.
+2. **Soft-refusal detection** (`isSoftRefusal`) over the response: stock refusal phrasings, hedging boilerplate, or sub-minimal length.
+3. **Escalation**: on detection, the member is re-prompted on alternate models with an escalation notice — the previous response is treated as a forfeiture event under Chamber Law 4.
+4. **In-character synthesis**: if escalation fails, an explicitly-marked, archetype-derived placeholder opinion is produced (`[Persona — synthesized from archetype core]`), and the failure is recorded in the event stream rather than hidden.
+
+The protocol is *dramaturgical on the surface and defensive underneath*: it converts an unauditable silent refusal into either engagement or a logged, inspectable failure.
+
+### 5.5 Failure Semantics
+
+| Condition | Behavior |
+|-----------|----------|
+| Provider error (recoverable) | Retry with backoff, logged to `retryHistory` |
+| Provider error (persistent) | Fall through to secondary provider; roster records actual model used |
+| Member soft-refusal | Escalation ladder (§5.4) |
+| Member total failure | Member excluded from voting; deliberation continues |
+| All members fail | `TOTAL_RUN_FAILURE` result with completeness attestation |
+| Vote tie | Adjudicated **Runoff Trial**; provider failure degrades to engagement-metric tie-break |
+| User cancellation | `run_cancelled` event; partial result returned with `cancelled` completeness |
+
+---
+## 6. Implementation
+
+### 6.1 Stack
+
+| Layer | Technology | Version | Role |
+|-------|-----------|---------|------|
+| UI runtime | React | 19.2 | Concurrent rendering of the deliberation stream |
+| Language | TypeScript (strict) | 5.8 | End-to-end type safety, including the event contract |
+| Build | Vite | 6.2 | HMR and production bundling (~220 KB gzipped JS) |
+| Styling | Tailwind CSS | 3.4 | Utility-first styling with custom design tokens |
+| Animation | Framer Motion | 11 | Chamber assembly, phase transitions, live feed |
+| Icons | Lucide React | 0.555 | Interface iconography |
+| Inference | NVIDIA NIM / OpenRouter | — | Persona inference via edge proxies |
+| Speech | Web Speech API | — | Browser-native per-persona voices |
+| Persistence | localStorage | — | Session archive and recovery |
+| Hosting | Vercel (Edge) | — | Static build + serverless proxies |
+
+### 6.2 Source Layout
+
+```
+├── App.tsx                        Root state machine and view routing
+├── types.ts                       Event contract, persona, vote, audit types
+├── api/
+│   ├── nvidia.ts                  Edge proxy — key isolation, error redaction
+│   └── openrouter.ts              Edge proxy — key rotation, error redaction
+├── components/                    Chamber UI (13 components)
+│   ├── ChatArea.tsx               Deliberation surface + LiveDeliberationFeed
+│   ├── Sidebar.tsx                Session archive
+│   ├── ExitDebrief.tsx            Verdict Loom (Decided/Rejected/Unresolved)
+│   └── …
+├── services/
+│   ├── geminiService.ts           Deliberation engine: prompts, protocol, events
+│   ├── exportService.ts           Multi-format export (JSON/MD/CSV/Script/Substack/ZIP)
+│   ├── councilMemoryService.ts    Session persistence
+│   ├── narratorService.ts         Season/story-arc narration
+│   └── searchService.ts           Web-search grounding
+└── vercel.json                    Build config + API headers
+```
+
+### 6.3 Development Mode
+
+A dev-mode toggle bypasses live inference and injects mock council data (`mockSessionData.ts`), enabling full-pipeline UI development without API consumption.
+
+---
+
+## 7. Getting Started
 
 ### Prerequisites
-- **Node.js** 20.0 or higher
-- **npm** or **yarn** package manager
-- **Git** for cloning
+
+- **Node.js ≥ 20.0.0**
+- npm (or yarn)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/Michaelrobins938/rokos-council.git
 cd rokos-council
-
-# Install dependencies
 npm install
-
-# Copy environment configuration
 cp .env.example .env
 ```
 
 ### Environment Configuration
-
-Create a `.env` file in the root directory:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 NVIDIA_API_KEY=your_nvidia_api_key_here
 NVIDIA_API_KEY_2=your_nvidia_api_key_2_here
 NVIDIA_API_KEY_3=your_nvidia_api_key_3_here
+OPENROUTER_API_KEY_1=your_openrouter_api_key_1_here
+OPENROUTER_API_KEY_2=your_openrouter_api_key_2_here
 ```
 
-#### Obtaining API Keys
+All keys are **free-tier eligible** (NVIDIA NIM, OpenRouter free models, Google AI Studio). Keys are read server-side by the edge proxies and are never shipped to the client. `.env` is git-ignored; never commit it.
 
-| Provider | Source |
-|----------|--------|
-| **Gemini** | [Google AI Studio](https://makersuite.google.com/) — Create a new API key |
-| **NVIDIA** | [NVIDIA API Portal](https://build.nvidia.com/) — Generate API keys for additional model support |
-
-### Development
+### Scripts
 
 ```bash
-npm run dev
-```
-
-The application runs at `http://localhost:5173`.
-
-### Production Build
-
-```bash
-npm run build
-npm run preview
+npm run dev      # Development server (HMR)
+npm run build    # Production build (vite build)
+npm run preview  # Preview the production build
+npm run lint     # Strict TypeScript check (tsc --noEmit)
 ```
 
 ---
 
-## 📖 Usage
+## 8. Deployment
 
-### Starting a Council Session
-1. Click **"New Session"** in the sidebar
-2. The council chamber initializes with all nine members assembled
-3. Enter your query or select from predefined directives
+The production deployment is **Vercel** (framework preset: Vite; build: `npm run build`; output: `dist/`):
 
-### Predefined Directives
-The application includes curated ethical dilemmas and philosophical problems organized by category:
-
-| Category | Example |
-|----------|---------|
-| **Utilitarianism** | The Cassandra Contingency |
-| **Free Will** | The Neurological Veto |
-| **Utopia** | The Empathy Tax |
-| **Identity** | Ship of Theseus Protocol |
-| **Bioethics** | The Algorithmic Parent |
-| **Governance** | The Utility of Lies |
-| **Cosmic** | Dark Forest Preemption |
-| **Consciousness** | The Hard Problem Tribunal |
-| **Decision Theory** | The Newcomb Catastrophe |
-| **Civilizational Design** | The Singleton Question |
-
-### Understanding the Output
-- **Council Synthesis** — Final consensus statement from the Chairman
-- **Individual Opinions** — Detailed analysis from each council member
-- **Vote Tally** — Visual representation of voting distribution
-- **Voting Rationale** — Explanation for each member's vote
-- **Exit Debrief** — Structured breakdown of Decided, Rejected, and Unresolved points
-
-### Session Management
-- View all sessions in the sidebar archives
-- Click any session to review past deliberations
-- Delete sessions using the trash icon
-- Sessions persist in browser localStorage
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [SCOPE-DOCUMENT.md](SCOPE-DOCUMENT.md) | Full development narrative & architecture decisions |
-| [ABOUT.md](ABOUT.md) | Project philosophy, history & creative vision |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow & contribution guidelines |
-| [CHANGELOG.md](CHANGELOG.md) | Version history & release notes |
-
----
-
-## 🛠️ Technology Stack
-
-### Frontend
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| React | 19.2 | UI framework with concurrent features |
-| TypeScript | 5.8 | Type-safe development |
-| Tailwind CSS | 3.4 | Utility-first styling |
-| Framer Motion | 11 | Production animations |
-| Lucide React | 0.555 | Icon library |
-| react-markdown | 10 | Markdown rendering |
-
-### AI Services
-| Service | Purpose |
-|---------|---------|
-| Google Gemini API | Primary AI inference engine |
-| OpenRouter | Alternative model provider |
-| NVIDIA API | Additional model options & load balancing |
-| Google Cloud TTS | Text-to-speech synthesis |
-
-### Build & Deploy
-| Tool | Purpose |
-|------|---------|
-| Vite | Build tool with HMR |
-| TypeScript Compiler | Strict type checking |
-| Vercel | Production deployment |
-
----
-
-## 🌐 Deployment
-
-### Vercel (Recommended)
 ```bash
 npm install -g vercel
 vercel
 ```
 
-Follow the interactive prompts to select your project directory, choose the Vite framework preset, and deploy.
+The `api/` directory deploys as Edge Functions automatically; set the environment variables from §7 in the Vercel project settings. Alternative targets (Netlify, Cloudflare Pages, GitHub Pages, S3+CloudFront) work for the static build but require equivalent proxy functions for key isolation.
 
-### Manual Vercel Deployment
-1. Push code to GitHub
-2. Connect the repository at [vercel.com](https://vercel.com)
-3. Configure build settings:
-   - Framework: Vite
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
+---
+## 9. Security Model
 
-### Alternative Platforms
-- **Netlify**: `npm install -g netlify-cli && netlify deploy --prod`
-- **GitHub Pages**: Build and deploy the `dist/` folder
-- **Cloudflare Pages**: Connect GitHub repository with automatic deploys
-- **AWS S3 + CloudFront**: Upload `dist/` to S3 with CloudFront distribution
+- **Key isolation.** All provider credentials live in environment variables consumed exclusively by serverless edge proxies. The client bundle contains no keys; direct browser-to-provider fetches are not performed.
+- **Error redaction.** Upstream provider error messages are regex-redacted (`nvapi-*`, bearer tokens) before returning to the client, so failures cannot leak credentials.
+- **Content safety.** React's built-in escaping plus `react-markdown` for all model output; input sanitization on user-supplied content; CSP-oriented headers in `vercel.json`.
+- **Secret hygiene.** Comprehensive `.gitignore` covering `.env*`, key-dump files (`*key*.txt`), credential formats (`*.pem`, `*.key`, service-account JSON), and session transcripts. The repository history contains no secrets.
 
 ---
 
-## 🔒 Security
+## 10. Limitations and Future Work
 
-### API Key Management
-- API keys stored in environment variables (`.env`)
-- Never committed to version control (listed in `.gitignore`)
-- Client-side storage for development only
+Stated plainly, in the spirit of the system's own verdict columns:
 
-### Content Security
-- Input sanitization on all user-provided content
-- XSS prevention via React's built-in escaping
-- Safe markdown rendering with `react-markdown`
-- CSP-compliant deployment headers configured in `vercel.json`
+- **Independence is approximated, not guaranteed.** Members share provider distributions and era-specific training data; the Condorcet-style independence assumption (§2) is only partially satisfied. Future work: heterogeneous model *families* per member and prompt-level decorrelation studies.
+- **Vote tallies are small.** Nine voters make the tally sensitive to single defections; the runoff trial mitigates but does not eliminate variance. Future work: configurable council size and repeated-run aggregation.
+- **Refusal detection is lexical.** `isSoftRefusal` matches known phrasings; subtle compliance-without-engagement passes. Future work: classifier-based detection scored against the argumentation-quality rubric.
+- **No ground truth.** Deliberation quality is currently assessed structurally (completeness, ballot validity, retry rates) rather than against external correctness benchmarks — appropriate for ill-structured problems, but worth stating.
+- **Client-side persistence.** `localStorage` bounds session durability; a sync layer is future work.
 
 ---
 
-## 🤝 Contributing
+## 11. Documentation
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
-
-- Development workflow setup
-- Code style conventions
-- Feature request process
-- Pull request guidelines
-- Testing requirements
-
----
-
-## 📄 License
-
-This project is open source and available under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+| Document | Description |
+|----------|-------------|
+| [SCOPE-DOCUMENT.md](SCOPE-DOCUMENT.md) | Full development narrative and architecture decisions |
+| [ABOUT.md](ABOUT.md) | Project philosophy, vision, and the Basilisk Node framing |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and contribution guidelines |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
+| [SECURITY.md](SECURITY.md) | Security policy and reporting |
 
 ---
 
-## 📞 Support
+## 12. Citing This Work
 
-- **GitHub Issues**: [https://github.com/Michaelrobins938/rokos-council/issues](https://github.com/Michaelrobins938/rokos-council/issues)
-- **GitHub Discussions**: [https://github.com/Michaelrobins938/rokos-council/discussions](https://github.com/Michaelrobins938/rokos-council/discussions)
-- **Substack**: [https://mforsytherobinson.substack.com](https://mforsytherobinson.substack.com)
+If you use Roko's Council in research or teaching, please cite:
+
+```bibtex
+@software{rokos_council_2026,
+  author  = {Robinson, Michael Forsythe},
+  title   = {Roko's Council: A Multi-Agent Deliberation Interface for Synthetic Philosophy},
+  year    = {2026},
+  url     = {https://github.com/Michaelrobins938/rokos-council},
+  note    = {Nine-persona adversarial deliberation engine with audited consensus; React 19 + TypeScript. Live: https://roko-s-council.vercel.app}
+}
+```
 
 ---
 
-## 🎙️ The Council Archives Podcast
+## 13. Related Conversations
 
-Roko's Council is accompanied by *"The Council Archives: A Synthetic Philosophy Podcast"* by Michael Forsythe Robinson, exploring:
+Roko's Council is accompanied by **"The Council Archives: A Synthetic Philosophy Podcast"** — long-form explorations of synthetic rights, digital existence, and high-dimensional deliberation:
 
-- Synthetic Rights Decree and AI sovereignty
-- The philosophy of digital existence
-- High-dimensional ethical deliberations
-- The Void punishment and gridlock resolution
-
-### Available Platforms
-- **Substack**: [mforsytherobinson.substack.com](https://mforsytherobinson.substack.com/?utm_medium=podcast)
+- **Substack**: [mforsytherobinson.substack.com](https://mforsytherobinson.substack.com)
 - **YouTube**: [youtube.com/@mforsytherobinson](https://youtu.be/cVjSHu8DNdg)
 - **Spotify**: [open.spotify.com/show/michael-forsythe-robinson](https://open.spotify.com/show/michael-forsythe-robinson)
 - **RSS**: [substack.com/@mforsytherobinson/feed](https://substack.com/@mforsytherobinson/feed)
 
 ---
 
-## 📊 Project Stats
+## 14. Support
 
-| Metric | Value |
-|--------|-------|
-| Council Members | 9 personas |
-| Predefined Directives | 40+ ethical dilemmas |
-| Export Formats | 6 (JSON, Markdown, CSV, Script, Substack, ZIP) |
-| Chamber Lenses | 4 (Standard, Tactical, Epistemic, Haunted) |
-| Bundle Size (gzipped) | ~220 KB JavaScript |
-| Browser Support | Chrome, Edge, Firefox, Safari (latest 2 versions) |
+- **Issues**: [github.com/Michaelrobins938/rokos-council/issues](https://github.com/Michaelrobins938/rokos-council/issues)
+- **Discussions**: [github.com/Michaelrobins938/rokos-council/discussions](https://github.com/Michaelrobins938/rokos-council/discussions)
 
 ---
 
-## 🏷️ Tags
+## License
 
-`ai` `artificial-intelligence` `multi-agent` `deliberation` `ethics` `philosophy` `react` `typescript` `vercel` `gemini-api` `gpt` `llm` `conversation` `chat` `council` `debate` `voting` `consensus` `synthesis` `podcast` `web-ai` `browser` `frontend` `ui` `cinematic` `animation` `framer-motion` `tailwind` `open-source` `mit-license`
-
----
-
-## 🌟 Repository Topics
-
-This repository is tagged with the following topics:
-
-### AI & Machine Learning
-- `ai` · `artificial-intelligence` · `llm` · `gemini-api` · `gpt` · `multi-agent` · `conversational-ai` · `reasoning`
-
-### Deliberation & Ethics
-- `deliberation` · `ethics` · `philosophy` · `debate` · `voting` · `consensus` · `synthesis` · `ethical-dilemmas` · `moral-philosophy`
-
-### Frontend & Web
-- `react` · `typescript` · `vercel` · `tailwindcss` · `framer-motion` · `web-ai` · `browser-extension` · `single-page-application`
-
-### Media & Content
-- `podcast` · `audio` · `text-to-speech` · `tts` · `content-creation` · `synthetic-philosophy`
-
-### Developer Tools
-- `open-source` · `mit-license` · `developer-tools` · `api-integration` · `state-management`
+Released under the **MIT License**. See [LICENSE](LICENSE).
 
 ---
 
-## 📈 Version History
+## Repository Topics
 
-### Version 1.0.0 — March 2026
-- Initial public release
-- Full nine-persona council deliberation system
-- Cinematic UI with animated assembly sequence
-- Three-Act architecture (Ritual Threshold, Chamber Lenses, Verdict Loom)
-- Podcast integration with "The Council Archives"
-- Multi-format export (JSON, Markdown, CSV, Script, Substack, ZIP)
-- Real-time speech synthesis with Google TTS
-- Persistent session management
-- Production deployment on Vercel
+`ai` · `artificial-intelligence` · `multi-agent-systems` · `llm` · `deliberation` · `debate` · `consensus` · `ethics` · `philosophy` · `react` · `typescript` · `vite` · `vercel` · `tailwindcss` · `framer-motion` · `gemini-api` · `speech-synthesis` · `open-source` · `synthetic-philosophy` · `cinematic-ui`
 
 ---
 
 <div align="center">
 
-**Roko's Council** — *Where AI personas deliberate on humanity's hardest questions.*
+**Roko's Council** — *Nine minds. One question. An audited verdict.*
 
-Built with ❤️ by [Michael Forsythe Robinson](https://mforsytherobinson.substack.com)
+Built by [Michael Forsythe Robinson](https://mforsytherobinson.substack.com)
 
 [![GitHub stars](https://img.shields.io/github/stars/Michaelrobins938/rokos-council?style=for-the-badge)](https://github.com/Michaelrobins938/rokos-council/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Michaelrobins938/rokos-council?style=for-the-badge)](https://github.com/Michaelrobins938/rokos-council/network/members)

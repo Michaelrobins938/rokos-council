@@ -1,6 +1,6 @@
 {
   "name": "Roko's Council",
-  "description": "A comprehensive AI workspace featuring Google Search & Maps grounding, Veo video generation, advanced image editing, and reasoning capabilities powered by the latest Gemini models.",
+  "description": "A multi-agent deliberation system in which nine AI personas analyze, cross-examine, and vote on complex ethical and philosophical questions, producing an audited consensus verdict.",
   "requestFramePermissions": [
     "microphone"
   ]

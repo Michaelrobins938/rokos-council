@@ -2,7 +2,7 @@
   "name": "roko's-council",
   "version": "1.0.0",
   "private": true,
-  "description": "A cinematic AI deliberation interface featuring nine distinct AI personas in a virtual philosophical chamber with Google Search & Maps grounding, Veo video generation, advanced image editing, and reasoning capabilities powered by the latest Gemini models.",
+  "description": "A cinematic multi-agent deliberation interface in which nine AI personas analyze, cross-examine, and vote on complex questions, producing an audited consensus verdict.",
   "type": "module",
   "keywords": [
     "ai",
