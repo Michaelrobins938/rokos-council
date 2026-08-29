@@ -15,6 +15,7 @@ import { renderMoralFingerprint } from './moralFingerprint';
 import { MORAL_POSITION_INSTRUCTION, extractMoralPosition } from './moralParadoxLibrary';
 import { assessVoid, evaluateVoidEligibility, buildConstitutionalAwareness } from './voidProtocol';
 import { authorityFromDecision, buildDeadlockVerdict } from './deliberativeIntegrity';
+import { buildEpistemicTopology } from './epistemicTopology';
 
 // --- OPENROUTER HELPER (via Vercel serverless proxy) ---
 
@@ -3388,6 +3389,23 @@ ${voteMemoryBlock}
      phaseTimeline: runContext.phaseTimeline,
      completeness: 'complete',
      auditManifest,
+     // ── Epistemic topology — the artifact left behind after the debate ──────
+     // WHY the machine failed to decide (deadlock taxonomy), HOW honest the
+     // verdict is (dimensions — never one collapsed number), WHICH premises
+     // survived across factions, and WHO defers to WHOM.
+     epistemicTopology: buildEpistemicTopology({
+       opinions: enhancedOpinions,
+       validVotes,
+       validVoteCount: validVotes.length,
+       expectedVoters,
+       winnerVotes: semantics.winnerVotes,
+       decisionStatus,
+       decisionMode,
+       winner,
+       resolution,
+       runoffOccurred,
+       round2Outcome: round2Result?.outcome,
+     }),
      // ── Council Epistemic State Machine ─────────────────────────────────────
      // One unified status language: ok / degraded / failed.
      executionStatus,

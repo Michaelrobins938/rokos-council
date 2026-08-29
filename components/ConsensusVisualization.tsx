@@ -204,6 +204,115 @@ const ConsensusVisualization: React.FC<ConsensusVisualizationProps> = ({ result 
           </div>
         </div>
       </motion.div>
+
+      {/* Epistemic Topology — the artifact left behind after the debate */}
+      {result.epistemicTopology && (
+        <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400">
+              Epistemic Topology
+            </span>
+            <span className={`ml-auto text-[8px] font-black uppercase tracking-[0.2em] border rounded px-1.5 py-0.5 ${
+              result.epistemicTopology.dimensions.confidence === 'CONFIRMED'
+                ? 'text-emerald-400 border-emerald-900/60'
+                : result.epistemicTopology.dimensions.confidence === 'CONTESTED'
+                  ? 'text-amber-400 border-amber-900/60'
+                  : 'text-red-400 border-red-900/60'
+            }`}>
+              {result.epistemicTopology.dimensions.confidence}
+            </span>
+          </div>
+
+          {/* Provenance — the brutally-honest block */}
+          <div className="text-[9px] font-mono text-slate-500 space-y-1 mb-3">
+            <div className="flex justify-between gap-2">
+              <span>Deliberative majority</span>
+              <span className="text-slate-300">{result.epistemicTopology.provenance.deliberativeMajority || 'NONE'}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span>Runoff</span>
+              <span className="text-slate-300">{result.epistemicTopology.provenance.runoff.toUpperCase()}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span>Quorum</span>
+              <span className="text-slate-300">{result.epistemicTopology.provenance.quorum.toUpperCase()}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span>Participation</span>
+              <span className="text-slate-300">{Math.round(result.epistemicTopology.provenance.participationRate * 100)}% valid / eligible</span>
+            </div>
+            {result.epistemicTopology.provenance.arbitration !== 'none' && (
+              <div className="flex justify-between gap-2 text-amber-400/90">
+                <span>Arbitration</span>
+                <span>{result.epistemicTopology.provenance.arbitration.toUpperCase()} → {result.epistemicTopology.provenance.arbitratedSelection || '—'}</span>
+              </div>
+            )}
+            <div className="flex justify-between gap-2">
+              <span>Constitutional status</span>
+              <span className={result.epistemicTopology.provenance.isDeliberative ? 'text-emerald-400' : 'text-amber-400'}>
+                {result.epistemicTopology.provenance.constitutionalStatus.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Dimensions — never one number */}
+          <div className="text-[9px] font-mono text-slate-500 space-y-1 mb-3 border-t border-slate-800/60 pt-3">
+            <div className="flex justify-between gap-2">
+              <span>Execution integrity</span>
+              <span className="text-slate-300">{Math.round(result.epistemicTopology.dimensions.executionIntegrity * 100)}% valid ballots</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span>Consensus strength</span>
+              <span className="text-slate-300">
+                {result.epistemicTopology.dimensions.consensusStrength == null
+                  ? '—'
+                  : `${Math.round(result.epistemicTopology.dimensions.consensusStrength * 100)}% of valid ballots`}
+              </span>
+            </div>
+            {result.epistemicTopology.deadlockKind && (
+              <div className="flex justify-between gap-2">
+                <span>Deadlock kind</span>
+                <span className={result.epistemicTopology.deadlockKind === 'procedural' ? 'text-red-400' : 'text-amber-400'}>
+                  {result.epistemicTopology.deadlockKind.toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Premise survival — the hybrid ontology votes cannot express */}
+          {result.epistemicTopology.premiseSurvival.clusters.length > 0 && (
+            <div className="border-t border-slate-800/60 pt-3">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-purple-400/70 mb-1.5">
+                Premises in play
+              </div>
+              <div className="space-y-1.5">
+                {result.epistemicTopology.premiseSurvival.clusters.map(c => (
+                  <div key={c.topic} className="flex items-start gap-2 text-[9px] font-mono">
+                    <span className={`shrink-0 uppercase tracking-wider mt-0.5 ${
+                      c.factionSpanning ? 'text-emerald-400' : 'text-slate-500'
+                    }`}>
+                      {c.topic}
+                    </span>
+                    <span className="text-slate-400 line-clamp-2" title={c.representative}>
+                      “{c.representative}”
+                    </span>
+                    <span className="ml-auto shrink-0 text-slate-600">
+                      {c.voices.length} voice{c.voices.length === 1 ? '' : 's'}
+                      {c.factionSpanning && <span className="text-emerald-400 ml-1">· cross-faction</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {result.epistemicTopology.premiseSurvival.hybridOntologyDetected && (
+                <p className="text-[9px] text-emerald-400/80 mt-2">
+                  Hybrid ontology detected — premises survived across opposing factions that the vote could not express.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 };

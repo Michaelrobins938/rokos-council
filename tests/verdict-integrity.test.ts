@@ -8,6 +8,7 @@ import {
   computeVerdictSemantics,
   DEFAULT_DECISION_POLICY,
   resolveLeadingPositions,
+  runoffReasonFromLabel,
 } from '../services/geminiService';
 import type { VerdictLabel } from '../types';
 
@@ -122,6 +123,26 @@ const majoritySem = computeVerdictSemantics({
 });
 ok(majoritySem.verdictLabel === 'MAJORITY' && majoritySem.decisionStatus === 'consensus', '3/4 strict majority → consensus');
 ok(majoritySem.primaryVerdict === 'MAJORITY' && majoritySem.winner === 'Oracle', 'majority verdict intact');
+
+// ── RUNOFF TRIGGER REASON (a plurality is a CONTEST, never a "tie") ───────────
+console.log('RUNOFF TRIGGER REASON — plurality ≠ tie');
+ok(runoffReasonFromLabel('TIE') === 'tie', 'TIE → tie reason');
+ok(runoffReasonFromLabel('PLURALITY') === 'plurality', 'PLURALITY → plurality reason');
+ok(runoffReasonFromLabel('MAJORITY') === 'plurality', 'MAJORITY (never routed to runoff) → harmless plurality mapping');
+ok(runoffReasonFromLabel('NO_VALID_RESULT') === 'plurality', 'NO_VALID_RESULT (never routed) → harmless plurality mapping');
+
+// The exact production shape: Demagogue 2 / rest 1. The runoff banner must say
+// "Plurality — No Majority — Runoff Trial", never "Tie Detected".
+const pluralityShape = { Demagogue: 2, Technocrat: 1, Citizen: 1, Critic: 1, Oracle: 1, Philosopher: 1, Strategos: 1 };
+const pClass = classifyVoteOutcome(pluralityShape, 8);
+ok(pClass.label === 'PLURALITY', 'Demagogue 2 / rest 1 → PLURALITY (not TIE)');
+ok(runoffReasonFromLabel(pClass.label) === 'plurality', 'production plurality run → plurality reason (NOT "Tie Detected")');
+const pLeaders = resolveLeadingPositions(pClass, pluralityShape);
+ok(pLeaders[0] === 'Demagogue' && pLeaders[1] === 'Citizen', `plurality runoff → top-2 contest (${pLeaders.join(' + ')})`);
+
+const tieClass2 = classifyVoteOutcome({ A: 1, B: 1 }, 2);
+ok(tieClass2.label === 'TIE' && runoffReasonFromLabel(tieClass2.label) === 'tie', '1/1 tie → tie reason');
+
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) {

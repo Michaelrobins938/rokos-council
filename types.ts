@@ -758,6 +758,71 @@ export interface BallotConservation {
   conserved: boolean;
 }
 
+// ── EPISTEMIC TOPOLOGY — the artifact left behind after the debate ───────────
+// Types for the pure layer in services/epistemicTopology.ts. They answer four
+// questions the raw verdict cannot: WHY the machine failed to decide (deadlock
+// taxonomy), HOW honest the verdict is (dimensions, never one collapsed
+// number), WHICH premises survived across opposing factions (the hybrid
+// ontology a voting mechanism cannot express), and WHO defers to WHOM.
+export type DeadlockKind = 'philosophical' | 'procedural' | 'unavailable' | null;
+
+export interface VerdictProvenance {
+  deliberativeMajority: string | null;
+  runoff: 'resolved' | 'deadlocked' | 'none';
+  quorum: 'achieved' | 'failed';
+  participationRate: number;
+  arbitration: 'none' | 'engagement_metric' | 'structured_tiebreak';
+  arbitratedSelection: string | null;
+  constitutionalStatus: 'consensus' | 'contested' | 'arbitrated' | 'unresolved';
+  isDeliberative: boolean;
+}
+
+export interface EpistemicDimensions {
+  executionIntegrity: number;
+  consensusStrength: number | null;
+  confidence: 'CONFIRMED' | 'CONTESTED' | 'UNDETERMINED';
+}
+
+export interface ArgumentOntology {
+  persona: string;
+  claims: string[];
+  premises: string[];
+  assumptions: string[];
+  inferences: string[];
+  conclusions: string[];
+  valueJudgments: string[];
+}
+
+export interface PremiseCluster {
+  topic: string;
+  representative: string;
+  voices: string[];
+  factions: string[];
+  factionSpanning: boolean;
+}
+
+export interface PremiseSurvival {
+  clusters: PremiseCluster[];
+  factionSpanningClusters: PremiseCluster[];
+  hybridOntologyDetected: boolean;
+}
+
+export interface InfluenceEdge {
+  voter: string;
+  target: string;
+  confidence: number;
+  mutual: boolean;
+  kind: 'alliance' | 'deference';
+}
+
+export interface EpistemicTopology {
+  deadlockKind: DeadlockKind;
+  provenance: VerdictProvenance;
+  dimensions: EpistemicDimensions;
+  premiseSurvival: PremiseSurvival;
+  influenceEdges: InfluenceEdge[];
+}
+
 export interface Round2Result {
   round: number;
   leadingPositions: string[];
@@ -1025,6 +1090,12 @@ export interface CouncilResult {
   runoffOccurred?: boolean;
   runoffReason?: string;
   round2Result?: Round2Result;
+  // ── Epistemic topology — the artifact left behind after the debate ─────────
+  // WHY the machine failed to decide (deadlock taxonomy), HOW honest the verdict
+  // is (dimensions, never one collapsed number), WHICH premises survived across
+  // factions (the hybrid ontology votes cannot express), and the cognitive-
+  // affinity graph. Pure functions in services/epistemicTopology.ts.
+  epistemicTopology?: EpistemicTopology;
   error?: {
     code: string;
     message: string;
