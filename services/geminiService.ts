@@ -111,6 +111,16 @@ export const COUNCIL_MODEL_POOL = [
 // Reliable fallback that is not drawn from the shuffled per-run pool.
 export const COUNCIL_FALLBACK_NIM_MODEL = 'minimaxai/minimax-m3';
 
+// Cascade list used when the primary + fallback model are transiently overloaded
+// (NIM free tier returns 429/529 under load). Tried in order until one answers.
+export const COUNCIL_FALLBACK_MODELS = [
+  'minimaxai/minimax-m3',
+  'nvidia/nemotron-3-nano-30b-a3b',
+  'google/gemma-4-31b-it',
+  'nvidia/nemotron-3-ultra-550b-a55b',
+  'deepseek-ai/deepseek-v4-flash-0731',
+];
+
 // Alternate models probed during Void Protocol escalation.
 const COUNCIL_ESCALATION_MODELS = [
   'deepseek-ai/deepseek-v4-flash-0731',
@@ -563,15 +573,41 @@ const parseVotePayload = (rawText: string, metadata: ProviderMetadata, activePee
 
 // ── DELIBERATION EVENT CONTRACT ──────────────────────────────────────────────
 // Live-feed events consumed by the LiveDeliberationFeed in ChatArea.
+// This is the full UI contract bridged from the audited CouncilEvent stream —
+// phases, per-member progress, votes, runoff, retries, and errors.
 
 export interface DeliberationEvent {
-  type: 'analysis_start' | 'analysis_complete' | 'vote_start' | 'vote_complete' | 'synthesis_start' | 'synthesis_complete';
+  type:
+    | 'run_started'
+    | 'phase_started'
+    | 'phase_completed'
+    | 'analysis_start'
+    | 'analysis_complete'
+    | 'vote_start'
+    | 'vote_complete'
+    | 'runoff_started'
+    | 'runoff_completed'
+    | 'synthesis_start'
+    | 'synthesis_complete'
+    | 'retry'
+    | 'pipeline_error'
+    | 'run_completed'
+    | 'run_cancelled';
   persona?: string;
   model?: string;
   text?: string;
   votedFor?: string;
   reason?: string;
   scores?: Array<{ target: string; score: number; notes: string }>;
+  phase?: string;
+  runId?: string;
+  latencyMs?: number;
+  status?: string;
+  candidates?: string[];
+  winner?: string;
+  attempt?: number;
+  error?: string;
+  timestamp?: number;
 }
 
 // ── VOID PROTOCOL TEXT ──────────────────────────────────────────────────────
@@ -948,25 +984,32 @@ The Void Protocol is active. Speak, or be erased.`;
       }
       
        if (!text) {
-           // Fallback to OpenRouter instead of Gemini
-           try {
-                const fallback = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, analysisPrompt, 0.7);
-                text = fallback.content;
-                metadata = { ...fallback.metadata, status: 'fallback' };
-                recordProviderMetadata(`${persona.name}:analysis:fallback`, metadata);
-                recordProvider(persona.name, metadata.provider || 'openrouter');
-                recordModel(persona.name, metadata.model || COUNCIL_FALLBACK_NIM_MODEL);
-            } catch (err) {
-               failure = err;
-               recordProviderFailure(`${persona.name}:analysis:openrouter:error`, err, 'deliberation', persona.name);
-               console.error(`OpenRouter fallback failed for ${persona.name}:`, err);
+           // Fallback cascade across valid NIM models (primary may be overloaded)
+           for (const fbModel of COUNCIL_FALLBACK_MODELS) {
+               if (fbModel === modelAssignments[persona.name]) continue;
+               try {
+                   const fallback = await callNvidiaStructured(fbModel, analysisPrompt, 0.7);
+                   if (!fallback.content) continue;
+                   text = fallback.content;
+                   metadata = { ...fallback.metadata, status: 'fallback' };
+                   recordProviderMetadata(`${persona.name}:analysis:fallback`, metadata);
+                   recordProvider(persona.name, metadata.provider || 'nvidia');
+                   recordModel(persona.name, metadata.model || fbModel);
+                   break;
+               } catch (err) {
+                   failure = err;
+                   console.warn(`NIM fallback ${fbModel} failed for ${persona.name}:`, err);
+               }
+           }
+           if (!text) {
+               failure = failure || new Error('All NIM fallback models failed');
                metadata = {
-                 provider: 'openrouter',
+                 provider: 'nvidia',
                  status: 'error',
-                 error: { code: 'PERSONA_ANALYSIS_FAILED', message: 'Persona analysis failed', recoverable: false },
+                 error: { code: 'PERSONA_ANALYSIS_FAILED', message: failure instanceof Error ? failure.message : 'Persona analysis failed', recoverable: false },
                };
-            }
-         }
+           }
+        }
         // ── VOID PROTOCOL: SOFT REFUSAL DETECTION + ESCALATION ─────────────────
         // If the model refused, hedged, or went off-character — escalate with a
         // harder Void Protocol prompt on alternate models before giving up.
@@ -1160,12 +1203,24 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
        return result;
 
       } catch (e) {
-         // Fallback to OpenRouter for voting if NVIDIA fails
+         // Fallback cascade across valid NIM models for voting if primary fails
          try {
-             const fallback = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, votingPrompt, 0.2, true);
+             let fallback: NvidiaProviderResponse | undefined;
+             for (const fbModel of COUNCIL_FALLBACK_MODELS) {
+                 if (fbModel === modelAssignments[persona.name]) continue;
+                 try {
+                     const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true);
+                     if (!attempt.content) continue;
+                     fallback = attempt;
+                     break;
+                 } catch {
+                     continue;
+                 }
+             }
+             if (!fallback) throw new Error('All NIM fallback models failed during voting');
              recordProviderMetadata(`${persona.name}:voting:fallback`, { ...fallback.metadata, status: 'fallback' });
-             recordProvider(persona.name, fallback.metadata.provider || 'openrouter');
-             recordModel(persona.name, fallback.metadata.model || COUNCIL_FALLBACK_NIM_MODEL);
+             recordProvider(persona.name, fallback.metadata.provider || 'nvidia');
+             recordModel(persona.name, fallback.metadata.model || modelAssignments[persona.name]);
              const rawText = fallback.content;
              const voteData = parseVotePayload(rawText, fallback.metadata, peers.map(peer => peer.persona));
             const votedFor = voteData.votedFor;
@@ -1179,7 +1234,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
              runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: JSON.stringify(result), metadata: fallback.metadata, status: 'completed' });
              return result;
           } catch (err) {
-            recordProviderFailure(`${persona.name}:voting:openrouter:error`, err, 'voting', persona.name);
+            recordProviderFailure(`${persona.name}:voting:fallback:error`, err, 'voting', persona.name);
              const result = {
                voter: persona.name,
                votedFor: 'None',

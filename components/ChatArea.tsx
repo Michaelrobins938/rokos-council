@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Play, Menu, Square, ThumbsUp, Lock, Users, Gavel, Sword, BrainCircuit, Volume2, Scale, Scroll, AlertTriangle, Eye, Crown, Globe, Mic, Zap, Sparkles, Activity, Aperture, Cpu, TrendingUp, Palette, Copy, Check, ChevronUp, ChevronDown, BarChart3, Search, Download, Share2, FileText, BarChart2, Newspaper, BookOpen, Trophy, Flame, Swords, Image as ImageIcon, X as XIcon, ChevronRight } from 'lucide-react';
+import { Send, Loader2, Play, Menu, Square, ThumbsUp, Lock, Users, Gavel, Sword, BrainCircuit, Volume2, Scale, Scroll, AlertTriangle, Eye, Crown, Globe, Mic, Zap, Sparkles, Activity, Aperture, Cpu, TrendingUp, Palette, Copy, Check, ChevronUp, ChevronDown, BarChart3, Search, Download, Share2, FileText, BarChart2, Newspaper, BookOpen, Trophy, Flame, Swords, Image as ImageIcon, X as XIcon, ChevronRight, Clock, RefreshCw, ShieldAlert } from 'lucide-react';
 import { CouncilMode, ChatMessage, CouncilResult, CouncilOpinion, CouncilEvent } from '../types';
 import { runCouncil, generateSpeech, LiveClient, generateNextMoves, getCurrentCouncil, generateImage, PERSONALITIES, DeliberationEvent } from '../services/geminiService';
 import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, calculateTraceSize, exportAllAsZip } from '../services/exportService';
@@ -2553,6 +2553,8 @@ interface LiveAnalysis {
   model: string
   text: string
   status: 'pending' | 'thinking' | 'complete' | 'failed'
+  startedAt?: number | null
+  latencyMs?: number | null
 }
 
 interface LiveVote {
@@ -2561,32 +2563,82 @@ interface LiveVote {
   reason: string
   scores: Array<{ target: string; score: number; notes: string }>
   status: 'pending' | 'reading' | 'voted'
+  latencyMs?: number | null
+}
+
+interface LiveRetry {
+  persona: string
+  phase: string
+  attempt: number
+  error: string
+  model?: string
 }
 
 interface LiveDelibState {
-  phase: 'idle' | 'analysis' | 'voting' | 'synthesis' | 'complete'
+  phase: 'idle' | 'assembly' | 'analysis' | 'voting' | 'runoff' | 'synthesis' | 'complete'
   analyses: LiveAnalysis[]
   votes: LiveVote[]
+  tally: Record<string, number>
+  runoffCandidates: string[]
+  runoffWinner: string | null
   synthesis: string
   winner: string
+  startedAt: number
+  events: number
+  retries: LiveRetry[]
+  errors: string[]
 }
 
 // Maps the service's audited CouncilEvent stream onto the live-feed contract.
 const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
   switch (event.type) {
+    case 'run_started':
+      return { type: 'run_started', runId: event.runId, timestamp: event.timestamp };
+    case 'member_assigned':
+      return { type: 'phase_started', phase: 'assembly', persona: event.persona, model: event.model, timestamp: event.timestamp };
+    case 'phase_started':
+      if (event.phase === 'verdict') return { type: 'synthesis_start', timestamp: event.timestamp };
+      return { type: 'phase_started', phase: event.phase, timestamp: event.timestamp };
+    case 'phase_completed':
+      return { type: 'phase_completed', phase: event.phase, timestamp: event.timestamp };
     case 'member_started':
-      if (event.phase === 'deliberation') return { type: 'analysis_start', persona: event.persona, model: event.model };
-      if (event.phase === 'voting') return { type: 'vote_start', persona: event.persona };
+      if (event.phase === 'deliberation') return { type: 'analysis_start', persona: event.persona, model: event.model, timestamp: event.timestamp };
+      if (event.phase === 'voting') return { type: 'vote_start', persona: event.persona, timestamp: event.timestamp };
       return null;
     case 'member_completed':
-      if (event.phase === 'deliberation') return { type: 'analysis_complete', persona: event.persona, text: event.output };
+      if (event.phase === 'deliberation') return {
+        type: 'analysis_complete',
+        persona: event.persona,
+        text: event.output,
+        status: event.status,
+        latencyMs: event.metadata?.latencyMs,
+        timestamp: event.timestamp,
+      };
       return null;
     case 'vote_cast':
-      return { type: 'vote_complete', persona: event.persona, votedFor: event.vote, reason: event.reason, scores: event.scores || [] };
-    case 'phase_started':
-      return event.phase === 'verdict' ? { type: 'synthesis_start' } : null;
+      return {
+        type: 'vote_complete',
+        persona: event.persona,
+        votedFor: event.vote,
+        reason: event.reason,
+        scores: event.scores || [],
+        latencyMs: event.metadata?.latencyMs,
+        timestamp: event.timestamp,
+      };
+    case 'runoff_started':
+      return { type: 'runoff_started', candidates: event.candidates, timestamp: event.timestamp };
+    case 'runoff_completed':
+      return { type: 'runoff_completed', winner: event.winner, timestamp: event.timestamp };
+    case 'retry':
+      return { type: 'retry', persona: event.persona, phase: event.phase, attempt: event.attempt, error: event.error, model: event.model, timestamp: event.timestamp };
+    case 'pipeline_error':
+      return { type: 'pipeline_error', phase: event.phase, error: event.message, timestamp: event.timestamp };
     case 'synthesis_completed':
-      return { type: 'synthesis_complete', text: event.synthesis };
+      return { type: 'synthesis_complete', text: event.synthesis, timestamp: event.timestamp };
+    case 'run_completed':
+      return { type: 'run_completed', timestamp: event.timestamp };
+    case 'run_cancelled':
+      return { type: 'run_cancelled', timestamp: event.timestamp };
     default:
       return null;
   }
@@ -2595,13 +2647,38 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
 // --- LIVE DELIBERATION FEED COMPONENT ---
 
 const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof PERSONALITIES }> = ({ state, personas }) => {
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const phaseLabels: Record<LiveDelibState['phase'], string> = {
-    idle: '',
+    idle: 'CHAMBER STANDBY',
+    assembly: 'PHASE 0 — ASSEMBLY & SEATING',
     analysis: 'PHASE I — INDEPENDENT ANALYSIS',
     voting: 'PHASE II — CROSS-EXAMINATION & VOTING',
+    runoff: 'TIE — RUNOFF TRIAL',
     synthesis: 'PHASE III — CHAIRMAN SYNTHESIS',
     complete: 'DELIBERATION COMPLETE',
   };
+
+  const phaseSteps: Array<{ key: LiveDelibState['phase']; label: string }> = [
+    { key: 'assembly', label: 'Assembly' },
+    { key: 'analysis', label: 'Analysis' },
+    { key: 'voting', label: 'Voting' },
+    { key: 'synthesis', label: 'Verdict' },
+  ];
+
+  const phaseOrder: LiveDelibState['phase'][] = ['assembly', 'analysis', 'voting', 'runoff', 'synthesis', 'complete'];
+  const currentStepIdx = Math.max(0, phaseOrder.indexOf(state.phase));
+
+  const elapsedMs = Math.max(0, now - state.startedAt);
+  const elapsedLabel = `${Math.floor(elapsedMs / 60000)}m ${Math.floor((elapsedMs % 60000) / 1000)}s`;
+  const uniqueModels = Array.from(new Set(state.analyses.map(a => a.model).filter(Boolean))).length;
+  const completedAnalyses = state.analyses.filter(a => a.status === 'complete' || a.status === 'failed').length;
+  const castVotes = state.votes.filter(v => v.status === 'voted').length;
+  const totalVotes = state.votes.length;
 
   const getScoreColor = (score: number) => {
     if (score >= 7) return 'text-emerald-400 bg-emerald-900/30 border-emerald-700/50';
@@ -2609,21 +2686,112 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
     return 'text-red-400 bg-red-900/30 border-red-700/50';
   };
 
+  const topTally = Object.entries(state.tally).sort((a, b) => b[1] - a[1]);
+  const maxVotes = Math.max(1, ...topTally.map(([, c]) => c));
+
   return (
     <div className="w-full max-w-6xl mx-auto my-4 rounded-2xl border border-slate-700/60 bg-slate-950/90 backdrop-blur overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.6)]">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-800/60 flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">Live Feed</span>
+      {/* Header: phase stepper */}
+      <div className="px-5 py-3 border-b border-slate-800/60">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">Live Feed</span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+            <Clock size={11} className="text-slate-500" />
+            <span>{elapsedLabel}</span>
+            <span className="text-slate-700">·</span>
+            <Activity size={11} className="text-slate-500" />
+            <span>{state.events} ev</span>
+            {state.retries.length > 0 && (
+              <>
+                <span className="text-slate-700">·</span>
+                <RefreshCw size={11} className="text-amber-500/80" />
+                <span className="text-amber-500/80">{state.retries.length}</span>
+              </>
+            )}
+          </div>
         </div>
-        <div className="h-px flex-1 bg-gradient-to-r from-emerald-700/30 to-transparent" />
-        <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-[0.25em]">
-          {phaseLabels[state.phase]}
-        </span>
+
+        {/* Stepper */}
+        <div className="flex items-center gap-2 mt-3">
+          {phaseSteps.map((step, idx) => {
+            const stepIndex = phaseOrder.indexOf(step.key);
+            const isActive = state.phase === step.key;
+            const isDone = currentStepIdx > stepIndex;
+            const isRunoff = state.phase === 'runoff' && step.key === 'voting';
+            return (
+              <div key={step.key} className="flex items-center gap-2 flex-1">
+                <div className={`flex items-center gap-1.5 flex-1 ${
+                  isActive || isRunoff
+                    ? 'text-amber-400'
+                    : isDone ? 'text-emerald-400' : 'text-slate-600'
+                }`}>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                    isActive
+                      ? 'border-amber-400 bg-amber-400/20 shadow-[0_0_10px_rgba(251,191,36,0.4)]'
+                      : isDone ? 'border-emerald-400 bg-emerald-400/20' : 'border-slate-700'
+                  }`}>
+                    {isDone ? (
+                      <Check size={9} className="text-emerald-400" />
+                    ) : isActive ? (
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    ) : null}
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.15em]">{step.label}</span>
+                </div>
+                {idx < phaseSteps.length - 1 && (
+                  <div className={`h-px flex-1 min-w-[12px] ${isDone ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-[0.25em]">
+            {phaseLabels[state.phase]}
+          </span>
+          {state.errors.length > 0 && (
+            <span className="text-[9px] text-red-400/80 font-mono flex items-center gap-1">
+              <ShieldAlert size={10} /> {state.errors.length} warning{state.errors.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-4 md:p-6 space-y-6">
+
+        {/* Phase 0: Assembly */}
+        {state.phase === 'assembly' && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px w-6 bg-slate-500/60" />
+              <span className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.35em]">0 — Seating the Chamber</span>
+              <div className="h-px flex-1 bg-slate-700/30" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {state.analyses.map((analysis, i) => {
+                const config = getPersonaConfig(analysis.persona);
+                return (
+                  <motion.div
+                    key={analysis.persona}
+                    initial={{ opacity: 0, scale: 0.8, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: i * 0.06 }}
+                    className="rounded-lg border border-slate-800/70 bg-slate-900/40 p-2 flex items-center gap-2"
+                  >
+                    <div className={`p-1 rounded-md bg-slate-800 ${config.color}`}>{config.icon}</div>
+                    <div className="min-w-0">
+                      <div className={`text-[10px] font-cinzel font-bold truncate ${config.color}`}>{analysis.persona}</div>
+                      <div className="text-[8px] text-slate-600 font-mono truncate">{analysis.model.split('/').pop()}</div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Phase I: Analysis Cards */}
         {(state.phase === 'analysis' || state.phase === 'voting' || state.phase === 'synthesis' || state.phase === 'complete') && (
@@ -2632,11 +2800,13 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
               <div className="h-px w-6 bg-amber-500/60" />
               <span className="text-[9px] font-black text-amber-500/80 uppercase tracking-[0.35em]">I — Independent Analysis</span>
               <div className="h-px flex-1 bg-amber-500/20" />
+              <span className="text-[9px] font-mono text-slate-500">{completedAnalyses}/{state.analyses.length} complete</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <AnimatePresence>
                 {state.analyses.map((analysis) => {
                   const config = getPersonaConfig(analysis.persona);
+                  const thinkingFor = analysis.startedAt ? Math.max(0, Math.round((now - analysis.startedAt) / 1000)) : 0;
                   return (
                     <motion.div
                       key={analysis.persona}
@@ -2648,6 +2818,8 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                           ? 'border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
                           : analysis.status === 'complete'
                           ? 'border-slate-700/50 bg-slate-900/50'
+                          : analysis.status === 'failed'
+                          ? 'border-red-800/50 bg-red-950/20 opacity-80'
                           : 'border-slate-800/40 bg-slate-900/30 opacity-50'
                       }`}
                     >
@@ -2658,17 +2830,29 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className={`text-xs font-cinzel font-bold truncate ${config.color}`}>{analysis.persona}</div>
-                          <div className="text-[9px] text-slate-600 font-mono truncate">{analysis.model.split('/').pop()}</div>
+                          <div className="text-[9px] text-slate-500 truncate">{config.tagline}</div>
+                          <div className="text-[8px] text-slate-600 font-mono truncate" title={analysis.model}>{analysis.model.split('/').pop()}</div>
                         </div>
                         {analysis.status === 'thinking' && (
-                          <div className="flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                            <span className="text-[8px] text-emerald-400/70 font-mono">{thinkingFor}s</span>
                           </div>
                         )}
                         {analysis.status === 'complete' && (
-                          <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                          <div className="flex flex-col items-end gap-0.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                            {analysis.latencyMs != null && (
+                              <span className="text-[8px] text-slate-500 font-mono">{(analysis.latencyMs / 1000).toFixed(1)}s</span>
+                            )}
+                          </div>
+                        )}
+                        {analysis.status === 'failed' && (
+                          <AlertTriangle size={11} className="text-red-400" />
                         )}
                         {analysis.status === 'pending' && (
                           <div className="w-2 h-2 rounded-full bg-slate-600" />
@@ -2684,6 +2868,9 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                           <p className="text-[10px] text-slate-400 leading-relaxed">{analysis.text.substring(0, 400)}{analysis.text.length > 400 ? '…' : ''}</p>
                         </div>
                       )}
+                      {analysis.status === 'failed' && (
+                        <p className="text-[10px] text-red-400/70 italic">Member failed — removed from the vote.</p>
+                      )}
                       {analysis.status === 'pending' && (
                         <p className="text-[10px] text-slate-600 italic">Standing by…</p>
                       )}
@@ -2696,13 +2883,49 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
         )}
 
         {/* Phase II: Voting Matrix */}
-        {(state.phase === 'voting' || state.phase === 'synthesis' || state.phase === 'complete') && state.votes.length > 0 && (
+        {(state.phase === 'voting' || state.phase === 'runoff' || state.phase === 'synthesis' || state.phase === 'complete') && (state.votes.length > 0 || Object.keys(state.tally).length > 0) && (
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-px w-6 bg-emerald-500/60" />
               <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-[0.35em]">II — Cross-Examination & Voting</span>
               <div className="h-px flex-1 bg-emerald-500/20" />
+              <span className="text-[9px] font-mono text-slate-500">{castVotes}/{totalVotes} cast</span>
             </div>
+
+            {/* Live consensus tally */}
+            {topTally.length > 0 && (
+              <div className="mb-4 rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <BarChart2 size={13} className="text-emerald-400" />
+                  <span className="text-[9px] font-black text-emerald-400/80 uppercase tracking-[0.3em]">Live Consensus Tally</span>
+                </div>
+                <div className="space-y-2">
+                  {topTally.slice(0, 5).map(([name, count]) => {
+                    const cfg = getPersonaConfig(name);
+                    const pct = Math.round((count / maxVotes) * 100);
+                    const isWinner = state.winner === name;
+                    return (
+                      <div key={name} className="flex items-center gap-2">
+                        <div className="w-24 shrink-0 flex items-center gap-1.5">
+                          <div className={`p-0.5 rounded bg-slate-800 ${cfg.color}`}>{cfg.icon}</div>
+                          <span className={`text-[10px] font-cinzel font-bold truncate ${cfg.color}`}>{name}</span>
+                        </div>
+                        <div className="flex-1 h-2 rounded-full bg-slate-800/80 overflow-hidden">
+                          <motion.div
+                            className={`h-full rounded-full ${isWinner ? 'bg-gradient-to-r from-amber-400 to-emerald-400' : 'bg-emerald-500/70'}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.max(6, pct)}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                        <span className="w-6 text-right text-[10px] font-mono text-slate-300">{count}</span>
+                        {isWinner && <Trophy size={11} className="text-amber-400" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <AnimatePresence>
                 {state.votes.map((vote) => {
@@ -2756,6 +2979,9 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                                 {s.target.slice(0, 3)} {s.score}
                               </span>
                             ))}
+                            {vote.latencyMs != null && (
+                              <span className="text-[8px] text-slate-600 font-mono ml-1">{(vote.latencyMs / 1000).toFixed(1)}s</span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2770,6 +2996,37 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
               </AnimatePresence>
             </div>
           </div>
+        )}
+
+        {/* Runoff banner */}
+        {state.runoffCandidates.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-xl border border-red-700/40 bg-red-950/20 p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Swords size={14} className="text-red-400" />
+              <span className="text-[10px] font-black text-red-400 uppercase tracking-[0.3em]">Tie Detected — Runoff Trial</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
+              <span className="text-slate-500">Contesting vectors:</span>
+              {state.runoffCandidates.map((c) => {
+                const cfg = getPersonaConfig(c);
+                return (
+                  <span key={c} className={`flex items-center gap-1 px-2 py-0.5 rounded border border-red-800/60 bg-red-950/40 ${cfg.color}`}>
+                    {cfg.icon} {c}
+                  </span>
+                );
+              })}
+              {state.runoffWinner && (
+                <span className="flex items-center gap-1 ml-2 text-amber-400">
+                  <Crown size={12} /> Winner: {state.runoffWinner}
+                </span>
+              )}
+            </div>
+          </motion.div>
         )}
 
         {/* Phase III: Chairman Synthesis */}
@@ -2795,9 +3052,14 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
               {state.synthesis && (
                 <>
                   {state.winner && (
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <Crown size={14} className="text-amber-400" />
                       <span className="text-xs font-cinzel font-bold text-amber-400 uppercase tracking-widest">{state.winner} — Victorious Vector</span>
+                      {topTally[0] && (
+                        <span className="text-[9px] font-mono text-slate-400 border border-amber-700/40 bg-amber-900/20 px-1.5 py-0.5 rounded">
+                          {topTally[0][1]} vote{topTally[0][1] !== 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="overflow-y-auto max-h-[180px] custom-scrollbar">
@@ -2808,6 +3070,41 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
             </motion.div>
           </div>
         )}
+
+        {/* Retry log */}
+        {state.retries.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <RefreshCw size={11} className="text-amber-500/80" />
+              <span className="text-[9px] font-black text-amber-500/70 uppercase tracking-[0.3em]">Recovery Events</span>
+            </div>
+            <div className="space-y-1">
+              {state.retries.slice(-4).map((r, i) => (
+                <div key={i} className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                  <AlertTriangle size={9} className="text-amber-500/70 shrink-0" />
+                  <span className="text-slate-400">{r.persona}</span>
+                  <span className="text-slate-600">· {r.phase} · attempt {r.attempt}</span>
+                  <span className="truncate text-slate-500">{r.error}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Footer stats */}
+        <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800/60 text-[9px] font-mono text-slate-500 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1"><Clock size={10} /> {elapsedLabel}</span>
+            <span className="flex items-center gap-1"><Activity size={10} /> {state.events} events</span>
+            <span className="flex items-center gap-1"><Cpu size={10} /> {uniqueModels} models</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>{completedAnalyses}/{state.analyses.length} analyses</span>
+            <span>{castVotes}/{totalVotes} votes</span>
+            {state.runoffWinner && <span className="text-red-400 flex items-center gap-1"><Swords size={10} /> runoff</span>}
+            {state.errors.length > 0 && <span className="text-red-400 flex items-center gap-1"><ShieldAlert size={10} /> {state.errors.length} warnings</span>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -3149,11 +3446,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
       } else {
         // LIVE MODE: Initialize deliberation state and call actual LLM with progress callbacks
         setDeliberationLive({
-          phase: 'analysis',
-          analyses: PERSONALITIES.map(p => ({ persona: p.name, model: p.model ?? 'unassigned', text: '', status: 'pending' as const })),
+          phase: 'assembly',
+          analyses: PERSONALITIES.map(p => ({ persona: p.name, model: p.model ?? 'unassigned', text: '', status: 'pending' as const, startedAt: null, latencyMs: null })),
           votes: [],
+          tally: {},
+          runoffCandidates: [],
+          runoffWinner: null,
           synthesis: '',
-          winner: ''
+          winner: '',
+          startedAt: Date.now(),
+          events: 0,
+          retries: [],
+          errors: []
         });
 
         councilResult = await runCouncil(pendingQuery, councilMode, {
@@ -3162,45 +3466,84 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             if (!event) return;
             setDeliberationLive(prev => {
             if (!prev) return prev;
+            const ev = prev.events + 1;
             switch (event.type) {
+              case 'run_started':
+                return { ...prev, phase: 'assembly' as const, startedAt: event.timestamp || prev.startedAt, events: ev };
+              case 'phase_started':
+                if (event.phase === 'assembly') return { ...prev, phase: 'assembly' as const, events: ev };
+                if (event.phase === 'deliberation') return { ...prev, phase: 'analysis' as const, events: ev };
+                if (event.phase === 'voting') return { ...prev, phase: 'voting' as const, events: ev };
+                if (event.phase === 'runoff') return { ...prev, phase: 'runoff' as const, events: ev };
+                if (event.phase === 'verdict') return { ...prev, phase: 'synthesis' as const, events: ev };
+                return { ...prev, events: ev };
+              case 'phase_completed':
+                return { ...prev, events: ev };
               case 'analysis_start':
-                return { ...prev, analyses: prev.analyses.map(a =>
-                  a.persona === event.persona ? { ...a, model: event.model || a.model, status: 'thinking' as const } : a
+                return { ...prev, phase: 'analysis' as const, events: ev, analyses: prev.analyses.map(a =>
+                  a.persona === event.persona ? { ...a, model: event.model || a.model, status: 'thinking' as const, startedAt: event.timestamp || Date.now() } : a
                 )};
               case 'analysis_complete':
-                return { ...prev, analyses: prev.analyses.map(a =>
-                  a.persona === event.persona ? { ...a, text: event.text || '', status: 'complete' as const } : a
+                return { ...prev, events: ev, analyses: prev.analyses.map(a =>
+                  a.persona === event.persona
+                    ? { ...a, text: event.text || '', status: event.status === 'failed' ? 'failed' as const : 'complete' as const, latencyMs: event.latencyMs ?? null }
+                    : a
                 )};
               case 'vote_start':
                 return {
                   ...prev,
                   phase: 'voting' as const,
+                  events: ev,
                   votes: prev.votes.find(v => v.voter === event.persona) ? prev.votes :
-                    [...prev.votes, { voter: event.persona!, votedFor: '', reason: '', scores: [], status: 'reading' as const }]
+                    [...prev.votes, { voter: event.persona!, votedFor: '', reason: '', scores: [], status: 'reading' as const, latencyMs: null }]
                 };
-              case 'vote_complete':
+              case 'vote_complete': {
+                const cast = event.votedFor && event.votedFor !== 'None' && event.votedFor !== event.persona
+                  ? { ...prev.tally, [event.votedFor as string]: (prev.tally[event.votedFor as string] || 0) + 1 }
+                  : prev.tally;
                 return {
                   ...prev,
+                  events: ev,
                   votes: prev.votes.find(v => v.voter === event.persona)
                     ? prev.votes.map(v => v.voter === event.persona
-                        ? { ...v, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const }
+                        ? { ...v, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const, latencyMs: event.latencyMs ?? null }
                         : v
                       )
-                    : [...prev.votes, { voter: event.persona!, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const }]
+                    : [...prev.votes, { voter: event.persona!, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const, latencyMs: event.latencyMs ?? null }],
+                  tally: cast,
                 };
+              }
+              case 'runoff_started':
+                return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], events: ev };
+              case 'runoff_completed':
+                return { ...prev, runoffWinner: event.winner || null, events: ev };
               case 'synthesis_start':
-                return { ...prev, phase: 'synthesis' as const };
+                return { ...prev, phase: 'synthesis' as const, events: ev };
               case 'synthesis_complete':
-                return { ...prev, phase: 'complete' as const, synthesis: event.text || '' };
+                return { ...prev, phase: 'complete' as const, synthesis: event.text || '', events: ev };
+              case 'retry':
+                return { ...prev, events: ev, retries: [...prev.retries.slice(-7), { persona: event.persona || '?', phase: event.phase || '', attempt: event.attempt || 1, error: event.error || '', model: event.model }] };
+              case 'pipeline_error':
+                return { ...prev, events: ev, errors: [...prev.errors.slice(-2), event.error || 'Provider failure'] };
+              case 'run_cancelled':
+                return { ...prev, phase: 'complete' as const, events: ev };
+              case 'run_completed':
+                return { ...prev, events: ev };
               default:
-                return prev;
+                return { ...prev, events: ev };
             }
             });
           },
         });
 
-        // After result: set winner and mark complete
-        setDeliberationLive(prev => prev ? { ...prev, winner: councilResult.winner, phase: 'complete' as const } : null);
+        // After result: set winner, mark complete, and finalize the tally from the result
+        setDeliberationLive(prev => prev ? {
+          ...prev,
+          winner: councilResult.winner,
+          phase: 'complete' as const,
+          tally: (councilResult.voteTally && Object.keys(councilResult.voteTally).length > 0) ? councilResult.voteTally : prev.tally,
+          runoffWinner: councilResult.runoffResult?.winner || prev.runoffWinner,
+        } : null);
       }
       
       setCouncilMembers([...getCurrentCouncil()]);
