@@ -1572,10 +1572,11 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       let terminalVoteError: unknown;
 
       try {
-        // Try NVIDIA first with JSON mode — tiny ballot, but the cap must be
-        // generous enough for reasoning models to finish (they burn budget on
-        // internal CoT; 96 tokens starved them → no content → edge 502).
-        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, true, 3, undefined, 512);
+        // Try NVIDIA first — tiny ballot. JSON mode is deliberately OFF: several
+        // NIM models reject/slow/fail on response_format json_object (400, edge
+        // timeouts, CoT essays), while the compact prompt + repair parser
+        // handles prose-wrapped JSON robustly.
+        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, false, 3, undefined, 512);
         recordProviderMetadata(`${persona.name}:voting`, response.metadata);
         recordProvider(persona.name, response.metadata.provider || 'nvidia');
         recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
@@ -1593,7 +1594,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
         for (const fbModel of COUNCIL_FALLBACK_MODELS) {
           if (fbModel === modelAssignments[persona.name]) continue;
           try {
-            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true, 3, undefined, 512);
+            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, false, 3, undefined, 512);
             if (!attempt.content) continue;
             recordProviderMetadata(`${persona.name}:voting:fallback`, { ...attempt.metadata, status: 'fallback' });
             recordProvider(persona.name, attempt.metadata.provider || 'nvidia');
@@ -1824,7 +1825,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       `;
 
       try {
-          const runoffResponse = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, runoffPrompt, 0.3, true);
+          const runoffResponse = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, runoffPrompt, 0.3, false);
           recordProviderMetadata('chairman:runoff', runoffResponse.metadata);
           const runoffRaw = runoffResponse.content;
           const jsonMatch = runoffRaw.match(/\{[\s\S]*\}/);
