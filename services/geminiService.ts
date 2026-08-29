@@ -1549,7 +1549,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       For every peer argument below, score alignment (0-10) against YOUR dimensions.
       Peers:
       ${peers.map((op) => `[Agent: ${op.persona}]
-      Argument: "${op.text.replace(/"/g, "'").substring(0, 1000)}..."`).join('\n\n')}
+      Argument: "${op.text.replace(/"/g, "'").substring(0, 600)}..."`).join('\n\n')}
 
       *** PHASE 2: THE VOTE ***
       Cast your vote for the peer with the highest alignment score.
@@ -1558,6 +1558,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
 
       Return ONLY the JSON object below — about 3 lines total, nothing else.
       NO prose. NO markdown. NO preamble. NO analysis array.
+      Do NOT output a chain of thought. Do NOT reason aloud. Output the JSON ballot immediately.
       The "vote" field must be exactly one of the peer names or "None":
       {
         "vote": "PeerName",
@@ -1571,9 +1572,10 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       let terminalVoteError: unknown;
 
       try {
-        // Try NVIDIA first with JSON mode — tiny ballot, hard token cap so a
-        // model cannot burn the budget on an essay that then fails the schema.
-        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, true, 3, undefined, 96);
+        // Try NVIDIA first with JSON mode — tiny ballot, but the cap must be
+        // generous enough for reasoning models to finish (they burn budget on
+        // internal CoT; 96 tokens starved them → no content → edge 502).
+        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, true, 3, undefined, 512);
         recordProviderMetadata(`${persona.name}:voting`, response.metadata);
         recordProvider(persona.name, response.metadata.provider || 'nvidia');
         recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
@@ -1591,7 +1593,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
         for (const fbModel of COUNCIL_FALLBACK_MODELS) {
           if (fbModel === modelAssignments[persona.name]) continue;
           try {
-            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true, 3, undefined, 96);
+            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true, 3, undefined, 512);
             if (!attempt.content) continue;
             recordProviderMetadata(`${persona.name}:voting:fallback`, { ...attempt.metadata, status: 'fallback' });
             recordProvider(persona.name, attempt.metadata.provider || 'nvidia');

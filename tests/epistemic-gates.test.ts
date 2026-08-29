@@ -71,6 +71,9 @@ threw = false;
 try { parseVotePayload('This is prose with no json at all, I vote Oracle!', meta, peers); } catch { threw = true; }
 ok(threw, 'unparseable output → INVALID_VOTE_JSON');
 threw = false;
+try { parseVotePayload('', meta, peers); } catch { threw = true; }
+ok(threw, 'empty completion (reasoning-only model output) → INVALID_VOTE_JSON, never a silent None');
+threw = false;
 try { parseVotePayload('{"vote":"Oracle"}', meta, peers); } catch { threw = true; }
 ok(threw, 'missing reason → INVALID_VOTE_SCHEMA');
 

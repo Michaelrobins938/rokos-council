@@ -121,11 +121,29 @@ export default async function handler(request: Request) {
     }
 
     const choice = data.choices?.[0];
-    if (!choice || typeof choice.message?.content !== 'string') {
+    if (!choice) {
       return new Response(JSON.stringify({ provider: 'nvidia', model: body.model, error: { status: 502, code: 'INVALID_PROVIDER_RESPONSE', message: 'NVIDIA provider response has an invalid schema', recoverable: false } }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+    // Reasoning models may return ONLY `reasoning_content` (CoT) with no final
+    // `content` — typically a token-budget starvation (`finish_reason: length`).
+    // That is NOT a provider schema failure: return the response with empty
+    // content so the client classifies it honestly and falls back, instead of a
+    // hard 502 that collapses a model-budget issue into a provider outage.
+    if (typeof choice.message?.content !== 'string') {
+      return new Response(JSON.stringify({
+        content: '',
+        reasoning: typeof choice.message?.reasoning_content === 'string' ? choice.message.reasoning_content : undefined,
+        provider: 'nvidia',
+        model: data.model || body.model,
+        requestId: data.id,
+        finishReason: choice?.finish_reason,
+        usage: data.usage,
+        serverTimestamp: data.created,
+        emptyCompletion: true,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response(JSON.stringify({
       content: choice?.message?.content || '',
