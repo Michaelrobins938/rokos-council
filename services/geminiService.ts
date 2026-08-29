@@ -1208,7 +1208,9 @@ The Void Protocol is active. Speak, or be erased.`;
            for (const fbModel of COUNCIL_FALLBACK_MODELS) {
                if (fbModel === modelAssignments[persona.name]) continue;
                try {
-                   const fallback = await callNvidiaStructured(fbModel, analysisPrompt, 0.7);
+                   const fallback = await callNvidiaStructured(fbModel, analysisPrompt, 0.7, false, 3, (partial) => {
+                      options.onThinking?.(persona.name, partial, 'deliberation');
+                    });
                    if (!fallback.content) continue;
                    text = fallback.content;
                    metadata = { ...fallback.metadata, status: 'fallback' };
@@ -1259,7 +1261,9 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
 
           for (const altModel of escalationModels) {
             try {
-              const altResponse = await callNvidiaStructured(altModel, escalationPrompt, 0.9);
+              const altResponse = await callNvidiaStructured(altModel, escalationPrompt, 0.9, false, 3, (partial) => {
+                options.onThinking?.(persona.name, partial, 'deliberation');
+              });
               recordProviderRetries(altResponse.retryHistory, 'deliberation', persona.name);
               if (altResponse.content && !isSoftRefusal(altResponse.content) && altResponse.content.length > 100) {
                 text = altResponse.content;
