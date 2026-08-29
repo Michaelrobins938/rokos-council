@@ -1,5 +1,5 @@
 import { NarratorOutput } from '../types';
-import { callOpenRouter, callNvidia } from './geminiService';
+import { callNvidia } from './geminiService';
 
 const cleanJsonResponse = (text: string): string => {
   const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
@@ -36,19 +36,8 @@ export const generateNarration = async (
   `;
 
   try {
-    let responseText = '';
-    if (process.env.VITE_OPENROUTER_API_KEY_1) {
-      responseText = await callOpenRouter("stepfun/step-3.5-flash", prompt, 0.92, true);
-    }
-    
-    if (!responseText && process.env.VITE_NVIDIA_API_KEY) {
-      responseText = await callNvidia("deepseek-ai/deepseek-v4-flash-0731", prompt, 0.92, true);
-    }
-    
-    if (!responseText) {
-      throw new Error("No API available");
-    }
-    
+    // Use NVIDIA NIM for all narrations — OpenRouter keys are rotated/expired.
+    const responseText = await callNvidia("deepseek-ai/deepseek-v4-flash-0731", prompt, 0.92, true);
     const data = JSON.parse(cleanJsonResponse(responseText));
     return {
       coldOpen: data.coldOpen || '',

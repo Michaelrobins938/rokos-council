@@ -335,7 +335,7 @@ export const analyzeContent = async (prompt: string, fileData: string, mimeType:
   return { candidates: [] };
 };
 
-// --- GENERAL MESSAGING (REPLACED WITH OPENROUTER) ---
+// --- GENERAL MESSAGING (NVIDIA NIM) ---
 
 export const sendMessage = async (message: string, capability?: Capability): Promise<any> => {
   try {
