@@ -103,10 +103,11 @@ export type CouncilEvent = CouncilEventEnvelope & (
   | { type: 'member_assigned'; persona: string; model: string; provider?: string; assignmentIndex?: number }
   | { type: 'member_started'; persona: string; phase: CouncilPhase; model?: string; provider?: string }
   | { type: 'member_completed'; persona: string; phase: CouncilPhase; output: string; metadata?: ProviderMetadata; status?: 'completed' | 'failed' | 'abstained' }
-  | { type: 'vote_cast'; persona: string; vote: string; reason?: string; metadata?: ProviderMetadata }
+  | { type: 'vote_cast'; persona: string; vote: string; reason?: string; scores?: Array<{ target: string; score: number; notes: string }>; metadata?: ProviderMetadata }
   | { type: 'runoff_started'; candidates: string[] }
   | { type: 'runoff_completed'; winner: string; metadata?: ProviderMetadata }
   | { type: 'phase_completed'; phase: CouncilPhase }
+  | { type: 'synthesis_completed'; synthesis: string }
   | { type: 'retry'; phase: CouncilPhase; persona?: string; attempt: number; error: string; provider?: string; model?: string }
   | { type: 'pipeline_error'; phase: CouncilPhase; message: string; recoverable: boolean; code?: string }
   | { type: 'run_completed'; completeness?: CouncilCompleteness }
