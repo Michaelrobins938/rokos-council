@@ -9,12 +9,36 @@ const UPSTREAM = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const ROTATABLE = new Set([401, 403, 408, 425, 429, 500, 502, 503, 504]);
 const REDACT = /nvapi-[A-Za-z0-9_-]+|Bearer\s+[^\s]+/gi;
 
+// Status-honest error code. NVIDIA's gateway rejects keys with bare HTML/empty
+// bodies, so without this a pool-wide auth failure collapses into the same
+// opaque "NVIDIA_PROVIDER_ERROR" as a real outage, and a retired model (410)
+// would be indistinguishable from a provider that is simply down.
+export const classifyUpstreamCode = (status: number, upstreamCode?: string): string => {
+  if (typeof upstreamCode === 'string' && upstreamCode) return upstreamCode;
+  if (status === 401 || status === 403) return 'NVIDIA_AUTH_ERROR';
+  if (status === 410) return 'MODEL_UNAVAILABLE';
+  return 'NVIDIA_PROVIDER_ERROR';
+};
+
+// Honest fallback message for upstream error bodies that are not JSON (HTML
+// auth pages, empty gateway errors) — the surfaced reason says WHAT failed,
+// not just "provider request failed".
+export const fallbackNvidiaMessage = (status: number): string => {
+  if (status === 401 || status === 403) return 'NVIDIA provider rejected the API key (authorization failed)';
+  if (status === 410) return 'NVIDIA provider reports the model is no longer available';
+  return 'NVIDIA provider request failed';
+};
+
 // Collect every configured NVIDIA key (NVIDIA_API_KEY* and VITE_* variants),
-// trimmed and prefix-filtered. Duplicates are collapsed.
-const collectKeys = (): string[] => {
-  const names: string[] = [];
-  for (let i = 1; i <= 32; i++) names.push(i === 1 ? 'NVIDIA_API_KEY' : `NVIDIA_API_KEY_${i}`);
-  for (let i = 1; i <= 16; i++) names.push(i === 1 ? 'VITE_NVIDIA_API_KEY' : `VITE_NVIDIA_API_KEY_${i}`);
+// trimmed and prefix-filtered. Duplicates are collapsed. Both the bare name and
+// the `_1`-suffixed numbering are covered so no configured key is silently
+// skipped.
+export const collectKeys = (): string[] => {
+  const names: string[] = ['NVIDIA_API_KEY', 'VITE_NVIDIA_API_KEY'];
+  for (let i = 1; i <= 32; i++) {
+    names.push(`NVIDIA_API_KEY_${i}`);
+    if (i <= 16) names.push(`VITE_NVIDIA_API_KEY_${i}`);
+  }
   return [...new Set(
     names
       .map(n => process.env[n])
@@ -60,14 +84,14 @@ const buildNormalized = async (upstream: Response, body: any) => {
   }
 
   if (!upstream.ok) {
-    const { message, code } = await upstreamError(upstream, 'NVIDIA provider request failed');
+    const { message, code } = await upstreamError(upstream, fallbackNvidiaMessage(upstream.status));
     return jsonResponse({
       provider: 'nvidia',
       model: body.model,
       responseShape: 'upstream_error',
       error: {
         status: upstream.status,
-        code: code || 'NVIDIA_PROVIDER_ERROR',
+        code: classifyUpstreamCode(upstream.status, code),
         message,
         recoverable: ROTATABLE.has(upstream.status),
       },
@@ -178,7 +202,7 @@ export default async function handler(request: Request) {
     }
 
     // Upstream rejected — build the error, then decide whether to rotate.
-    const { message, code } = await upstreamError(upstream, 'NVIDIA provider request failed');
+    const { message, code } = await upstreamError(upstream, fallbackNvidiaMessage(upstream.status));
     const rotatable = ROTATABLE.has(upstream.status);
     lastError = jsonResponse({
       provider: 'nvidia',
@@ -186,7 +210,7 @@ export default async function handler(request: Request) {
       responseShape: 'upstream_error',
       error: {
         status: upstream.status,
-        code: code || 'NVIDIA_PROVIDER_ERROR',
+        code: classifyUpstreamCode(upstream.status, code),
         message,
         recoverable: rotatable,
       },
@@ -194,7 +218,9 @@ export default async function handler(request: Request) {
 
     if (!rotatable) break;
     // Brief pause before trying the next key (avoids hammering a failing tier).
-    await new Promise(r => setTimeout(r, 100 + attempt * 50));
+    // Capped at a flat 100ms: a full 22-key sweep must fail over fast, not burn
+    // ~14s of dead sleep before the client even gets an answer.
+    await new Promise(r => setTimeout(r, 100));
   }
 
   // All keys in the pool were exhausted on rotatable errors — the client's own

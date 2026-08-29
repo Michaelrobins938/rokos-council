@@ -1056,6 +1056,20 @@ const providerUsage = (usage: Record<string, unknown> | undefined): ProviderUsag
 };
 
 const isTransientStatus = (status: number): boolean => [408, 425, 429, 500, 502, 503, 504].includes(status);
+
+// Pure provider-retry policy — unit-testable without a provider. The server
+// proxy is AUTHORITATIVE on rotatability: it has already rotated the entire
+// key pool before answering. `recoverable: true` on a 401/403/410 means a
+// fresh rotation (client retry) could succeed; `recoverable: false` means the
+// error is deterministic for this model and retrying it is futile (the
+// model-fallback cascade is the correct recovery path). Only when the server
+// sent no classification do we fall back to the transient-status heuristic.
+export const shouldRetryProvider = (status: number | undefined, serverRecoverable?: boolean): boolean => {
+  if (serverRecoverable === true) return true;
+  if (serverRecoverable === false) return false;
+  return typeof status === 'number' ? isTransientStatus(status) : false;
+};
+
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 // Maps a provider error to a canonical classification so council logic never
@@ -1258,12 +1272,16 @@ export const callNvidiaStructured = async (
 
       if (!response.ok) {
         const status = typeof data.error?.status === 'number' ? data.error.status : response.status;
-        const hasTypedError = Boolean(data.error && typeof data.error.message === 'string');
-        // Transient HTTP statuses (408, 425, 429, 500, 502, 503, 504) are retryable
-        // regardless of upstream wording — NIM returns bare 504/429 bodies with no
-        // error object, which previously skipped retries entirely (empty retryHistory
-        // + mass member abstentions). Only explicit non-recoverable markers skip retry.
-        const recoverable = isTransientStatus(status) && !(data.error?.recoverable === false);
+        // The server proxy is AUTHORITATIVE on rotatability: it has already
+        // rotated the entire key pool before answering, so recoverable:true on
+        // a 401/403/410 means a retry (fresh rotation) may succeed, while
+        // recoverable:false means the error is deterministic for this model and
+        // retry is futile (the model-fallback cascade recovers instead). The
+        // transient-status set is only the fallback heuristic for responses
+        // that carry no classification — bare 504/429 bodies with no error
+        // object used to skip retries entirely (empty retryHistory + mass
+        // member abstentions).
+        const recoverable = shouldRetryProvider(status, data.error?.recoverable);
         lastError = new NvidiaProviderError(
           data.error?.message || `NVIDIA provider request failed (${status})`,
           { ...metadata, error: { status, code: data.error?.code, message: data.error?.message || 'Provider request failed', recoverable } },
