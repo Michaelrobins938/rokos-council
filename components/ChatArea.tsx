@@ -2863,7 +2863,7 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                       {/* Status / text */}
                       {analysis.status === 'thinking' && (
                         analysis.thinkingText ? (
-                          <div className="overflow-y-auto max-h-[140px] custom-scrollbar">
+                          <div className="overflow-y-auto max-h-[140px] custom-scrollbar flex flex-col-reverse">
                             <p className="text-[10px] text-emerald-300/80 font-mono leading-relaxed whitespace-pre-wrap">
                               {analysis.thinkingText}
                               <span className="inline-block w-1.5 h-3 bg-emerald-400/70 ml-0.5 align-middle animate-pulse" />

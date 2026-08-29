@@ -289,22 +289,29 @@ export const finalizePersonaExecution = (
   ledger[persona] = rec;
 };
 
-// Consumes an SSE body from the NVIDIA proxy, accumulating content deltas.
-// onPartial receives the FULL accumulated text so far (throttled to ~120ms).
+// Consumes an SSE body from the NVIDIA proxy. Two delta fields are captured:
+//   - `delta.reasoning_content` → the model's chain-of-thought (its ACTUAL
+//     thinking before answering). Streamed live into the feed via onPartial.
+//   - `delta.content` → the final answer text. Returned to the caller and kept
+//     as the audited analysis artifact; the CoT is deliberately NOT merged into
+//     the persisted text (it is a live display transport, not a record).
+// onPartial receives the display text so far (reasoning + answer), throttled.
 const consumeSseStream = async (
   body: ReadableStream<Uint8Array>,
   onPartial: (fullText: string) => void,
 ): Promise<string> => {
   const reader = body.getReader();
   const decoder = new TextDecoder();
+  let reasoning = '';
   let content = '';
   let buffer = '';
   let lastEmit = 0;
+  const display = () => (reasoning ? reasoning + (content ? `\n\n${content}` : '') : content);
   const flush = () => {
     const now = Date.now();
     if (now - lastEmit >= 120) {
       lastEmit = now;
-      onPartial(content);
+      onPartial(display());
     }
   };
   while (true) {
@@ -319,10 +326,15 @@ const consumeSseStream = async (
       const data = line.slice(5).trim();
       if (data === '[DONE]') continue;
       try {
-        const chunk = JSON.parse(data);
-        const delta = chunk?.choices?.[0]?.delta?.content;
-        if (typeof delta === 'string' && delta) {
-          content += delta;
+        const delta = JSON.parse(data)?.choices?.[0]?.delta || {};
+        const rc = delta.reasoning_content;
+        if (typeof rc === 'string' && rc) {
+          reasoning += rc;
+          flush();
+        }
+        const c = delta.content;
+        if (typeof c === 'string' && c) {
+          content += c;
           flush();
         }
       } catch { /* tolerate malformed chunks */ }
@@ -332,13 +344,15 @@ const consumeSseStream = async (
     const data = buffer.trim().slice(5).trim();
     if (data !== '[DONE]') {
       try {
-        const chunk = JSON.parse(data);
-        const delta = chunk?.choices?.[0]?.delta?.content;
-        if (typeof delta === 'string' && delta) content += delta;
+        const delta = JSON.parse(data)?.choices?.[0]?.delta || {};
+        const rc = delta.reasoning_content;
+        if (typeof rc === 'string' && rc) reasoning += rc;
+        const c = delta.content;
+        if (typeof c === 'string' && c) content += c;
       } catch { /* ignore */ }
     }
   }
-  if (content) onPartial(content);
+  if (display()) onPartial(display());
   return content;
 };
 
