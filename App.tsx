@@ -34,6 +34,45 @@ const App: React.FC = () => {
     } else {
       createNewSession();
     }
+
+    // Restore a shared session from ?session=<base64> if present
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const shared = params.get('session');
+      if (shared) {
+        const json = decodeURIComponent(escape(atob(shared)));
+        const exportSession = JSON.parse(json);
+        const { session, result } = exportSession;
+        if (result) {
+          const sharedMsg: ChatMessage = {
+            id: session?.id || Date.now().toString(),
+            role: 'model',
+            text: result.synthesis || result.transcript || '',
+            councilResult: result,
+          };
+          const userMsg: ChatMessage = {
+            id: `${sharedMsg.id}-user`,
+            role: 'user',
+            text: session?.petitionerQuery || '',
+          };
+          const restored: Session = {
+            id: sharedMsg.id,
+            title: (session?.petitionerQuery || 'Shared Council Session').slice(0, 60),
+            messages: [userMsg, sharedMsg],
+            lastModified: session?.timestamp || Date.now(),
+            preview: (sharedMsg.text || 'Shared verdict').slice(0, 50),
+          };
+          setSessions(prev => {
+            const next = [restored, ...prev.filter(s => s.id !== restored.id)];
+            return next;
+          });
+          setActiveSessionId(restored.id);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore shared session", e);
+    }
   }, []);
 
   // Save sessions whenever they change
@@ -154,6 +193,8 @@ const App: React.FC = () => {
   const hasArchive = activeSession?.messages.some(m => m.councilResult?.winner) ?? false;
   const [councilMode, setCouncilMode] = useState<CouncilMode>(CouncilMode.STANDARD);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
@@ -170,6 +211,8 @@ const App: React.FC = () => {
         onDeleteSession={deleteSession}
         onExport={handleExport}
         hasArchive={hasArchive}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       
       <main className="flex-1 h-full overflow-hidden relative flex flex-col">

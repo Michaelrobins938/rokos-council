@@ -84,6 +84,9 @@ dist-ssr
 test_initial.png
 test_result.png
 
+# AI tooling state (local design/critique output, not project source)
+.impeccable/
+
 # Build artifacts and exports
 roko's-council/
 roko-council-all-*/

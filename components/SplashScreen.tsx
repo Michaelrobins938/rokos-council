@@ -96,20 +96,32 @@ const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
               </motion.p>
             </motion.div>
 
-            {/* Loading Bar */}
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 200, opacity: 1 }}
-              transition={{ delay: 1.5, duration: 1.5 }}
-              className="mt-12 h-1 bg-slate-800 rounded-full overflow-hidden relative"
-            >
+            {/* Loading Bar & Skip Button */}
+            <div className="mt-10 flex flex-col items-center gap-3">
               <motion.div
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 2, ease: "linear", delay: 1.5 }}
-                className="h-full bg-gradient-to-r from-emerald-500 to-yellow-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-              />
-            </motion.div>
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 220, opacity: 1 }}
+                transition={{ delay: 1.2, duration: 1 }}
+                className="h-1 bg-slate-800 rounded-full overflow-hidden relative"
+              >
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 1.8, ease: "linear", delay: 1.2 }}
+                  className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-amber-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]"
+                />
+              </motion.div>
+
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+                onClick={() => { setFadeOut(true); setTimeout(onComplete, 500); }}
+                className="text-[10px] font-mono text-slate-500 hover:text-emerald-400 uppercase tracking-widest px-3 py-1 rounded-md border border-slate-800/80 hover:border-emerald-500/30 transition-all"
+              >
+                Skip Ritual Intro →
+              </motion.button>
+            </div>
           </div>
 
           {/* Corner Decorations */}

@@ -13,8 +13,8 @@ const REDACT = /nvapi-[A-Za-z0-9_-]+|Bearer\s+[^\s]+/gi;
 // trimmed and prefix-filtered. Duplicates are collapsed.
 const collectKeys = (): string[] => {
   const names: string[] = [];
-  for (let i = 1; i <= 16; i++) names.push(i === 1 ? 'NVIDIA_API_KEY' : `NVIDIA_API_KEY_${i}`);
-  for (let i = 1; i <= 8; i++) names.push(i === 1 ? 'VITE_NVIDIA_API_KEY' : `VITE_NVIDIA_API_KEY_${i}`);
+  for (let i = 1; i <= 32; i++) names.push(i === 1 ? 'NVIDIA_API_KEY' : `NVIDIA_API_KEY_${i}`);
+  for (let i = 1; i <= 16; i++) names.push(i === 1 ? 'VITE_NVIDIA_API_KEY' : `VITE_NVIDIA_API_KEY_${i}`);
   return [...new Set(
     names
       .map(n => process.env[n])

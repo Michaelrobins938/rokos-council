@@ -121,17 +121,17 @@ const gatedResult: CouncilResult = {
   winner: null,
   synthesis: 'VERDICT_UNAVAILABLE',
   opinions: [],
-  executionStatus: 'complete',
-  deliberationStatus: 'quorum_failed',
-  votingStatus: 'skipped',
-  synthesisStatus: 'not_attempted',
-  verdictStatus: 'unavailable',
+  executionStatus: 'failed',
+  deliberationStatus: 'failed',
+  votingStatus: 'failed',
+  synthesisStatus: 'failed',
+  verdictStatus: 'failed',
   synthesisMode: 'local_fallback',
   quorum: { assigned: 10, participated: 2, failed: 8, threshold: 0.6, participationRatio: 0.2, achieved: false },
   voteStats: { expectedVoters: 2, validVotes: 0, abstentions: 0, invalidVotes: 0 },
 };
 const gatedDiag = computeDiagnostics(gatedResult);
-ok(gatedDiag.protocol?.verdictStatus === 'unavailable', 'protocol report exposes verdictStatus');
+ok(gatedDiag.protocol?.verdictStatus === 'failed', 'protocol report exposes verdictStatus');
 ok(gatedDiag.protocol?.quorum?.achieved === false, 'protocol report exposes quorum failure');
 ok(gatedResult.winner === null, 'verdict unavailable ⇒ winner null (structural invariant)');
 

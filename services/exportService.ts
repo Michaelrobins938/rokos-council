@@ -72,7 +72,10 @@ const computeSilenceMetric = (result: CouncilResult): Record<string, number> => 
   const totalMembers = result.councilState?.totalCouncilMembers || result.opinions.length;
   const voteGroups: Record<string, number> = {};
   result.opinions.forEach(op => {
-    const vote = op.vote || 'None';
+    // A null vote means "no usable ballot" — grouped under its OWN key so the
+    // failed voters never collapse into a shared 'None' bucket with genuine
+    // model abstentions (the Python str(None) leak).
+    const vote = op.vote ?? 'NO_VALID_BALLOT';
     voteGroups[vote] = (voteGroups[vote] || 0) + 1;
   });
   const metric: Record<string, number> = {};

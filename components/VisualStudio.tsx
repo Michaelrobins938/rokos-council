@@ -55,7 +55,7 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
       <div className="flex flex-col items-center my-6 opacity-50">
         <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-dashed border-slate-700 flex flex-col items-center justify-center gap-1">
           <AlertTriangle size={16} className="text-slate-500" />
-          <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">No Verdict</span>
+          <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest">No Verdict</span>
         </div>
       </div>
     );
@@ -100,7 +100,7 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
               ? <Loader2 size={18} className="animate-spin text-slate-400" />
               : <>
                   <Star size={16} className={personaConfig.color} />
-                  <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">Sigil</span>
+                  <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Sigil</span>
                 </>
             }
           </motion.button>
@@ -365,7 +365,7 @@ export const CharacterDossier: React.FC<CharacterDossierProps> = ({ personaName,
                   ].map(stat => (
                     <div key={stat.label} className="text-center p-3 rounded-xl bg-slate-950/50 border border-slate-800/40">
                       <p className={`text-2xl font-cinzel font-bold ${stat.color}`}>{stat.value}</p>
-                      <p className="text-[8px] font-mono text-slate-600 uppercase tracking-widest mt-0.5">{stat.label}</p>
+                      <p className="text-[9px] font-mono text-slate-600 uppercase tracking-widest mt-0.5">{stat.label}</p>
                     </div>
                   ))}
                 </div>

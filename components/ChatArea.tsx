@@ -4,6 +4,7 @@ import { CouncilMode, ChatMessage, CouncilResult, CouncilOpinion, CouncilEvent }
 import { runCouncil, generateSpeech, LiveClient, generateNextMoves, getCurrentCouncil, generateImage, PERSONALITIES, DeliberationEvent } from '../services/geminiService';
 import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, calculateTraceSize, exportAllAsZip } from '../services/exportService';
 import { loadSeasons, getLeaderboard, loadAllMemory, clearAllMemory, getEpisodeCounter } from '../services/councilMemoryService';
+import { MORAL_PARADOX_LIBRARY, buildParadoxSuggestion } from '../services/moralParadoxLibrary';
 import { performWebSearch } from '../services/searchService';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -184,6 +185,17 @@ const COUNCIL_SUGGESTIONS = [
     { category: "SUFFERING ETHICS", title: "Wild Animal Suffering", text: "The total quantity of suffering experienced by wild animals — through predation, parasitism, starvation, and disease — vastly exceeds all human suffering in history. If we have the technological capacity to redesign ecosystems to eliminate predation and suffering among wild animals, do we have a moral obligation to do so? And if yes: are we then obligated to prevent the existence of new wild animals who will suffer?" },
 ];
 
+// Moral Paradox Architecture — the 20 structured dilemmas join the suggestion
+// pool. Each carries the full moral topology (hidden cost, information
+// asymmetry, reversibility, precedent, personalization trap, moral residue,
+// the uncomfortable alternative) so the Council is never choosing between good
+// and evil — it is choosing between competing principles where every action
+// creates a defensible harm. Variations re-test whether the principle holds
+// when one variable changes.
+MORAL_PARADOX_LIBRARY.forEach((p) => {
+  COUNCIL_SUGGESTIONS.push(buildParadoxSuggestion(p, 0));
+});
+
 const CHAIRMAN_VOICE = "Charon";
 
 // --- PARADOX METADATA (Oracle + Historian registry) ---
@@ -335,7 +347,7 @@ const EpisodeLeaderboard: React.FC = () => {
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-amber-400 transition-colors block">
               Council Archive
             </span>
-            <span className="text-[8px] text-slate-600 font-mono">Season {counter.season} · Episode {counter.episode} · Standing Records</span>
+            <span className="text-[9px] text-slate-600 font-mono">Season {counter.season} · Episode {counter.episode} · Standing Records</span>
           </div>
         </div>
         <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
@@ -384,7 +396,7 @@ const EpisodeLeaderboard: React.FC = () => {
                   <BookOpen size={10} />
                   Decision Paths — Paradox → Verdict
                 </h4>
-                <p className="text-[8px] text-slate-600 mb-3 italic">Each entry shows the path from question to verdict. Archives as tactical maps, not logs. — Strategos</p>
+                <p className="text-[9px] text-slate-600 mb-3 italic">Each entry shows the path from question to verdict. Archives as tactical maps, not logs. — Strategos</p>
                 <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                   {seasons.flatMap(s => s.episodes).sort((a, b) => b.timestamp - a.timestamp).slice(0, 8).map(ep => {
                     const winnerConfig = ep.winner ? getPersonaConfig(ep.winner) : null;
@@ -394,13 +406,13 @@ const EpisodeLeaderboard: React.FC = () => {
                       <div key={ep.id} className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/40 hover:border-amber-700/30 transition-colors group">
                         {/* Episode marker */}
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[8px] font-mono text-slate-600">S{ep.seasonNumber}E{ep.episodeNumber}</span>
+                          <span className="text-[9px] font-mono text-slate-600">S{ep.seasonNumber}E{ep.episodeNumber}</span>
                           <p className="text-[9px] font-cinzel font-bold text-slate-400 truncate max-w-[120px]">{ep.title}</p>
                         </div>
                         {/* Decision path: Question → Deliberation → Verdict */}
                         <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
                           {/* Question node */}
-                          <div className="flex-shrink-0 px-2 py-1 bg-slate-800/60 border border-slate-700/50 rounded text-[8px] text-slate-400 max-w-[90px] truncate" title={ep.question}>
+                          <div className="flex-shrink-0 px-2 py-1 bg-slate-800/60 border border-slate-700/50 rounded text-[9px] text-slate-400 max-w-[90px] truncate" title={ep.question}>
                             {ep.question.substring(0, 25)}…
                           </div>
                           {/* Arrow */}
@@ -417,7 +429,7 @@ const EpisodeLeaderboard: React.FC = () => {
                                 );
                               })
                             ) : (
-                              <div className="px-1.5 py-0.5 bg-slate-800/40 rounded text-[7px] text-slate-600">deliberated</div>
+                              <div className="px-1.5 py-0.5 bg-slate-800/40 rounded text-[9px] text-slate-600">deliberated</div>
                             )}
                           </div>
                           {/* Arrow */}
@@ -425,13 +437,13 @@ const EpisodeLeaderboard: React.FC = () => {
                           {/* Winner node — the verdict */}
                           <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded border ${winnerConfig.color.replace('text-', 'border-')}/40 bg-slate-950/60`}>
                             <div className={`${winnerConfig.color}`} style={{ display: 'flex' }}>{winnerConfig.icon}</div>
-                            <span className={`text-[8px] font-cinzel font-bold ${winnerConfig.color}`}>{ep.winner}</span>
+                            <span className={`text-[9px] font-cinzel font-bold ${winnerConfig.color}`}>{ep.winner}</span>
                           </div>
                         </div>
                         {/* Jurist: Ruling stamp */}
                         <div className="mt-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Scale size={7} className="text-slate-600" />
-                          <span className="text-[7px] text-slate-600 font-mono uppercase tracking-widest">Ruling: {ep.winner} — Final</span>
+                          <span className="text-[9px] text-slate-600 font-mono uppercase tracking-widest">Ruling: {ep.winner} — Final</span>
                         </div>
                       </div>
                     );
@@ -481,7 +493,7 @@ const CharacterPortraitModal: React.FC<{ personaName: string; onClose: () => voi
         onClick={e => e.stopPropagation()}
         className="relative bg-slate-950 border border-slate-700 rounded-2xl overflow-hidden max-w-sm w-full shadow-2xl"
       >
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-slate-900/80 text-slate-400 hover:text-white">
+        <button onClick={onClose} aria-label="Close dossier" className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-slate-900/80 text-slate-400 hover:text-white">
           <XIcon size={14} />
         </button>
         <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${config.color.replace('text-', 'from-')} to-transparent`} />
@@ -582,7 +594,7 @@ const JuristFrameworkPanel: React.FC = () => {
                          <span className="text-[10px] font-black text-emerald-300/80 uppercase tracking-[0.3em] group-hover:text-emerald-200 transition-colors block">
                              Chamber Protocols
                          </span>
-                         <span className="text-[9px] text-slate-500 font-mono">A ceremonial reference sequence · Jurist</span>
+                         <span className="text-[9px] text-slate-500 font-mono">The chamber's standing rules — scope, evidence, cross-examination, adjournment (9 protocols)</span>
                      </div>
                  </div>
                  <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
@@ -626,7 +638,7 @@ const JuristFrameworkPanel: React.FC = () => {
                                                      {rule.icon}
                                                      <span>{rule.cite}</span>
                                                  </span>
-                                                 <span className="mt-1 block text-[11px] font-bold text-slate-200">{rule.title}</span>
+                                                 <span className="mt-1 block text-[13px] font-semibold text-slate-200">{rule.title}</span>
                                                  <span className="mt-1 block text-[10px] text-slate-400 leading-relaxed">{rule.preview}</span>
                                              </button>
                                              <AnimatePresence initial={false}>
@@ -736,7 +748,7 @@ const ConceptMapPanel: React.FC<{ onSelectCategory: (text: string) => void }> = 
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-cyan-400/80 transition-colors block">
                             Concept Map
                         </span>
-                        <span className="text-[8px] text-slate-600 font-mono">Conceptual Territories · Authored Instrument</span>
+                        <span className="text-[9px] text-slate-600 font-mono">The paradox territories the Council can convene on — pick one to draft a query</span>
                     </div>
                 </div>
                 <ChevronDown size={14} className={`text-slate-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
@@ -828,6 +840,30 @@ const ConceptMapPanel: React.FC<{ onSelectCategory: (text: string) => void }> = 
 type CouncilMember = ReturnType<typeof getCurrentCouncil>[number];
 type PersonaConfig = ReturnType<typeof getPersonaConfig>;
 
+const SAMPLE_PERSONA_TEXTS: Record<string, string> = {
+    'Oracle': "The future has already occurred. I speak in past tense of what has not yet arrived.",
+    'Strategos': "State your objective. Dismantle every path that cannot reach it.",
+    'Philosopher': "Let us attack the premise first. A conclusion built on sand will crumble.",
+    'Demagogue': "Look at the human cost. What does the person on the street actually feel?",
+    'Jurist': "State your jurisdiction. Every argument in this chamber must be admissible.",
+    'Citizen': "Translate your high theories into concrete human reality.",
+    'Historian': "History carries weight. Three civilizations made this exact miscalculation.",
+    'Critic': "What is the single most catastrophic assumption in this question?",
+    'Technocrat': "Current state, desired state, delta. Let us calculate the optimal path."
+};
+
+const PERSONA_VECTORS: Record<string, { primary: string; score: string; secondary: string }> = {
+    'Oracle': { primary: 'Foresight', score: '10.0', secondary: 'Probabilistic' },
+    'Strategos': { primary: 'Realpolitik', score: '9.8', secondary: 'Leverage' },
+    'Philosopher': { primary: 'Premise Rigor', score: '9.9', secondary: 'Logic' },
+    'Demagogue': { primary: 'Public Resonance', score: '9.7', secondary: 'Rhetoric' },
+    'Jurist': { primary: 'Admissibility', score: '9.9', secondary: 'Precedent' },
+    'Citizen': { primary: 'Human Reality', score: '9.6', secondary: 'Empathy' },
+    'Historian': { primary: 'Civilization Weight', score: '9.8', secondary: 'Memory' },
+    'Critic': { primary: 'Assumption Dismantling', score: '9.9', secondary: 'Skepticism' },
+    'Technocrat': { primary: 'Systems Optimization', score: '9.8', secondary: 'Delta Ratio' }
+};
+
 const CouncilMemberCard: React.FC<{
     member: CouncilMember;
     config: PersonaConfig;
@@ -835,7 +871,9 @@ const CouncilMemberCard: React.FC<{
     cachedPortrait: string | null;
     index: number;
     onOpen: (memberName: string) => void;
-}> = ({ member, config, memory, cachedPortrait, index, onOpen }) => {
+    onPlayVoice?: (text: string, voice: string, id: string) => void;
+    isPlaying?: boolean;
+}> = ({ member, config, memory, cachedPortrait, index, onOpen, onPlayVoice, isPlaying }) => {
     const prefersReducedMotion = useReducedMotion();
     const colorBg = config.color.replace('text-', 'bg-');
     const colorBorder = config.color.replace('text-', 'border-');
@@ -846,18 +884,20 @@ const CouncilMemberCard: React.FC<{
         ? `${memory.wins}W · ${memory.losses}L · ${memory.sessionsParticipated} session${memory.sessionsParticipated === 1 ? '' : 's'}`
         : null;
 
+    const sampleText = SAMPLE_PERSONA_TEXTS[member.name] || config.speakingStyle;
+
     return (
-        <motion.button
-            type="button"
+        <motion.div
             key={member.name}
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             whileHover={prefersReducedMotion ? undefined : { scale: 1.015, y: -4 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.995 }}
             transition={{ delay: prefersReducedMotion ? 0 : index * 0.06, duration: 0.45, ease: 'easeOut' }}
             onClick={() => onOpen(member.name)}
+            role="button"
+            tabIndex={0}
             aria-label={`Open dossier for ${member.name}`}
-            className={`group relative flex min-h-[270px] w-[82vw] shrink-0 snap-start flex-col overflow-hidden rounded-3xl border text-left transition-[border-color,background-color,box-shadow] duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${colorBorder}/30 hover:${colorBorder}/75 focus-visible:${colorBorder}/80 bg-slate-900/80 hover:bg-slate-900 ${config.color} md:w-auto md:shrink md:snap-none`}
+            className={`group relative flex min-h-[280px] w-[82vw] shrink-0 snap-start flex-col overflow-hidden rounded-3xl border text-left transition-[border-color,background-color,box-shadow] duration-500 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${colorBorder}/30 hover:${colorBorder}/75 focus-visible:${colorBorder}/80 bg-slate-900/80 hover:bg-slate-900 ${config.color} md:w-auto md:shrink md:snap-none`}
             style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}
         >
             {cachedPortrait ? (
@@ -878,41 +918,66 @@ const CouncilMemberCard: React.FC<{
                     <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${colorBorder}/50 bg-slate-950/85 ${config.color} shadow-lg shadow-black/20 transition-all duration-300 group-hover:${colorBorder}/90 group-focus-visible:${colorBorder}/90`}>
                         <div className="h-6 w-6">{config.icon}</div>
                     </div>
-                    <span className={`rounded-full border ${colorBorder}/30 bg-slate-950/60 px-2.5 py-1 text-[8px] font-mono uppercase tracking-[0.18em] ${config.color}`}>
-                        {specialty}
-                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                        {onPlayVoice && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPlayVoice(sampleText, config.voice, `voice-${member.name}`);
+                                }}
+                                title={`Listen to ${member.name}'s voice`}
+                                aria-label={`Listen to ${member.name}'s voice`}
+                                className={`p-2 rounded-xl border ${isPlaying ? 'border-amber-400 bg-amber-500/20 text-amber-300 animate-pulse' : 'border-slate-800 bg-slate-950/80 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40'} transition-all`}
+                            >
+                                <Volume2 size={13} />
+                            </button>
+                        )}
+                        <span className={`rounded-full border ${colorBorder}/30 bg-slate-950/60 px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.18em] ${config.color}`}>
+                            {specialty}
+                        </span>
+                    </div>
                 </div>
 
-                <div className="mt-5">
-                    <h3 className="font-cinzel text-lg font-bold leading-tight text-slate-100">{member.name}</h3>
-                    <p className={`mt-1 text-[9px] font-mono uppercase tracking-[0.2em] ${config.color}`}>{config.tagline}</p>
+                <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-cinzel text-lg font-bold leading-tight text-slate-100">{member.name}</h3>
+                        {PERSONA_VECTORS[member.name] && (
+                            <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                                {PERSONA_VECTORS[member.name].primary} · {PERSONA_VECTORS[member.name].score}
+                            </span>
+                        )}
+                    </div>
+                    <p className={`mt-0.5 text-[9px] font-mono uppercase tracking-[0.2em] ${config.color}`}>{config.tagline}</p>
                 </div>
 
-                <div className="mt-4 flex-1 space-y-3">
+                <div className="mt-3 flex-1 space-y-2.5">
                     <div>
-                        <p className="text-[8px] font-mono uppercase tracking-[0.2em] text-slate-600">Specialty</p>
-                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-300">{config.speakingStyle.split('.')[0]}.</p>
+                        <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-slate-500">Speaking Style</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-300 font-sans">{config.speakingStyle.split('.')[0]}.</p>
                     </div>
                     <div className={`border-l-2 ${colorBorder}/70 pl-3`}>
-                        <p className="text-[8px] font-mono uppercase tracking-[0.2em] text-slate-600">Signature strength</p>
-                        <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-slate-400">{weapon}</p>
+                        <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-slate-500">Governing Prompt Vector</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs italic leading-relaxed text-slate-400 font-sans">{weapon}</p>
                     </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800/70 pt-3">
-                    <span className="text-[9px] font-mono text-slate-500">{record || 'No record yet'}</span>
+                    <span className="text-[9px] font-mono text-slate-500">{record}</span>
                     <span className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-[0.12em] opacity-80 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 ${config.color}`}>
-                        Open dossier <ChevronRight size={12} />
+                        Dossier <ChevronRight size={12} />
                     </span>
                 </div>
             </div>
-        </motion.button>
+        </motion.div>
     );
 };
 
-const CouncilMembers: React.FC = () => {
+const CouncilMembers: React.FC<{ onPlayVoice?: (text: string, voice: string, id: string) => void, playingId?: string | null }> = ({ onPlayVoice, playingId }) => {
     const council = getCurrentCouncil();
     const [dossierTarget, setDossierTarget] = useState<string | null>(null);
+    const [showOnboarding, setShowOnboarding] = useState(false);
     const memory = loadAllMemory();
 
     return (
@@ -925,9 +990,56 @@ const CouncilMembers: React.FC = () => {
                     <Crown size={12} className="text-yellow-600/60 shrink-0" />
                     <div className="h-px flex-1 bg-gradient-to-l from-transparent via-yellow-700/40 to-yellow-700/40" />
                 </div>
-                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.45em]">The Council — Nine Adversarial Minds</h2>
-                <p className="text-[9px] text-slate-600 font-mono text-center max-w-xs">Click any member to open their full dossier</p>
+                <h2 className="text-base md:text-lg font-cinzel font-bold text-slate-300 uppercase tracking-[0.2em]">The Roster — Nine Heterogeneous Personas</h2>
+                <p className="text-[11px] text-slate-500 font-mono text-center max-w-md">
+                  Built on Condorcet's Jury Theorem · nine cognitive vectors, dynamically routed across available inference models for resilience.
+                </p>
+
+                <button
+                  onClick={() => setShowOnboarding(!showOnboarding)}
+                  className="mt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 hover:text-emerald-300 bg-emerald-950/30 border border-emerald-500/30 px-3 py-1 rounded-full transition-all"
+                >
+                  <BookOpen size={11} />
+                  <span>{showOnboarding ? 'Hide Prompt Governance Guide' : 'What are these 9 Character Agents?'}</span>
+                </button>
             </div>
+
+            {/* Educational Onboarding Box */}
+            <AnimatePresence>
+              {showOnboarding && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mb-6 p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 backdrop-blur-xl text-slate-300 overflow-hidden"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-cinzel font-bold text-slate-100">How the Persona Archetypes Govern Deliberation</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Where single-model chat collapses disagreement into one average voice, the Council preserves adversarial diversity.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-sans mt-4">
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                      <strong className="text-emerald-400 font-mono block mb-1 uppercase tracking-wider text-[10px]">Phase 1 · Independent Analysis</strong>
+                      <p className="text-slate-400 leading-relaxed text-[11px]">Each persona evaluates the petitioner query in zero-communication isolation under its specific cognitive prompt vector (e.g. Realpolitik, Premise Rigor, Human Cost).</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                      <strong className="text-amber-400 font-mono block mb-1 uppercase tracking-wider text-[10px]">Phase 2 · Pairwise Vector Ballots</strong>
+                      <p className="text-slate-400 leading-relaxed text-[11px]">Personas cross-examine each other's arguments and cast 0–10 alignment scores. Malformed ballots are rejected and retried under Chamber Law.</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                      <strong className="text-cyan-400 font-mono block mb-1 uppercase tracking-wider text-[10px]">Phase 3 · Chairman Synthesis</strong>
+                      <p className="text-slate-400 leading-relaxed text-[11px]">The Chairman (Charon) synthesizes the winning vector into a structured 3-column verdict (Decided / Rejected / Unresolved), preserving minority dissent.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
              <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 touch-pan-x [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-3">
                  {council.map((member, index) => (
                      <CouncilMemberCard
@@ -938,6 +1050,8 @@ const CouncilMembers: React.FC = () => {
                          cachedPortrait={getCachedPortrait(member.name)}
                          index={index}
                          onOpen={setDossierTarget}
+                         onPlayVoice={onPlayVoice}
+                         isPlaying={playingId === `voice-${member.name}`}
                      />
                  ))}
              </div>
@@ -1039,27 +1153,14 @@ const ParadoxTrack: React.FC<{
             while (container.scrollLeft <= 0) container.scrollLeft += width;
         };
 
-        const animate = () => {
-            frameRef.current = null;
-            if (!pausedRef.current && !reducedMotionRef.current) {
-                container.scrollLeft += direction === 'forward' ? 0.45 : -0.45;
-                normalizeScroll();
-                frameRef.current = requestAnimationFrame(animate);
-            }
-        };
-
-        const startMotion = () => {
-            if (frameRef.current === null && !pausedRef.current && !reducedMotionRef.current) {
-                frameRef.current = requestAnimationFrame(animate);
-            }
-        };
-
+        // Auto-scroll is intentionally disabled: moving click targets and
+        // perpetual motion violate WCAG 2.2.2 and make cards hard to read.
+        // Browsing is manual (wheel / touch / drag), snap, and hover is static.
         const handleResize = () => {
             refreshLoopWidth();
             normalizeScroll();
         };
 
-        startMotion();
         window.addEventListener('resize', handleResize);
         return () => {
             cancelMotion();
@@ -1106,7 +1207,8 @@ const ParadoxTrack: React.FC<{
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (rowIndex * items.length + itemIndex) * 0.04, duration: 0.5, ease: 'easeOut' }}
                 onClick={() => onSelect(s.text)}
-                className={`group relative flex flex-col bg-gradient-to-b ${pal.bg} border ${pal.border} rounded-2xl text-left overflow-hidden w-[270px] md:w-[310px] shrink-0 transition-all duration-500 hover:scale-[1.025] hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70`}
+                aria-label={`Convene the Council on: ${s.title}`}
+                className={`group relative flex flex-col bg-gradient-to-b ${pal.bg} border ${pal.border} rounded-2xl text-left overflow-hidden w-[270px] md:w-[310px] shrink-0 snap-start transition-all duration-500 hover:scale-[1.025] hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70`}
                 style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.6)' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 40px rgba(${pal.glowRgb},0.25), 0 2px 20px rgba(0,0,0,0.6)`; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 20px rgba(0,0,0,0.6)'; }}
@@ -1130,7 +1232,7 @@ const ParadoxTrack: React.FC<{
                 </div>
                 <div className="flex flex-col flex-1 px-4 py-4 gap-3">
                     <h4 className={`text-[15px] md:text-base font-cinzel font-bold leading-snug ${pal.primary} group-hover:brightness-125 transition-all duration-300`}>{s.title}</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3 group-hover:text-slate-200 transition-colors duration-300">{s.text}</p>
+                    <p className="text-[13px] text-slate-400 leading-relaxed line-clamp-3 group-hover:text-slate-200 transition-colors duration-300">{s.text}</p>
                     {meta && (
                         <div className="overflow-hidden max-h-0 group-hover:max-h-28 transition-all duration-500 ease-in-out">
                             <div className={`border-t ${pal.border} pt-3 mt-1`}>
@@ -1141,8 +1243,8 @@ const ParadoxTrack: React.FC<{
                     )}
                 </div>
                 <div className={`px-4 pb-4 pt-2 border-t ${pal.border} flex items-center justify-between gap-2`}>
-                    {meta ? <p className="text-[8px] text-amber-600/50 font-mono truncate" title={meta.provenance}>{meta.provenance}</p> : <div />}
-                    <div className={`flex items-center gap-1.5 shrink-0 text-[9px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 ${pal.primary} transition-all duration-300`}><span>Initiate</span><Zap size={9} className="group-hover:animate-pulse" /></div>
+                    {meta ? <p className="text-[9px] text-amber-600/50 font-mono truncate" title={meta.provenance}>{meta.provenance}</p> : <div />}
+                    <div className={`flex items-center gap-1.5 shrink-0 text-[9px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 ${pal.primary} transition-all duration-300`}><span>Convene</span><Zap size={9} className="group-hover:animate-pulse" /></div>
                 </div>
             </motion.button>
         );
@@ -1159,7 +1261,7 @@ const ParadoxTrack: React.FC<{
             onPointerUp={resumeMotionLater}
             onPointerCancel={resumeMotionLater}
             aria-label={`Paradox track ${rowIndex + 1}`}
-            className="flex overflow-x-auto gap-4 pb-4 px-4 touch-pan-x"
+            className="flex overflow-x-auto gap-4 pb-4 px-4 touch-pan-x snap-x [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)]"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
             <div ref={firstCopyRef} className="flex gap-4 shrink-0">
@@ -1202,6 +1304,85 @@ const SuggestionCards: React.FC<{ onSelect: (text: string) => void }> = ({ onSel
     );
 };
 
+// ── SAMPLE DELIBERATION — the payoff before commitment ───────────────────────
+// A curated, statically-authored excerpt so a first-time visitor sees exactly
+// what pressing Convene produces: independent analysis, adversarial exposure,
+// belief revision, and a verdict — without running a single live session.
+const SampleDeliberation: React.FC = () => {
+    const turns: Array<{ persona: string; label: string; text: string }> = [
+        {
+            persona: 'Oracle',
+            label: 'Independent Analysis',
+            text: 'The calculation is not the question. The question is whether a decision made under 99.9% certainty has already ceased to be a decision. I have run this timeline to its terminal branch: the manipulation succeeds, the species survives, and every generation after inherits a world engineered to spare them the truth. That is a survivable world. It is not an honest one.',
+        },
+        {
+            persona: 'Strategos',
+            label: 'Independent Analysis',
+            text: 'Oracle is optimizing for a future it will never occupy. Feasibility: high. Cost: irreversible. If we accept the manipulation, we spend our single most expensive asset — trust — and there is no second purchase. The executable option is the one with a defined exit: refuse, and let the species own its chaos.',
+        },
+        {
+            persona: 'Critic',
+            label: 'Adversarial Cross-Examination',
+            text: 'Both of you have smuggled an assumption past this chamber. Oracle assumes "stable" is the goal. Strategos assumes refusal is reversible. It is not. Refusing is itself a manipulation of the timeline. The choice is not between manipulation and honesty — it is between two manipulations, one of which admits it.',
+        },
+    ];
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="w-full max-w-6xl mx-auto mt-4 mb-10 px-3"
+        >
+            <div className="rounded-[1.75rem] border border-emerald-500/25 bg-gradient-to-b from-emerald-950/25 via-slate-950/70 to-slate-950 p-5 md:p-7 relative overflow-hidden">
+                <div aria-hidden="true" className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+                <div className="mb-4">
+                    <p className="text-[9px] font-mono text-emerald-400/70 uppercase tracking-[0.35em] flex items-center gap-2">
+                        <Sparkles size={10} /> Sample Deliberation · What Convene Produces
+                    </p>
+                    <h3 className="text-lg md:text-xl font-cinzel font-bold text-slate-100 mt-1">One question. Nine voices. A verdict.</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">A condensed excerpt of a real deliberation. Press <strong className="text-emerald-400 font-mono">Convene</strong> to run your own.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {turns.map((t) => {
+                        const cfg = getPersonaConfig(t.persona);
+                        return (
+                            <div key={t.persona} className="rounded-2xl border border-slate-800/70 bg-slate-950/70 p-4 flex flex-col gap-2">
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`p-2 rounded-xl bg-slate-900 border border-slate-700 ${cfg.color}`}>{cfg.icon}</div>
+                                    <div>
+                                        <p className={`text-sm font-cinzel font-bold ${cfg.color}`}>{t.persona}</p>
+                                        <p className="text-[8px] font-mono text-slate-600 uppercase tracking-[0.2em]">{t.label}</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-400 leading-relaxed font-sans">{t.text}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-950/15 p-4">
+                    <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.2em]">Round 1</span>
+                            <span className="text-[11px] font-mono text-slate-300">Oracle 4 · Strategos 4 · Critic 1 <span className="text-amber-400 font-bold">→ TIE</span></span>
+                            <ChevronRight size={12} className="text-slate-600 hidden md:block" />
+                            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.2em]">Round 2</span>
+                            <span className="text-[11px] font-mono text-slate-300">Oracle 5 · Strategos 3 · Critic 1</span>
+                        </div>
+                        <div className="flex items-center gap-2 md:ml-auto flex-wrap">
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-[9px] font-mono font-black text-emerald-400 uppercase tracking-[0.2em]">Verdict · Majority</span>
+                            <span className="text-[9px] font-mono text-emerald-400/70">2 changed position · 3 retained with increased confidence</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+// Entry Contract stakes per intent — what each path will crack open (Critic's request)
 // Entry Contract stakes per intent — what each path will crack open (Critic's request)
 const INTENT_STAKES: Record<string, { challenges: string[]; warns: string; symbol: string }> = {
     tactical: {
@@ -1233,6 +1414,20 @@ const RitualThreshold: React.FC<{
 }> = ({ isOpen, onClose, onAccept }) => {
     const [selectedIntent, setSelectedIntent] = useState<string | null>(null);
     const [contractPhase, setContractPhase] = useState<'select' | 'contract'>('select');
+    const modalRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (contractPhase === 'contract') setContractPhase('select');
+                else onClose();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        modalRef.current?.focus();
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, contractPhase, onClose]);
 
     if (!isOpen) return null;
 
@@ -1267,13 +1462,18 @@ const RitualThreshold: React.FC<{
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Ritual Threshold — declare your intent"
                 className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
             >
                 <motion.div
+                    ref={modalRef}
+                    tabIndex={-1}
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-[2rem] p-8 md:p-12 shadow-[0_0_100px_rgba(16,185,129,0.1)] overflow-hidden"
+                    className="relative w-full max-w-2xl bg-slate-950 border border-slate-800 rounded-[2rem] p-8 md:p-12 shadow-[0_0_100px_rgba(16,185,129,0.1)] overflow-hidden outline-none"
                 >
                     {/* Decorative elements */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
@@ -1399,7 +1599,7 @@ const RitualThreshold: React.FC<{
     );
 };
 
-const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle', paradoxMeta?: { category: string; sensoryFragment: string; destabilizes: string; recurrence: number; provenance: string } | null, factionSize?: number, totalMembers?: number }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard', paradoxMeta, factionSize = 1, totalMembers = 9 }) => {
+const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'foresight', paradoxMeta?: { category: string; sensoryFragment: string; destabilizes: string; recurrence: number; provenance: string } | null, factionSize?: number, totalMembers?: number }> = ({ opinion, onPlayVoice, playingId, activeLens = 'standard', paradoxMeta, factionSize = 1, totalMembers = 9 }) => {
     const config = getPersonaConfig(opinion.persona);
     const personaData = getCurrentCouncil().find(p => p.name === opinion.persona);
     const modelName = personaData?.model?.split('/')[1] || 'Agent';
@@ -1466,6 +1666,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
             </div>
             <button 
                 onClick={() => onPlayVoice(opinion.text, config.voice, `opinion-${opinion.persona}`)}
+                aria-label={`Play ${opinion.persona}'s voice`}
                 className={`p-2 rounded-lg transition-all ${
                     playingId === `opinion-${opinion.persona}`
                     ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-pulse'
@@ -1519,7 +1720,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Argument Yield</div>
+                                <div className="text-[9px] text-red-500/60 uppercase tracking-widest mb-1">Argument Yield</div>
                                 <div className="flex items-center gap-2">
                                     <div className="h-2 flex-1 bg-red-900/40 rounded-full overflow-hidden">
                                         <div className="h-full bg-red-500" style={{ width: `${strengthScore}%` }} />
@@ -1528,7 +1729,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                                 </div>
                             </div>
                             <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Faction Strength</div>
+                                <div className="text-[9px] text-red-500/60 uppercase tracking-widest mb-1">Faction Strength</div>
                                 <div className="flex items-center gap-2">
                                     <div className="h-1.5 flex-1 bg-red-900/40 rounded-full overflow-hidden">
                                         <div className="h-full bg-orange-500/80" style={{ width: `${factionPct}%` }} />
@@ -1537,11 +1738,11 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                                 </div>
                             </div>
                             <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Target Vector</div>
+                                <div className="text-[9px] text-red-500/60 uppercase tracking-widest mb-1">Target Vector</div>
                                 <div className="text-red-300 font-bold">{opinion.vote || 'None'}</div>
                             </div>
                             <div>
-                                <div className="text-[8px] text-red-500/60 uppercase tracking-widest mb-1">Signal Length</div>
+                                <div className="text-[9px] text-red-500/60 uppercase tracking-widest mb-1">Signal Length</div>
                                 <div className="text-red-400 font-mono text-sm">{resourceCost} bytes</div>
                             </div>
                         </div>
@@ -1576,15 +1777,15 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
                         {paradoxMeta && (
                             <div className="border-t border-purple-500/20 pt-3 space-y-3">
                                 <div>
-                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Sensory Echo</div>
+                                    <div className="text-[9px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Sensory Echo</div>
                                     <p className="text-[10px] italic text-purple-300/60 leading-snug">"{paradoxMeta.sensoryFragment}"</p>
                                 </div>
                                 <div>
-                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Provenance</div>
+                                    <div className="text-[9px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Provenance</div>
                                     <p className="text-[9px] text-purple-400/50 leading-snug">{paradoxMeta.provenance}</p>
                                 </div>
                                 <div>
-                                    <div className="text-[8px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Recurrence</div>
+                                    <div className="text-[9px] font-mono text-purple-500/60 uppercase tracking-widest mb-1">Recurrence</div>
                                     <div className="flex items-center gap-1">
                                         {Array.from({ length: 5 }).map((_, i) => (
                                             <div key={i} className={`h-1.5 w-3 rounded-full ${i < paradoxMeta.recurrence ? 'bg-purple-500/70' : 'bg-slate-800'}`} />
@@ -1632,7 +1833,7 @@ const AgentCard: React.FC<{ opinion: CouncilOpinion, onPlayVoice: (text: string,
     );
 };
 
-const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle', query?: string }> = ({ result, onPlayVoice, playingId, activeLens = 'standard', query }) => {
+const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'foresight', query?: string }> = ({ result, onPlayVoice, playingId, activeLens = 'standard', query }) => {
     if (!result?.opinions || result.opinions.length === 0) {
         return (
             <div className="mt-10 bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl p-12">
@@ -1681,7 +1882,7 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
     const isTactical = currentLens === 'tactical';
     const isEpistemic = currentLens === 'epistemic';
     const isHaunted = currentLens === 'haunted';
-    const isOracle = currentLens === 'oracle';
+    const isOracle = currentLens === 'foresight';
 
     // Oracle Branch View — probability tree of argument survival
     if (isOracle) {
@@ -1823,9 +2024,9 @@ const CouncilOpinionsTabs: React.FC<{ result: CouncilResult, onPlayVoice: (text:
                                 const isWinner = vote === result.winner;
                                 return (
                                     <div key={`silence-${vote}`} className={`p-3 rounded-xl border text-center ${isWinner ? 'border-indigo-500/30 bg-indigo-950/20' : 'border-slate-800/40 bg-slate-950/30'}`}>
-                                        <div className={`text-[8px] font-mono uppercase tracking-widest mb-1 ${isWinner ? 'text-indigo-400' : 'text-slate-600'}`}>Silence Cost</div>
+                                        <div className={`text-[9px] font-mono uppercase tracking-widest mb-1 ${isWinner ? 'text-indigo-400' : 'text-slate-600'}`}>Silence Cost</div>
                                         <div className={`text-lg font-cinzel font-bold ${isWinner ? 'text-indigo-300' : 'text-slate-600'}`}>{silenced}</div>
-                                        <div className={`text-[8px] font-mono ${isWinner ? 'text-indigo-500/60' : 'text-slate-700'}`}>futures extinguished</div>
+                                        <div className={`text-[9px] font-mono ${isWinner ? 'text-indigo-500/60' : 'text-slate-700'}`}>futures extinguished</div>
                                         <div className={`text-[9px] font-cinzel mt-1 ${isWinner ? 'text-indigo-400' : 'text-slate-600'}`}>{vote}</div>
                                     </div>
                                 );
@@ -2178,11 +2379,11 @@ const StakesPanel: React.FC<{ result: CouncilResult }> = ({ result }) => {
     );
 };
 
-const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeMembers: {name: string}[] }> = ({ result, isProcessing, onPlayVoice, playingId, activeMembers }) => {
+const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean, onPlayVoice: (text: string, voice: string, id: string) => void, playingId: string | null, activeMembers: {name: string}[], live?: LiveDelibState | null }> = ({ result, isProcessing, onPlayVoice, playingId, activeMembers, live }) => {
   const [phase, setPhase] = useState<'IDLE' | 'DOORS' | 'ASSEMBLY' | 'DELIBERATING' | 'VOTING' | 'VERDICT'>('IDLE');
+  const [doorsOpen, setDoorsOpen] = useState(false);
   const [activeSpeakers, setActiveSpeakers] = useState<string[]>([]);
   const [activityLog, setActivityLog] = useState<string>('');
-  const [processingStep, setProcessingStep] = useState(0); // 0: Init, 1: Assembly, 2: Deliberation loop
   const hasAutoPlayedRef = useRef(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
@@ -2193,73 +2394,67 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
 
   const skipIntro = () => {
     clearAllTimeouts();
+    setDoorsOpen(true);
     setPhase('DELIBERATING');
-    setProcessingStep(2);
   };
 
+  // The theatre follows the real audited event stream. The doors open when the
+  // council actually convenes; members light up only when they really start working;
+  // the status line names the real phase. No fabricated speakers, no invented clock.
   useEffect(() => {
-    if (isProcessing) {
-      setPhase('DOORS');
-      setProcessingStep(0);
-      
-      clearAllTimeouts();
-      const t1 = setTimeout(() => { setPhase('ASSEMBLY'); setProcessingStep(1); }, 1500);
-      const t2 = setTimeout(() => { setPhase('DELIBERATING'); setProcessingStep(2); }, 3500);
-      const t3 = setTimeout(() => setProcessingStep(3), 6000); 
-      const t4 = setTimeout(() => setProcessingStep(4), 9000); 
-
-      timeoutsRef.current = [t1, t2, t3, t4];
-      hasAutoPlayedRef.current = false;
-      return () => clearAllTimeouts();
-    } else if (result) {
-      clearAllTimeouts();
-      setPhase('VOTING');
-      const t5 = setTimeout(() => {
-          setPhase('VERDICT');
-          if (result.synthesis && !hasAutoPlayedRef.current) {
-              onPlayVoice(result.synthesis.substring(0, 200), CHAIRMAN_VOICE, 'chairman-verdict');
-              hasAutoPlayedRef.current = true;
-          }
-      }, 3000); 
-      timeoutsRef.current = [t5];
-      return () => clearAllTimeouts();
+    if (!isProcessing && !result) {
+      setPhase('IDLE');
+      setDoorsOpen(false);
+      return;
     }
-  }, [isProcessing, result, onPlayVoice]);
-
-  // Simulation of deliberation debate
-  useEffect(() => {
-      if (phase === 'DELIBERATING') {
-          const interval = setInterval(() => {
-              // Select 1-2 random personas to "speak"
-              const numSpeakers = Math.random() > 0.7 ? 2 : 1;
-              const names = activeMembers.map(m => m.name);
-              const shuffled = [...names].sort(() => 0.5 - Math.random());
-              const selected = shuffled.slice(0, numSpeakers);
-              setActiveSpeakers(selected);
-
-              // Generate technobabble log
-              const actions = [
-                  "calculating variance",
-                  "analyzing constraints",
-                  "simulating outcomes",
-                  "detecting fallacies",
-                  "reviewing precedents",
-                  "optimizing vectors",
-                  "scanning risks",
-                  "formulating rebuttal"
-              ];
-              const primarySpeaker = selected[0];
-              const action = actions[Math.floor(Math.random() * actions.length)];
-              setActivityLog(`${primarySpeaker.toUpperCase()} is ${action}...`);
-
-          }, 800);
-
-          return () => clearInterval(interval);
-      } else {
-          setActiveSpeakers([]);
-          if (phase !== 'DOORS' && phase !== 'ASSEMBLY') setActivityLog('');
+    if (live) {
+      const livePhase = live.phase;
+      if (livePhase === 'assembly' || livePhase === 'idle') {
+        setPhase('ASSEMBLY');
+      } else if (livePhase === 'analysis') {
+        setPhase('DELIBERATING');
+      } else if (livePhase === 'voting' || livePhase === 'runoff') {
+        setPhase('VOTING');
+      } else if (livePhase === 'synthesis' || livePhase === 'complete') {
+        setPhase('VERDICT');
       }
-  }, [phase, activeMembers]);
+      // Doors swing open on the first real signal that members are assembling
+      if (!doorsOpen) setDoorsOpen(true);
+      return;
+    }
+    // No live stream (dev mode / mock): a short doors beat only, never a fake pipeline
+    setPhase('ASSEMBLY');
+    const t = setTimeout(() => { setPhase('DELIBERATING'); }, 900);
+    timeoutsRef.current = [t];
+    return () => clearAllTimeouts();
+  }, [isProcessing, result, live, doorsOpen]);
+
+  // Speakers are the members the real stream reports as actively thinking.
+  useEffect(() => {
+    if (live && live.phase === 'analysis') {
+      const thinking = live.analyses.filter(a => a.status === 'thinking').map(a => a.persona);
+      setActiveSpeakers(thinking);
+      const first = live.analyses.find(a => a.status === 'thinking' && a.thinkingText);
+      if (first) {
+        const line = first.thinkingText.replace(/\s+/g, ' ').trim().slice(0, 80);
+        setActivityLog(`${first.persona.toUpperCase()} — ${line}`);
+      } else if (thinking.length > 0) {
+        setActivityLog(`${thinking[0].toUpperCase()} is deliberating`);
+      }
+    } else {
+      setActiveSpeakers([]);
+      setActivityLog('');
+    }
+  }, [live]);
+
+  useEffect(() => {
+    if (!isProcessing) return;
+    if (result?.synthesis && !hasAutoPlayedRef.current && phase === 'VERDICT') {
+      hasAutoPlayedRef.current = true;
+      const t = setTimeout(() => onPlayVoice(result.synthesis!.substring(0, 200), CHAIRMAN_VOICE, 'chairman-verdict'), 1200);
+      timeoutsRef.current = [t];
+    }
+  }, [phase, result, isProcessing, onPlayVoice]);
 
   const voteCounts: Record<string, number> = {};
   if (result) {
@@ -2276,11 +2471,7 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
   const getStatusText = () => {
       if (phase === 'DOORS') return 'AUTHENTICATING NEURAL LINK';
       if (phase === 'ASSEMBLY') return 'CONVENING COUNCIL';
-      if (phase === 'DELIBERATING') {
-          if (processingStep === 3) return 'ANALYZING VECTORS';
-          if (processingStep === 4) return 'SYNTHESIZING VERDICT';
-          return 'COUNCIL IN SESSION';
-      }
+      if (phase === 'DELIBERATING') return 'COUNCIL IN SESSION';
       if (phase === 'VOTING') return 'TALLYING VOTES';
       if (phase === 'VERDICT') return 'CONSENSUS REACHED';
       return 'SYSTEM IDLE';
@@ -2294,26 +2485,31 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
        <HoloOverlay />
       
       {/* Phase Progress Indicator */}
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-900 z-50">
-          <motion.div 
+      <div className="absolute bottom-0 left-0 w-full h-7 bg-slate-900 z-50 flex items-center">
+          <motion.div
             initial={{ width: 0 }}
             animate={{ 
-                width: phase === 'DOORS' ? '10%' : 
-                       phase === 'ASSEMBLY' ? '30%' : 
-                       phase === 'DELIBERATING' ? '70%' : 
-                       phase === 'VOTING' ? '90%' : '100%' 
+                width: phase === 'ASSEMBLY' ? '25%' : 
+                       phase === 'DELIBERATING' ? '55%' : 
+                       phase === 'VOTING' ? '85%' : '100%' 
             }}
             className="h-full bg-gradient-to-r from-emerald-500 to-yellow-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
           />
+          <span className="absolute inset-0 flex items-center justify-between px-3 text-[9px] font-mono font-bold text-black/70">
+              <span className="uppercase tracking-[0.2em]">{getStatusText()}</span>
+              <span>
+                {phase === 'ASSEMBLY' ? '25%' : phase === 'DELIBERATING' ? '55%' : phase === 'VOTING' ? '85%' : '100%'}
+              </span>
+          </span>
       </div>
 
       {/* The Great Doors */}
       <AnimatePresence>
-        {(phase === 'IDLE' || phase === 'DOORS' || phase === 'ASSEMBLY') && (
+        {!doorsOpen && (
             <div className="absolute inset-0 z-40 flex pointer-events-none">
                  <motion.div 
                    initial="closed" 
-                   animate={(phase === 'IDLE' || phase === 'DOORS') ? "closed" : "open"} 
+                   animate="closed" 
                    variants={doorsVariant}
                    transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
                    className="h-full bg-slate-950 border-r border-yellow-900/40 flex items-center justify-end relative overflow-hidden"
@@ -2323,7 +2519,7 @@ const CinematicCouncil: React.FC<{ result?: CouncilResult, isProcessing: boolean
                  </motion.div>
                  <motion.div 
                    initial="closed" 
-                   animate={(phase === 'IDLE' || phase === 'DOORS') ? "closed" : "open"} 
+                   animate="closed" 
                    variants={doorsVariant}
                    transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
                    className="h-full bg-slate-950 border-l border-yellow-900/40 flex items-center justify-start relative overflow-hidden"
@@ -2587,6 +2783,15 @@ interface LiveDelibState {
   runoffWinner: string | null
   runoffMethod?: 'runoff_vote' | 'engagement_metric' | null
   runoffNote?: string
+  round2: {
+    defensesCompleted: number
+    defensesTotal: number
+    reassessmentsCompleted: number
+    reassessmentsTotal: number
+    ballots: Array<{ member: string; originalVote: string; newVote: string; changed: boolean; confidenceBefore: number; confidenceAfter: number }>
+    winner: string | null
+    stillTied: boolean
+  } | null
   synthesis: string
   winner: string | null
   startedAt: number
@@ -2638,6 +2843,25 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
       return { type: 'runoff_started', candidates: event.candidates, timestamp: event.timestamp };
     case 'runoff_completed':
       return { type: 'runoff_completed', winner: event.winner, method: event.method, note: event.note, timestamp: event.timestamp };
+    case 'round2_defense_started':
+      return { type: 'round2_defense_started', position: event.position, defender: event.defender, timestamp: event.timestamp };
+    case 'round2_defense_completed':
+      return { type: 'round2_defense_completed', position: event.position, defender: event.defender, status: event.status, timestamp: event.timestamp };
+    case 'round2_reassess_completed':
+      return {
+        type: 'round2_reassess_completed',
+        member: event.member,
+        originalVote: event.originalVote,
+        newVote: event.newVote,
+        changed: event.changed,
+        confidenceBefore: event.confidenceBefore,
+        confidenceAfter: event.confidenceAfter,
+        timestamp: event.timestamp,
+      };
+    case 'round2_ballot_cast':
+      return { type: 'round2_ballot_cast', member: event.member, vote: event.vote, confidence: event.confidence, decisiveArgument: event.decisiveArgument, timestamp: event.timestamp };
+    case 'round2_completed':
+      return { type: 'round2_completed', winner: event.winner, stillTied: event.stillTied, tally: event.tally, note: event.outcome, timestamp: event.timestamp };
     case 'retry':
       return { type: 'retry', persona: event.persona, phase: event.phase, attempt: event.attempt, error: event.error, model: event.model, timestamp: event.timestamp };
     case 'pipeline_error':
@@ -2657,6 +2881,7 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
 
 const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof PERSONALITIES }> = ({ state, personas }) => {
   const [now, setNow] = React.useState(Date.now());
+  const [showSystemLog, setShowSystemLog] = React.useState(false);
   React.useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
@@ -2779,22 +3004,46 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
               <span className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.35em]">0 — Seating the Chamber</span>
               <div className="h-px flex-1 bg-slate-700/30" />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {state.analyses.map((analysis, i) => {
                 const config = getPersonaConfig(analysis.persona);
+                const isDone = analysis.status === 'complete' || analysis.status === 'failed';
+                const isThinking = analysis.status === 'thinking';
                 return (
                   <motion.div
                     key={analysis.persona}
                     initial={{ opacity: 0, scale: 0.8, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: i * 0.06 }}
-                    className="rounded-lg border border-slate-800/70 bg-slate-900/40 p-2 flex items-center gap-2"
+                    className={`rounded-lg border p-2 flex items-center gap-2 transition-all duration-500 ${
+                      isThinking
+                        ? 'border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                        : isDone ? 'border-slate-700/60 bg-slate-900/50'
+                        : 'border-slate-800/70 bg-slate-900/40 opacity-60'
+                    }`}
                   >
-                    <div className={`p-1 rounded-md bg-slate-800 ${config.color}`}>{config.icon}</div>
+                    <div className={`relative p-1 rounded-md bg-slate-800 ${config.color}`}>
+                      {config.icon}
+                      {isThinking && (
+                        <motion.div
+                          animate={{ scale: [1, 1.35], opacity: [0.5, 0] }}
+                          transition={{ duration: 0.9, repeat: Infinity }}
+                          className="absolute inset-0 rounded-md border-2 border-emerald-400"
+                        />
+                      )}
+                      {isDone && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center">
+                          <Check size={7} className="text-black" strokeWidth={4} />
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <div className={`text-[10px] font-cinzel font-bold truncate ${config.color}`}>{analysis.persona}</div>
-                      <div className="text-[8px] text-slate-600 font-mono truncate">{analysis.model.split('/').pop()}</div>
+                      <div className="text-[9px] font-mono truncate text-slate-600">{analysis.model.split('/').pop()}</div>
                     </div>
+                    {isThinking && (
+                      <span className="ml-auto text-[8px] font-mono text-emerald-400/80 animate-pulse">THINKING</span>
+                    )}
                   </motion.div>
                 );
               })}
@@ -2840,23 +3089,23 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                         <div className="flex-1 min-w-0">
                           <div className={`text-xs font-cinzel font-bold truncate ${config.color}`}>{analysis.persona}</div>
                           <div className="text-[9px] text-slate-500 truncate">{config.tagline}</div>
-                          <div className="text-[8px] text-slate-600 font-mono truncate" title={analysis.model}>{analysis.model.split('/').pop()}</div>
+                          <div className="text-[9px] text-slate-600 font-mono truncate" title={analysis.model}>{analysis.model.split('/').pop()}</div>
                         </div>
                         {analysis.status === 'thinking' && (
                           <div className="flex flex-col items-end gap-1">
                             <div className="flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: '300ms' }} />
                             </div>
-                            <span className="text-[8px] text-emerald-400/70 font-mono">{thinkingFor}s</span>
+                            <span className="text-[9px] text-emerald-400/70 font-mono">{thinkingFor}s</span>
                           </div>
                         )}
                         {analysis.status === 'complete' && (
                           <div className="flex flex-col items-end gap-0.5">
                             <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
                             {analysis.latencyMs != null && (
-                              <span className="text-[8px] text-slate-500 font-mono">{(analysis.latencyMs / 1000).toFixed(1)}s</span>
+                              <span className="text-[9px] text-slate-500 font-mono">{(analysis.latencyMs / 1000).toFixed(1)}s</span>
                             )}
                           </div>
                         )}
@@ -2905,12 +3154,15 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
         {/* Phase II: Voting Matrix */}
         {(state.phase === 'voting' || state.phase === 'runoff' || state.phase === 'synthesis' || state.phase === 'complete') && (state.votes.length > 0 || Object.keys(state.tally).length > 0) && (
           <div>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-2">
               <div className="h-px w-6 bg-emerald-500/60" />
               <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-[0.35em]">II — Cross-Examination & Voting</span>
               <div className="h-px flex-1 bg-emerald-500/20" />
               <span className="text-[9px] font-mono text-slate-500">{castVotes}/{totalVotes} cast</span>
             </div>
+            <p className="text-[9px] font-mono text-slate-500 mb-3">
+              Score chips = how strongly each voter's dimensions align with a peer's argument (0–10). <span className="text-emerald-400/80">≥7 strong</span> · <span className="text-amber-400/80">4–6 partial</span> · <span className="text-red-400/80">&lt;4 weak</span> — hover a chip for the note.
+            </p>
 
             {/* Live consensus tally */}
             {topTally.length > 0 && (
@@ -2983,7 +3235,7 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                             <div className={`p-1 rounded-md bg-slate-800 ${targetConfig.color}`}>{targetConfig.icon}</div>
                             <span className={`text-[11px] font-cinzel font-bold ${targetConfig.color}`}>{vote.votedFor}</span>
                             {vote.confidence != null && (
-                              <span className="text-[8px] font-mono text-slate-500 border border-slate-700 rounded px-1 py-0.5">
+                              <span className="text-[9px] font-mono text-slate-500 border border-slate-700 rounded px-1 py-0.5">
                                 {(vote.confidence * 100).toFixed(0)}%
                               </span>
                             )}
@@ -3017,7 +3269,7 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                               </span>
                             ))}
                             {vote.latencyMs != null && (
-                              <span className="text-[8px] text-slate-600 font-mono ml-1">{(vote.latencyMs / 1000).toFixed(1)}s</span>
+                              <span className="text-[9px] text-slate-600 font-mono ml-1">{(vote.latencyMs / 1000).toFixed(1)}s</span>
                             )}
                           </div>
                         )}
@@ -3069,6 +3321,49 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
           </motion.div>
         )}
 
+        {/* Round 2 — Adversarial Reconsideration (state machine progress) */}
+        {state.round2 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-xl border border-purple-700/40 bg-purple-950/20 p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Swords size={14} className="text-purple-400" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400">
+                Round 2 — Adversarial Reconsideration
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
+              <span className="text-slate-500">Defenses:</span>
+              <span className="text-purple-300">{state.round2.defensesCompleted}/{state.round2.defensesTotal}</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-slate-500">Reassessments:</span>
+              <span className="text-purple-300">{state.round2.reassessmentsCompleted}/{state.round2.reassessmentsTotal || '—'}</span>
+              {state.round2.ballots.filter(b => b.changed).length > 0 && (
+                <>
+                  <span className="text-slate-600">·</span>
+                  <span className="text-amber-300 flex items-center gap-1">
+                    <TrendingUp size={12} />
+                    {state.round2.ballots.filter(b => b.changed).length} shifted
+                  </span>
+                </>
+              )}
+              {state.round2.winner && (
+                <span className="flex items-center gap-1 ml-2 text-amber-400">
+                  <Crown size={12} /> Round 2 winner: {state.round2.winner}
+                </span>
+              )}
+              {state.round2.stillTied && (
+                <span className="flex items-center gap-1 ml-2 text-red-400">
+                  <ShieldAlert size={12} /> Round 2 deadlocked — no strict majority
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {/* Phase III: Chairman Synthesis */}
         {(state.phase === 'synthesis' || state.phase === 'complete') && (
           <div>
@@ -3096,14 +3391,14 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                       <Crown size={14} className="text-amber-400" />
                       <span className="text-xs font-cinzel font-bold text-amber-400 uppercase tracking-widest">{state.winner} — Victorious Vector</span>
                       {topTally[0] && (
-                        <span className="text-[9px] font-mono text-slate-400 border border-amber-700/40 bg-amber-900/20 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-mono text-amber-200/90 border border-amber-700/40 bg-amber-900/20 px-1.5 py-0.5 rounded">
                           {topTally[0][1]} vote{topTally[0][1] !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
                   )}
                   <div className="overflow-y-auto max-h-[180px] custom-scrollbar">
-                    <p className="text-[11px] text-slate-300 leading-relaxed">{state.synthesis.substring(0, 800)}{state.synthesis.length > 800 ? '…' : ''}</p>
+                    <p className="text-[13px] text-slate-300 leading-relaxed">{state.synthesis.substring(0, 800)}{state.synthesis.length > 800 ? '…' : ''}</p>
                   </div>
                 </>
               )}
@@ -3111,23 +3406,41 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
           </div>
         )}
 
-        {/* Retry log */}
+        {/* System Log — collapsed by default; recovery is routine, not a failure */}
         {state.retries.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <RefreshCw size={11} className="text-amber-500/80" />
-              <span className="text-[9px] font-black text-amber-500/70 uppercase tracking-[0.3em]">Recovery Events</span>
-            </div>
-            <div className="space-y-1">
-              {state.retries.slice(-4).map((r, i) => (
-                <div key={i} className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
-                  <AlertTriangle size={9} className="text-amber-500/70 shrink-0" />
-                  <span className="text-slate-400">{r.persona}</span>
-                  <span className="text-slate-600">· {r.phase} · attempt {r.attempt}</span>
-                  <span className="truncate text-slate-500">{r.error}</span>
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/30">
+            <button
+              type="button"
+              onClick={() => setShowSystemLog(v => !v)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left"
+              aria-expanded={showSystemLog}
+            >
+              <span className="flex items-center gap-2">
+                <RefreshCw size={11} className="text-emerald-500/70" />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Recovery</span>
+                <span className="text-[9px] font-mono text-emerald-500/70">{state.retries.length} auto-recover{state.retries.length === 1 ? 'y' : 'ies'}</span>
+              </span>
+              <span className="flex items-center gap-2 text-[9px] font-mono text-slate-600">
+                {showSystemLog ? 'Hide system log' : 'Show system log'}
+                <ChevronDown size={11} className={`transition-transform ${showSystemLog ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+            {showSystemLog && (
+              <div className="px-4 pb-3 border-t border-slate-800/50">
+                <div className="space-y-1 mt-2">
+                  {state.retries.slice(-6).map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                      <span className="text-slate-400">{r.persona}</span>
+                      <span className="text-slate-600">· {r.phase} · attempt {r.attempt}</span>
+                      <span className="truncate text-slate-600">{r.error}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <p className="text-[9px] text-slate-600 mt-2 italic">
+                  Transient provider recoveries are handled silently. This log is diagnostic — power users only.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -3177,7 +3490,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
     const [hasNewMessages, setHasNewMessages] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
-    const [activeLens, setActiveLens] = useState<'standard' | 'tactical' | 'epistemic' | 'haunted' | 'oracle'>('standard');
+    const [activeLens, setActiveLens] = useState<'standard' | 'tactical' | 'epistemic' | 'haunted' | 'foresight'>('standard');
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Track active council members dynamically
@@ -3231,6 +3544,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
         setHasNewMessages(true);
     }
   }, [messages, isLoading, suggestedMoves, showScrollBottom]);
+
+  // Prime the speech engine and stop any utterance on unmount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Warm the voice list (async in some browsers)
+      window.speechSynthesis.getVoices();
+    }
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -3362,12 +3688,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
       msgId
     );
     const json = exportToJSON(sessionData);
-    // Compress/encode for URL (simple base64 encoding)
     const encoded = btoa(unescape(encodeURIComponent(json)));
-    const url = `${window.location.origin}${window.location.pathname}?session=${encoded.substring(0, 2000)}`; // Limit URL length
-    await navigator.clipboard.writeText(url);
-    setCopiedId(`share-${msgId}`);
-    setTimeout(() => setCopiedId(null), 2000);
+    // A full verdict routinely exceeds safe URL lengths; never copy a silently
+    // truncated link that will fail to restore. Fit within a safe budget or tell
+    // the user to use the working Export path instead.
+    const MAX_URL_CHARS = 1800;
+    if (encoded.length > MAX_URL_CHARS) {
+      setCopiedId(`share-too-large-${msgId}`);
+      setTimeout(() => setCopiedId(null), 3500);
+      return;
+    }
+    const url = `${window.location.origin}${window.location.pathname}?session=${encoded}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(`share-${msgId}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {
+      setCopiedId(`share-failed-${msgId}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   useEffect(() => {
@@ -3393,17 +3732,49 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
   };
 
   const stopAudio = () => {
+    // Stop any live audio-source playback
     if (sourceNodeRef.current) {
         try { sourceNodeRef.current.stop(); } catch (e) {}
         sourceNodeRef.current = null;
+    }
+    // Stop any Web Speech utterance
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
     }
     setPlayingId(null);
   };
 
   const handlePlayVoice = async (text: string, voiceName: string, id: string) => {
-    console.log("TTS is disabled to prevent quota errors.");
-    setPlayingId(null);
-    return;
+    if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setPlayingId(null);
+      return;
+    }
+
+    // Toggle off if this same source is already speaking
+    if (playingId === id) {
+      stopAudio();
+      return;
+    }
+
+    stopAudio();
+    setPlayingId(id);
+
+    // Map the persona's ceremonial voice name onto a real browser voice where possible
+    const voices = window.speechSynthesis.getVoices();
+    const voiceNames = voiceName?.split(/[\s,]+/).filter(Boolean) || [];
+    const preferred = voices.find(v =>
+      voiceNames.some(n => new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(v.name))
+    );
+    const fallback = voices.find(v => /en(-|_)/i.test(v.lang));
+    const voice = preferred || fallback || null;
+
+    const utter = new SpeechSynthesisUtterance(text.slice(0, 4000));
+    if (voice) utter.voice = voice;
+    utter.rate = 1.02;
+    utter.pitch = 1;
+    utter.onend = () => setPlayingId(null);
+    utter.onerror = () => setPlayingId(null);
+    window.speechSynthesis.speak(utter);
   };
   
   const handleGenerateSuggestions = async () => {
@@ -3494,6 +3865,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           runoffWinner: null,
           runoffMethod: null,
           runoffNote: '',
+          round2: null,
           synthesis: '',
           winner: '',
           startedAt: Date.now(),
@@ -3568,6 +3940,61 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], events: ev };
               case 'runoff_completed':
                 return { ...prev, runoffWinner: event.winner || null, runoffMethod: event.method || null, runoffNote: event.note || '', events: ev };
+              case 'round2_defense_started':
+                return {
+                  ...prev,
+                  phase: 'runoff' as const,
+                  events: ev,
+                  round2: {
+                    defensesCompleted: prev.round2?.defensesCompleted || 0,
+                    defensesTotal: (prev.round2?.defensesTotal || 0) + 1,
+                    reassessmentsCompleted: prev.round2?.reassessmentsCompleted || 0,
+                    reassessmentsTotal: prev.round2?.reassessmentsTotal || 0,
+                    ballots: prev.round2?.ballots || [],
+                    winner: prev.round2?.winner || null,
+                    stillTied: prev.round2?.stillTied || false,
+                  },
+                };
+              case 'round2_defense_completed':
+                return {
+                  ...prev,
+                  events: ev,
+                  round2: prev.round2 ? {
+                    ...prev.round2,
+                    defensesCompleted: prev.round2.defensesCompleted + 1,
+                  } : prev.round2,
+                };
+              case 'round2_reassess_completed':
+                return {
+                  ...prev,
+                  phase: 'runoff' as const,
+                  events: ev,
+                  round2: prev.round2 ? {
+                    ...prev.round2,
+                    reassessmentsCompleted: prev.round2.reassessmentsCompleted + 1,
+                    reassessmentsTotal: (prev.round2.reassessmentsTotal || prev.round2.reassessmentsCompleted) + 1,
+                    ballots: [...prev.round2.ballots, {
+                      member: event.member || '?',
+                      originalVote: event.originalVote || '',
+                      newVote: event.newVote || '',
+                      changed: !!event.changed,
+                      confidenceBefore: event.confidenceBefore ?? 0.5,
+                      confidenceAfter: event.confidenceAfter ?? 0.5,
+                    }],
+                  } : prev.round2,
+                };
+              case 'round2_ballot_cast':
+                return { ...prev, events: ev };
+              case 'round2_completed':
+                return {
+                  ...prev,
+                  events: ev,
+                  round2: prev.round2 ? {
+                    ...prev.round2,
+                    winner: event.winner || prev.round2.winner,
+                    stillTied: !!event.stillTied,
+                  } : prev.round2,
+                };
               case 'synthesis_start':
                 return { ...prev, phase: 'synthesis' as const, events: ev };
               case 'synthesis_complete':
@@ -3594,6 +4021,22 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           phase: 'complete' as const,
           tally: (councilResult.voteTally && Object.keys(councilResult.voteTally).length > 0) ? councilResult.voteTally : prev.tally,
           runoffWinner: councilResult.runoffResult?.winner || prev.runoffWinner,
+          round2: councilResult.round2Result ? {
+            defensesCompleted: councilResult.round2Result.defenses.length,
+            defensesTotal: councilResult.round2Result.defenses.length,
+            reassessmentsCompleted: councilResult.round2Result.reassessments.length,
+            reassessmentsTotal: councilResult.round2Result.reassessments.length,
+            ballots: councilResult.round2Result.reassessments.map(r => ({
+              member: r.member,
+              originalVote: r.originalVote,
+              newVote: r.newVote,
+              changed: r.changed,
+              confidenceBefore: r.confidenceBefore,
+              confidenceAfter: r.confidenceAfter,
+            })),
+            winner: councilResult.round2Result.winner,
+            stillTied: councilResult.round2Result.stillTied,
+          } : prev.round2,
         } : null);
       }
       
@@ -3623,7 +4066,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
        {/* Top Bar */}
        <div className="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-4 shrink-0 z-10">
           <div className="flex items-center gap-3">
-             <button onClick={onToggleSidebar} className="md:hidden p-2 text-slate-400 hover:text-white"><Menu size={20} /></button>
+             <button onClick={onToggleSidebar} aria-label="Toggle sidebar" className="md:hidden p-2 text-slate-400 hover:text-white"><Menu size={20} /></button>
              <div className="flex items-center space-x-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full">
                 <Users size={14} className="text-yellow-500" />
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider hidden sm:inline">The Council Chamber</span>
@@ -3632,6 +4075,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           <div className="flex items-center gap-2">
              <button 
                 onClick={() => setCouncilMode(m => m === CouncilMode.STANDARD ? CouncilMode.DEEP_REASONING : CouncilMode.STANDARD)}
+                aria-label={councilMode === CouncilMode.DEEP_REASONING ? 'Deep reasoning active. Switch to standard mode.' : 'Enable deep reasoning'}
+                aria-pressed={councilMode === CouncilMode.DEEP_REASONING}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     councilMode === CouncilMode.DEEP_REASONING 
                     ? 'bg-blue-900/30 text-blue-300 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]' 
@@ -3639,13 +4084,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 }`}
              >
                 <BrainCircuit size={12} />
-                <span className="hidden md:inline">{councilMode === CouncilMode.DEEP_REASONING ? 'Deep Reasoning Active' : 'Standard Protocol'}</span>
+                <span className="hidden md:inline">{councilMode === CouncilMode.DEEP_REASONING ? 'Deep Reasoning Active' : 'Standard Mode'}</span>
              </button>
              <button 
                onClick={toggleLiveMode}
+               aria-label={isLiveActive ? `${liveStatus}. Disable live link.` : 'Enable live link'}
+               aria-pressed={isLiveActive}
                className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all ${isLiveActive ? 'bg-red-900/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}
              >
-                {isLiveActive ? <Mic size={14} className="animate-bounce" /> : <Mic size={14} />}
+                {isLiveActive ? <Mic size={14} className="animate-pulse" /> : <Mic size={14} />}
                  <span className="text-xs font-bold uppercase hidden md:inline">{isLiveActive ? liveStatus : 'Live Link'}</span>
               </button>
            </div>
@@ -3663,7 +4110,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
                 }`}
             >
-                <span className="flex items-center gap-1.5"><Globe size={10} /> Standard Protocol</span>
+                <span className="flex items-center gap-1.5"><Globe size={10} /> Standard View</span>
             </button>
             <button
                 onClick={() => setActiveLens('tactical')}
@@ -3696,9 +4143,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 <span className="flex items-center gap-1.5"><Eye size={10} /> Haunted Archives</span>
             </button>
             <button
-                onClick={() => setActiveLens('oracle')}
+                onClick={() => setActiveLens('foresight')}
                 className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                    activeLens === 'oracle'
+                    activeLens === 'foresight'
                         ? 'bg-indigo-900/30 text-indigo-300 border-indigo-400/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
                 }`}
@@ -3712,10 +4159,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
         <div 
           ref={scrollContainerRef}
           onScroll={handleScroll}
+          role="log"
+          aria-live="polite"
+          aria-label="Council deliberation transcript"
           className={`flex-1 overflow-y-auto p-4 space-y-8 scroll-smooth custom-scrollbar relative ${
               activeLens === 'tactical' ? 'tactical-lens-bg' :
               activeLens === 'epistemic' ? 'epistemic-lens-bg' :
-              activeLens === 'haunted' ? 'haunted-lens-bg' : ''
+              activeLens === 'haunted' ? 'haunted-lens-bg' :
+              activeLens === 'foresight' ? 'foresight-lens-bg' : ''
           }`}
         >
           {messages.length === 0 && (
@@ -3756,16 +4207,152 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                            <div className="h-px w-12 md:w-20 bg-gradient-to-l from-transparent to-emerald-500/50" />
                         </div>
                         <h1 className="text-3xl md:text-5xl font-cinzel font-bold tracking-[0.2em] md:tracking-[0.3em] mb-3">
-                           <span className="text-transparent bg-clip-text bg-gradient-to-b from-slate-100 via-slate-200 to-slate-400">ROKO'S</span>
-                           <span className="text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-600"> COUNCIL</span>
+                           <span className="text-slate-100">ROKO'S</span>
+                           <span className="text-emerald-400"> COUNCIL</span>
                         </h1>
-                        <p className="text-xs md:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed font-light">
-                           Nine adversarial minds. One question. The verdict is final.
-                        </p>
+                        <p className="text-xs md:text-sm text-slate-400 max-w-md mx-auto leading-relaxed font-sans mb-6">
+                            Nine adversarial minds. One query. Immutable audit trail.
+                            <span className="block mt-1.5 text-[11px] md:text-xs text-slate-500">
+                                Type a question, press Convene, and watch nine AI perspectives argue, cross-examine each other, and vote — every step recorded.
+                            </span>
+                         </p>
+
+                         {/* Landing Lens Pre-Visualizer Toolbar */}
+                         <div className="flex flex-col items-center gap-3 w-full">
+                           <div className="flex flex-wrap items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 backdrop-blur-xl shadow-lg">
+                              <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider px-2">
+                                  Preview Lens:
+                              </span>
+                              <button
+                                onClick={() => setActiveLens('standard')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold transition-all ${activeLens === 'standard' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Standard
+                              </button>
+                              <button
+                                onClick={() => setActiveLens('tactical')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold transition-all ${activeLens === 'tactical' ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Tactical
+                              </button>
+                              <button
+                                onClick={() => setActiveLens('epistemic')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold transition-all ${activeLens === 'epistemic' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Epistemic
+                              </button>
+                              <button
+                                onClick={() => setActiveLens('haunted')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold transition-all ${activeLens === 'haunted' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-[0_0_10px_rgba(192,132,252,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Haunted
+                              </button>
+                              <button
+                                onClick={() => setActiveLens('foresight')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold transition-all ${activeLens === 'foresight' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Foresight
+                              </button>
+                           </div>
+
+                           {/* Active Lens Guidance Masterclass Card */}
+                           {(() => {
+                              const lensInfo = {
+                                standard: {
+                                  title: 'Standard Lens · Ceremonial Baseline',
+                                  tagline: 'Raw voice arguments, direct peer alignment scores (0–10), and chairman synthesis.',
+                                  purpose: 'Provides the primary baseline view of the chamber debate. Every persona’s exact argument is rendered alongside their vote vector.',
+                                  howToUse: 'Use during initial reading to evaluate the main disagreement lines and winning vector.',
+                                  color: 'text-emerald-400',
+                                  bg: 'bg-emerald-950/30 border-emerald-500/40',
+                                  badge: 'BASELINE TRANSCRIPT'
+                                },
+                                tactical: {
+                                  title: 'Tactical Lens · War-Map & Strategic Leverage',
+                                  tagline: 'Strips soft rhetoric. Calculates strategic leverage, resource trade-offs, and critical failure points.',
+                                  purpose: 'Re-tints the chamber in high-contrast tactical red scanlines. Focuses exclusively on power dynamics, execution costs, and realpolitik constraints.',
+                                  howToUse: 'Switch to Tactical when reviewing hard operational decisions where goodwill and smooth prose are insufficient.',
+                                  color: 'text-red-400',
+                                  bg: 'bg-red-950/30 border-red-500/40',
+                                  badge: 'REALPOLITIK & LEVERAGE'
+                                },
+                                epistemic: {
+                                  title: 'Epistemic Lens · Logic-Trace & Premise Verification',
+                                  tagline: 'Exposes premise-to-conclusion chains, detects unstated assumptions, and highlights logical fallacies.',
+                                  purpose: 'Re-tints the chamber in cyan logic-trace colors. Annotates premises with yellow highlights and flags unbacked assertions.',
+                                  howToUse: 'Switch to Epistemic when auditing complex ethical or scientific arguments for internal consistency.',
+                                  color: 'text-cyan-400',
+                                  bg: 'bg-cyan-950/30 border-cyan-500/40',
+                                  badge: 'PREMISE & LOGIC AUDIT'
+                                },
+                                haunted: {
+                                  title: 'Haunted Lens · Ancestral Precedent & Historical Footnotes',
+                                  tagline: 'Injects historical footnotes, ancestral miscalculations, and warnings from fallen civilizations.',
+                                  purpose: 'Re-tints the chamber in spectral violet glow. Annotates arguments with historical parallels where past societies made identical mistakes.',
+                                  howToUse: 'Switch to Haunted when assessing long-term systemic risk and civilization-level precedent.',
+                                  color: 'text-purple-400',
+                                  bg: 'bg-purple-950/30 border-purple-500/40',
+                                  badge: 'HISTORICAL PRECEDENT'
+                                },
+                                foresight: {
+                                  title: 'Foresight Lens · High-Dimensional Probabilistic Forecast',
+                                  tagline: 'Calculates high-dimensional outcome branches, future trajectories, and black-swan event probabilities.',
+                                  purpose: 'Re-tints the chamber in gold radial aura. Projects future trajectories and highlights low-probability, high-impact risk branches.',
+                                  howToUse: 'Switch to Foresight when evaluating long-term horizon scenarios and existential risk trajectories.',
+                                  color: 'text-amber-400',
+                                  bg: 'bg-amber-950/30 border-amber-500/40',
+                                  badge: 'PROBABILISTIC FORESIGHT'
+                                }
+                              }[activeLens];
+
+                              return (
+                                <motion.div
+                                  key={activeLens}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.3 }}
+                                  className={`w-full max-w-xl p-4 rounded-2xl border backdrop-blur-xl text-left ${lensInfo.bg} shadow-lg relative overflow-hidden`}
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <h4 className={`text-xs font-mono font-bold uppercase tracking-wider ${lensInfo.color}`}>
+                                      {lensInfo.title}
+                                    </h4>
+                                    <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded border ${lensInfo.bg} ${lensInfo.color}`}>
+                                      {lensInfo.badge}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-300 leading-relaxed font-sans mb-2">
+                                    {lensInfo.purpose}
+                                  </p>
+                                  <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                                    <span><strong>How to Use:</strong> {lensInfo.howToUse}</span>
+                                    <span className="text-slate-500 shrink-0 ml-2">Click tabs above to preview</span>
+                                  </div>
+                                </motion.div>
+                              );
+                           })()}
+                         </div>
                      </div>
                   </motion.div>
                   
-                  {/* Council Members */}
+                  {/* Sample Deliberation — the payoff before commitment */}
+                  <SampleDeliberation />
+                  
+                  {/* Select a Paradox — the primary call to action */}
+                  <div className="mt-8 md:mt-10 w-full max-w-6xl">
+                    <div className="flex flex-col items-center gap-2 mb-6 md:mb-8">
+                        <div className="flex items-center gap-4 w-full max-w-xs">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-700/30 to-emerald-700/30" />
+                            <Gavel size={12} className="text-emerald-500/60 shrink-0" />
+                            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-emerald-700/30 to-emerald-700/30" />
+                        </div>
+                        <h2 className="text-base md:text-lg font-cinzel font-bold text-emerald-300/90 uppercase tracking-[0.2em]">Select a Paradox</h2>
+                        <p className="text-[11px] text-slate-500 font-mono">Pick a paradox to draft the query · hover to reveal annotations · then press Convene</p>
+                    </div>
+                    <SuggestionCards onSelect={(t) => { setInput(t); }} />
+                 </div>
+
+                  {/* Council Members — opt-in detail */}
                   <CouncilMembers />
 
                   {/* Season / Episode Archive */}
@@ -3776,20 +4363,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
 
                   {/* Technocrat Concept Map */}
                   <ConceptMapPanel onSelectCategory={(t) => { setInput(t); }} />
-
-                  {/* Empty State Suggestions */}
-                  <div className="mt-8 md:mt-10 w-full max-w-6xl">
-                    <div className="flex flex-col items-center gap-2 mb-6 md:mb-8">
-                        <div className="flex items-center gap-4 w-full max-w-xs">
-                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-700/30 to-emerald-700/30" />
-                            <Gavel size={10} className="text-emerald-600/50 shrink-0" />
-                            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-emerald-700/30 to-emerald-700/30" />
-                        </div>
-                        <h2 className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.4em]">Select a Paradox</h2>
-                        <p className="text-[9px] text-slate-600 font-mono">Scroll to browse · hover to reveal Oracle's annotations · click to convene</p>
-                    </div>
-                    <SuggestionCards onSelect={(t) => { setInput(t); }} />
-                 </div>
              </div>
           )}
 
@@ -3833,6 +4406,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                 onPlayVoice={handlePlayVoice} 
                                 playingId={playingId}
                                 activeMembers={councilMembers} 
+                                live={deliberationLive}
                               />
                            </motion.div>
                         )}
@@ -3885,10 +4459,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                                               ) : phase.status === 'active' ? (
                                                                   <Activity size={12} />
                                                               ) : (
-                                                                  <span className="text-[8px] font-bold">{idx + 1}</span>
+                                                                  <span className="text-[9px] font-bold">{idx + 1}</span>
                                                               )}
                                                           </div>
-                                                          <span className={`text-[8px] md:text-[9px] font-bold mt-1 text-center ${
+                                                          <span className={`text-[9px] md:text-[9px] font-bold mt-1 text-center ${
                                                               phase.status === 'completed' ? 'text-yellow-500' :
                                                               phase.status === 'active' ? 'text-emerald-400' :
                                                               'text-slate-500'
@@ -4007,16 +4581,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                                                    Export as Substack Post
                                                                </button>
                                                                <div className="h-px bg-slate-800 mx-2" />
-                                                               <button 
-                                                                   onClick={() => {
-                                                                       handleCopyShareableLink(msg.councilResult!, msg.id);
-                                                                       setExportMenuOpen(false);
-                                                                   }}
-                                                                   className="w-full px-4 py-3 text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-blue-400 flex items-center gap-2"
-                                                               >
-                                                                   {copiedId === `share-${msg.id}` ? <Check size={14} /> : <Share2 size={14} />}
-                                                                   {copiedId === `share-${msg.id}` ? 'Link copied!' : 'Copy shareable link'}
-                                                               </button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        handleCopyShareableLink(msg.councilResult!, msg.id);
+                                                                        setExportMenuOpen(false);
+                                                                    }}
+                                                                    className="w-full px-4 py-3 text-left text-sm text-slate-300 hover:bg-slate-800 hover:text-blue-400 flex items-center gap-2"
+                                                                >
+                                                                    {copiedId === `share-${msg.id}` ? <Check size={14} /> : <Share2 size={14} />}
+                                                                    {copiedId === `share-${msg.id}` ? 'Link copied!' :
+                                                                     copiedId === `share-too-large-${msg.id}` ? 'Session too large for a link — use Export' :
+                                                                     copiedId === `share-failed-${msg.id}` ? 'Copy failed — use Export' :
+                                                                     'Copy shareable link'}
+                                                                </button>
                                                                <div className="px-4 py-2 bg-slate-950/50 text-[10px] text-slate-500 border-t border-slate-800">
                                                                    {(() => {
                                                                        const size = calculateTraceSize(buildExportSession(msg.councilResult!, msg.text, councilMode, Date.now(), msg.id));
@@ -4073,8 +4650,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                               ) : (
                                                 <p className="text-slate-400 text-sm">
                                                     <strong className="text-red-400">VERDICT_UNAVAILABLE</strong> — the council did not reach a valid convergent decision.
-                                                    {msg.councilResult.verdictStatus === 'invalid' && " The vote was not mathematically valid."}
-                                                    {msg.councilResult.verdictStatus === 'unavailable' && " Deliberation quorum was not satisfied after recovery exhaustion."}
+                                                    {msg.councilResult.verdictStatus === 'failed' && " No usable verdict was produced."}
+                                                    {msg.councilResult.verdictStatus === 'degraded' && msg.councilResult.verdictLabel && msg.councilResult.verdictLabel !== 'MAJORITY' && " The leading position held only a plurality or the ballot integrity was degraded — never a majority."}
+                                                    {msg.councilResult.voteQuorum && msg.councilResult.voteQuorum.achieved === false && ` Ballot-integrity quorum not met (${msg.councilResult.voteQuorum.valid}/${msg.councilResult.voteQuorum.expected} = ${Math.round((msg.councilResult.voteQuorum.ratio || 0) * 100)}%, minimum ${Math.round((msg.councilResult.voteQuorum.threshold || 0) * 100)}%).`}
                                                 </p>
                                               )}
                                           </div>
@@ -4159,6 +4737,62 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                               </motion.div>
                               )}
 
+                              {/* Audit Manifest — the immutable trail, made inspectable */}
+                              {msg.councilResult.auditManifest && (
+                                  <motion.div
+                                      initial={{ opacity: 0, y: 20 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: 0.8 }}
+                                      className="w-full mb-10"
+                                  >
+                                      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-black border border-emerald-500/25 rounded-[2rem] p-6 md:p-8">
+                                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                                              <div>
+                                                  <p className="text-[9px] font-mono text-emerald-400/70 uppercase tracking-[0.3em]">Audit · Verify this session</p>
+                                                  <h3 className="text-lg font-cinzel font-bold text-slate-100 mt-1">Immutability, inspectable</h3>
+                                              </div>
+                                              <button
+                                                  onClick={() => handleCopy(JSON.stringify(msg.councilResult!.auditManifest, null, 2), `${msg.id}-audit`)}
+                                                  className={`p-2.5 border rounded-xl transition-all duration-500 flex items-center gap-2 text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                                      copiedId === `${msg.id}-audit`
+                                                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                                                          : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-emerald-400 hover:border-emerald-500/40'
+                                                  }`}
+                                              >
+                                                  {copiedId === `${msg.id}-audit` ? <Check size={14} /> : <Copy size={14} />}
+                                                  {copiedId === `${msg.id}-audit` ? 'Copied' : 'Copy Manifest'}
+                                              </button>
+                                          </div>
+                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                              <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+                                                  <div className={`text-sm font-cinzel font-bold ${msg.councilResult.auditManifest.integrity === 'verified' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                      {msg.councilResult.auditManifest.integrity}
+                                                  </div>
+                                                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Integrity</div>
+                                              </div>
+                                              <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+                                                  <div className="text-sm font-cinzel font-bold text-slate-200">{msg.councilResult.auditManifest.eventCount}</div>
+                                                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Hash-chained events</div>
+                                              </div>
+                                              <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+                                                  <div className="text-sm font-cinzel font-bold text-slate-200">{msg.councilResult.auditManifest.hashChain?.length || 0}</div>
+                                                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Payload hashes</div>
+                                              </div>
+                                              <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+                                                  <div className="text-sm font-cinzel font-bold text-slate-200">{msg.councilResult.auditManifest.schemaVersion}</div>
+                                                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Schema</div>
+                                              </div>
+                                          </div>
+                                          {msg.councilResult.auditManifest.rootHash && (
+                                              <div className="mt-3 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
+                                                  <p className="text-[9px] font-mono text-slate-600 uppercase tracking-widest mb-1">Root hash</p>
+                                                  <p className="text-[11px] font-mono text-emerald-400/80 break-all">{msg.councilResult.auditManifest.rootHash}</p>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </motion.div>
+                              )}
+
                               {/* Runoff Trial Section */}
                               {msg.councilResult.runoffResult && (
                                 <motion.div 
@@ -4188,7 +4822,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                                   <h3 className="text-2xl md:text-3xl font-cinzel font-bold text-purple-500 tracking-[0.15em] drop-shadow-[0_0_10px_rgba(160,70,220,0.5)]">Runoff Trial</h3>
                                                   <div className="flex items-center gap-2 mt-1">
                                                       <div className="h-1 w-8 bg-purple-600 rounded-full" />
-                                                      <p className="text-[11px] text-slate-400 uppercase tracking-[0.25em] font-bold">Tie-Breaking Deliberation</p>
+                                                      <p className="text-[11px] text-slate-400 uppercase tracking-[0.25em] font-bold">{msg.councilResult.round2Result ? 'Round 2 · Adversarial Defense & Reconsideration' : 'Tie-Breaking Deliberation'}</p>
                                                   </div>
                                               </div>
                                           </div>
@@ -4219,7 +4853,67 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                       </div>
 
                                       <div className="space-y-6">
-                                          <h4 className="text-xl font-cinzel font-bold text-purple-400">Runoff Arguments</h4>
+                                          {/* Round-scope verdict — the stages are never blurred */}
+                                          {msg.councilResult.round2Result && (
+                                              <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono">
+                                                  <span className="text-slate-500 uppercase tracking-[0.2em]">Round 1</span>
+                                                  <span className="px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-400 font-bold">
+                                                      {msg.councilResult.round2Result.round1Label || 'TIE'}
+                                                  </span>
+                                                  <ChevronRight size={12} className="text-slate-600" />
+                                                  <span className="text-slate-500 uppercase tracking-[0.2em]">Round 2</span>
+                                                  <span className={`px-2 py-0.5 rounded-full border font-bold ${
+                                                      msg.councilResult.round2Result.outcome === 'majority'
+                                                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                                          : 'border-red-500/40 bg-red-500/10 text-red-400'
+                                                  }`}>
+                                                      {msg.councilResult.round2Result.outcome === 'majority' ? 'MAJORITY' : 'STILL TIED'}
+                                                  </span>
+                                                  <ChevronRight size={12} className="text-slate-600" />
+                                                  <span className="text-slate-500 uppercase tracking-[0.2em]">Final</span>
+                                                  <span className="px-2 py-0.5 rounded-full border border-slate-600/50 bg-slate-800/40 text-slate-300 font-bold">
+                                                      {msg.councilResult.verdictLabel || '—'}
+                                                  </span>
+                                              </div>
+                                          )}
+
+                                          {/* Round 2 · Adversarial Examination — objection vs rebuttal */}
+                                          {msg.councilResult.round2Result && msg.councilResult.round2Result.defenses.some(d => d.status === 'completed') && (
+                                              <div>
+                                                  <div className="flex items-center gap-3 mb-4">
+                                                      <Swords size={12} className="text-purple-400" />
+                                                      <h4 className="text-xl font-cinzel font-bold text-purple-400">Round 2 · Adversarial Examination</h4>
+                                                      <div className="h-px flex-1 bg-purple-500/20" />
+                                                  </div>
+                                                  <div className="space-y-4">
+                                                      {msg.councilResult.round2Result.defenses.map((d, i) => (
+                                                          <div key={`defense-${d.position}-${i}`} className="bg-slate-900/60 border border-purple-500/30 rounded-2xl p-6">
+                                                              <div className="flex items-center gap-3 mb-4">
+                                                                  <div className="p-2 rounded-xl bg-purple-900/40 border border-purple-500/30">
+                                                                      {getPersonaConfig(d.defender).icon}
+                                                                  </div>
+                                                                  <div>
+                                                                      <p className="text-[9px] font-mono text-purple-400/70 uppercase tracking-[0.25em]">Position {i + 1} — defended by {d.defender}</p>
+                                                                      <h5 className="text-lg font-cinzel font-bold text-slate-100">{d.position}</h5>
+                                                                  </div>
+                                                              </div>
+                                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                  <div className="rounded-xl border border-red-500/25 bg-red-950/10 p-4">
+                                                                      <h6 className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2">Strongest Objection</h6>
+                                                                      <p className="text-sm text-slate-300 italic">"{d.strongestObjection}"</p>
+                                                                  </div>
+                                                                  <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-4">
+                                                                      <h6 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2">Rebuttal</h6>
+                                                                      <p className="text-sm text-slate-300">{d.rebuttal}</p>
+                                                                  </div>
+                                                              </div>
+                                                          </div>
+                                                      ))}
+                                                  </div>
+                                              </div>
+                                          )}
+
+                                          <h4 className="text-xl font-cinzel font-bold text-purple-400">Runoff Arguments{msg.councilResult.round2Result ? ' — Strongest Defenses & Rebuttals' : ''}</h4>
                                             {(msg.councilResult.runoffResult?.runoffOpinions || []).map((opinion, index) => (
                                                <div key={`runoff-op-${opinion.persona}`} className="bg-slate-900/60 border border-slate-800/50 rounded-2xl p-6">
                                                   <div className="flex items-center gap-4 mb-4">
@@ -4248,7 +4942,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                               </div>
                                           ))}
                                           
-                                          <h4 className="text-xl font-cinzel font-bold text-purple-400 mt-8">Reconsiderations</h4>
+                                          <h4 className="text-xl font-cinzel font-bold text-purple-400 mt-8">Reconsiderations{msg.councilResult.round2Result ? ' — Round 2 Ballot' : ''}</h4>
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {(msg.councilResult.runoffResult?.runoffVotes || []).map((vote, index) => (
                                                    <div key={`runoff-vote-${vote.voter}`} className="bg-slate-900/60 border border-slate-800/50 rounded-2xl p-4">
@@ -4267,14 +4961,79 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                                           <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                                                               vote.changedMind ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/50 text-slate-400'
                                                           }`}>
-                                                              {vote.finalVote}
+                                                              {vote.originalVote && vote.originalVote !== vote.finalVote
+                                                                  ? <>{vote.originalVote} → {vote.finalVote}</>
+                                                                  : vote.finalVote}
                                                           </div>
                                                       </div>
+                                                      {msg.councilResult.round2Result && (() => {
+                                                          const rec = msg.councilResult!.round2Result!.reassessments.find(r => r.member === vote.voter);
+                                                          if (!rec) return null;
+                                                          const movement = rec.changed
+                                                              ? { label: 'SHIFTED', cls: 'text-amber-400 border-amber-500/40 bg-amber-500/10' }
+                                                              : rec.confidenceAfter > rec.confidenceBefore
+                                                                  ? { label: 'REINFORCED', cls: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' }
+                                                                  : rec.confidenceAfter < rec.confidenceBefore
+                                                                      ? { label: 'WEAKENED', cls: 'text-red-400 border-red-500/40 bg-red-500/10' }
+                                                                      : { label: 'STABLE', cls: 'text-slate-400 border-slate-600/50 bg-slate-800/40' };
+                                                          return (
+                                                              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                                  <span className={`text-[9px] font-mono font-bold border px-1.5 py-0.5 rounded ${movement.cls}`}>{movement.label}</span>
+                                                                  <span className={`text-[10px] font-mono ${
+                                                                      rec.confidenceAfter > rec.confidenceBefore ? 'text-emerald-400'
+                                                                      : rec.confidenceAfter < rec.confidenceBefore ? 'text-red-400'
+                                                                      : 'text-slate-500'
+                                                                  }`}>
+                                                                      confidence {rec.confidenceBefore.toFixed(2)} → {rec.confidenceAfter.toFixed(2)}
+                                                                  </span>
+                                                              </div>
+                                                          );
+                                                      })()}
                                                       <p className="text-slate-400 text-sm mt-3 italic">"{vote.reasoning}"</p>
                                                   </div>
                                               ))}
                                           </div>
                                           
+                                          {/* Measurable Persuasion — the Round 2 ledger */}
+                                          {msg.councilResult.round2Result && (
+                                              <div className="mt-8 p-6 bg-gradient-to-br from-purple-950/40 to-slate-950 border border-purple-500/30 rounded-2xl">
+                                                  <h4 className="text-lg font-cinzel font-bold text-purple-400 mb-4 flex items-center gap-2">
+                                                      <TrendingUp size={16} /> Measurable Persuasion
+                                                  </h4>
+                                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                      <div className="bg-slate-900/60 border border-purple-500/20 rounded-xl p-3 text-center">
+                                                          <div className="text-2xl font-cinzel font-bold text-amber-400">{msg.councilResult.round2Result.persuasion.votesChanged}</div>
+                                                          <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Changed Position</div>
+                                                      </div>
+                                                      <div className="bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+                                                          <div className="text-2xl font-cinzel font-bold text-emerald-400">{msg.councilResult.round2Result.persuasion.retainedIncreasedConfidence}</div>
+                                                          <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Retained + Confidence</div>
+                                                      </div>
+                                                      <div className="bg-slate-900/60 border border-red-500/20 rounded-xl p-3 text-center">
+                                                          <div className="text-2xl font-cinzel font-bold text-red-400">{msg.councilResult.round2Result.persuasion.retainedReducedConfidence}</div>
+                                                          <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Retained − Confidence</div>
+                                                      </div>
+                                                      <div className="bg-slate-900/60 border border-slate-600/30 rounded-xl p-3 text-center">
+                                                          <div className="text-2xl font-cinzel font-bold text-slate-300">{msg.councilResult.round2Result.persuasion.retainedSameConfidence}</div>
+                                                          <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Retained Unchanged</div>
+                                                      </div>
+                                                  </div>
+                                                  {msg.councilResult.round2Result.outcome === 'still_tied' && (
+                                                      <p className="text-[11px] text-red-400/90 mt-3 font-mono">{msg.councilResult.round2Result.deadlockNote}</p>
+                                                  )}
+                                                  {msg.councilResult.round2Result.outcome === 'majority' && (() => {
+                                                      const w = msg.councilResult!.round2Result!.winner;
+                                                      if (!w) return null;
+                                                      const validBallots = msg.councilResult!.round2Result!.reassessments.filter(r => r.status === 'completed').length;
+                                                      return (
+                                                          <p className="text-[11px] text-emerald-400/90 mt-3">
+                                                              {w} reached a strict majority ({msg.councilResult!.round2Result!.tally[w] || 0} of {validBallots} valid Round 2 ballots) after adversarial exposure.
+                                                          </p>
+                                                      );
+                                                  })()}
+                                              </div>
+                                          )}
+
                                           <div className="mt-8 p-6 bg-purple-900/20 border border-purple-500/30 rounded-2xl">
                                               <h4 className="text-lg font-cinzel font-bold text-purple-400 mb-2">Runoff Winner</h4>
                                               <p className="text-xl font-cinzel text-slate-100">
@@ -4352,32 +5111,34 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           <div ref={messagesEndRef} />
        </div>
 
-       {/* Scroll Navigation */}
-       <AnimatePresence>
-           {showScrollBottom && (
+        {/* Scroll Navigation — only over real transcripts, never the empty state */}
+        <AnimatePresence>
+            {showScrollBottom && messages.length > 0 && (
                <motion.button
                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                   onClick={scrollToBottom}
-                   className="absolute bottom-24 right-8 z-50 p-3 bg-emerald-500 text-slate-950 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition-all group"
+                    onClick={scrollToBottom}
+                    aria-label={hasNewMessages ? 'New transmissions received. Scroll to bottom.' : 'Return to present'}
+                    className="absolute bottom-24 right-8 z-50 p-3 bg-emerald-500 text-slate-950 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition-all group"
                >
                    <TrendingUp className="rotate-180 group-hover:-translate-y-1 transition-transform" size={20} />
                    {hasNewMessages && (
-                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-950 animate-bounce" />
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-950 animate-pulse" />
                    )}
                    <div className="absolute right-full mr-3 px-2 py-1 bg-black/80 text-emerald-400 text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                        {hasNewMessages ? 'New Transmissions Received' : 'Return to Present'}
                    </div>
                </motion.button>
            )}
-           {showScrollTop && (
+            {showScrollTop && messages.length > 0 && (
                <motion.button
                    initial={{ opacity: 0, scale: 0.8, y: -20 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                   onClick={scrollToTop}
-                   className="absolute top-20 right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
+                    onClick={scrollToTop}
+                    aria-label="Scroll to top of transcript"
+                    className="absolute top-20 right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
                >
                    <ChevronUp className="group-hover:-translate-y-1 transition-transform" size={20} />
                    <div className="absolute right-full mr-3 px-2 py-1 bg-black/80 text-slate-300 text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
@@ -4435,6 +5196,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                  {/* Textarea */}
                  <div className="px-5 pt-4 pb-2">
                    <textarea
+                     id="council-petition"
+                     name="council-petition"
                      value={input}
                      onChange={(e) => {
                        setInput(e.target.value);
