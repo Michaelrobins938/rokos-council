@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import SplashScreen from './components/SplashScreen';
+import ExportCenter, { ExportArtifactKey } from './components/ExportCenter';
 import { Session, ChatMessage, CouncilMode } from './types';
-import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, exportAllAsZip } from './services/exportService';
+import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack } from './services/exportService';
+import { exportArgumentMap, exportArgumentMapJSON, exportDissentReport, exportConsensusReport, exportPersonaDossiers, exportCognitiveState } from './services/exportArtifacts';
+import { exportBallotLedgerCSV, exportBallotLedgerJSON, exportConstitutionalRecord, exportArbitrationRecord, exportVoidRecord } from './services/exportConstitutional';
+import { exportArgumentGraphJSON, exportArgumentGraphGraphML } from './services/exportDatasets';
+import { buildReproductionPackage } from './services/exportReproduction';
+import { saveAs } from 'file-saver';
 import { Menu } from 'lucide-react';
 
 const STORAGE_KEY = 'gemini_hub_council_sessions_v1';
@@ -123,7 +129,7 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
   };
 
-  const handleExport = (format: 'json' | 'markdown' | 'csv' | 'script' | 'substack' | 'zip') => {
+  const handleArtifactExport = async (key: ExportArtifactKey) => {
     const msg = activeSession?.messages.find(m => m.councilResult);
     if (!msg?.councilResult) return;
     const result = msg.councilResult;
@@ -138,42 +144,39 @@ const App: React.FC = () => {
     const timestamp = Date.now();
     const msgId = msg.id;
 
-    if (format === 'zip') {
-      exportAllAsZip(result, query, mode, timestamp, msgId);
+    // ZIP family — async: the reproduction package is the ZIP ALL umbrella.
+    if (key === 'reproduction' || key === 'zip-all') {
+      const { blob, filename } = await buildReproductionPackage(result, query, mode, timestamp, msgId);
+      saveAs(blob, filename);
       return;
     }
 
     const exportData = buildExportSession(result, query, mode, timestamp, msgId);
-    let content = '';
-    let filename = `roko-council-${msgId}.txt`;
-    let mimeType = 'text/plain';
+    let content: string;
+    let filename: string;
+    let mimeType: string;
 
-    switch (format) {
-      case 'json':
-        content = exportToJSON(exportData);
-        filename = `roko-council-${msgId}.json`;
-        mimeType = 'application/json';
-        break;
-      case 'markdown':
-        content = exportToMarkdown(exportData);
-        filename = `roko-council-${msgId}.md`;
-        mimeType = 'text/markdown';
-        break;
-      case 'csv':
-        content = exportToCSV(exportData);
-        filename = `roko-council-${msgId}.csv`;
-        mimeType = 'text/csv';
-        break;
-      case 'script':
-        content = exportToScript(exportData);
-        filename = `roko-council-script-${msgId}.md`;
-        mimeType = 'text/markdown';
-        break;
-      case 'substack':
-        content = exportToSubstack(exportData);
-        filename = `roko-council-substack-${msgId}.md`;
-        mimeType = 'text/markdown';
-        break;
+    switch (key) {
+      case 'report': content = exportToMarkdown(exportData); filename = `roko-council-${msgId}-report.md`; mimeType = 'text/markdown'; break;
+      case 'argument-map': content = exportArgumentMap(exportData); filename = `roko-council-${msgId}-argument-map.md`; mimeType = 'text/markdown'; break;
+      case 'argument-map-json': content = exportArgumentMapJSON(exportData); filename = `roko-council-${msgId}-argument-map.json`; mimeType = 'application/json'; break;
+      case 'dissent-report': content = exportDissentReport(exportData); filename = `roko-council-${msgId}-dissent-report.md`; mimeType = 'text/markdown'; break;
+      case 'consensus-report': content = exportConsensusReport(exportData); filename = `roko-council-${msgId}-consensus-report.md`; mimeType = 'text/markdown'; break;
+      case 'persona-dossiers': content = exportPersonaDossiers(exportData); filename = `roko-council-${msgId}-persona-dossiers.md`; mimeType = 'text/markdown'; break;
+      case 'cognitive-state': content = exportCognitiveState(exportData); filename = `roko-council-${msgId}-cognitive-state.json`; mimeType = 'application/json'; break;
+      case 'relationship-graph': content = exportArgumentGraphJSON(exportData); filename = `roko-council-${msgId}-relationship-graph.json`; mimeType = 'application/json'; break;
+      case 'ballot-ledger-csv': content = exportBallotLedgerCSV(exportData); filename = `roko-council-${msgId}-ballot-ledger.csv`; mimeType = 'text/csv'; break;
+      case 'ballot-ledger-json': content = exportBallotLedgerJSON(exportData); filename = `roko-council-${msgId}-ballot-ledger.json`; mimeType = 'application/json'; break;
+      case 'constitutional-record': content = exportConstitutionalRecord(exportData); filename = `roko-council-${msgId}-constitutional-record.md`; mimeType = 'text/markdown'; break;
+      case 'arbitration-record': content = exportArbitrationRecord(exportData); filename = `roko-council-${msgId}-arbitration-record.md`; mimeType = 'text/markdown'; break;
+      case 'void-record': content = exportVoidRecord(exportData); filename = `roko-council-${msgId}-void-record.md`; mimeType = 'text/markdown'; break;
+      case 'json': content = exportToJSON(exportData); filename = `roko-council-${msgId}.json`; mimeType = 'application/json'; break;
+      case 'csv': content = exportToCSV(exportData); filename = `roko-council-${msgId}.csv`; mimeType = 'text/csv'; break;
+      case 'graphml': content = exportArgumentGraphGraphML(exportData); filename = `roko-council-${msgId}-argument-graph.graphml`; mimeType = 'application/xml'; break;
+      case 'script': content = exportToScript(exportData); filename = `roko-council-${msgId}-script.md`; mimeType = 'text/markdown'; break;
+      case 'podcast': content = exportToScript(exportData); filename = `roko-council-${msgId}-podcast.txt`; mimeType = 'text/plain'; break;
+      case 'substack': content = exportToSubstack(exportData); filename = `roko-council-${msgId}-substack.md`; mimeType = 'text/markdown'; break;
+      default: return;
     }
 
     if (!content) return;
@@ -194,6 +197,7 @@ const App: React.FC = () => {
   const [councilMode, setCouncilMode] = useState<CouncilMode>(CouncilMode.STANDARD);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showExportCenter, setShowExportCenter] = useState(false);
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -209,7 +213,7 @@ const App: React.FC = () => {
         }}
         onNewChat={() => createNewSession()}
         onDeleteSession={deleteSession}
-        onExport={handleExport}
+        onOpenExportCenter={() => setShowExportCenter(true)}
         hasArchive={hasArchive}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -225,6 +229,8 @@ const App: React.FC = () => {
               />
         </div>
       </main>
+
+      <ExportCenter isOpen={showExportCenter} onClose={() => setShowExportCenter(false)} onExport={handleArtifactExport} />
     </div>
   );
 };

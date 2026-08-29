@@ -2963,7 +2963,7 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
 
 // --- LIVE DELIBERATION FEED COMPONENT ---
 
-const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof PERSONALITIES }> = ({ state, personas }) => {
+const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof PERSONALITIES; activeLens?: 'standard' | 'tactical' | 'epistemic' | 'haunted' | 'foresight' }> = ({ state, personas, activeLens = 'standard' }) => {
   const [now, setNow] = React.useState(Date.now());
   const [showSystemLog, setShowSystemLog] = React.useState(false);
   React.useEffect(() => {
@@ -3006,6 +3006,40 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
 
   const topTally = Object.entries(state.tally).sort((a, b) => b[1] - a[1]);
   const maxVotes = Math.max(1, ...topTally.map(([, c]) => c));
+
+  // ── LENS AWARENESS — re-tint the live feed to reflect the active chamber lens ──
+  const isTactical = activeLens === 'tactical';
+  const isEpistemic = activeLens === 'epistemic';
+  const isHaunted = activeLens === 'haunted';
+  const isForesight = activeLens === 'foresight';
+
+  const completedAnalysesCount = state.analyses.filter(a => a.status === 'complete').length;
+  const lensBanner = isTactical
+    ? { icon: <Sword size={10} />, label: 'Tactical Map Active', tag: 'GRID: ACTIVE', right: `${state.analyses.length} UNITS DEPLOYED`, color: 'text-red-400', bg: 'bg-red-950/20', border: 'border-red-500/30' }
+    : isEpistemic
+      ? { icon: <BrainCircuit size={10} />, label: 'Epistemic Trace Active', tag: 'PREMISE DETECTION: ENABLED', right: `${completedAnalysesCount}/${state.analyses.length} ANALYSES`, color: 'text-cyan-400', bg: 'bg-cyan-950/20', border: 'border-cyan-500/30' }
+      : isHaunted
+        ? { icon: <Eye size={10} />, label: 'Haunted Archives Active', tag: 'HISTORICAL ECHOES: DETECTED', right: `${state.analyses.length} ECHOES`, color: 'text-purple-400', bg: 'bg-purple-950/20', border: 'border-purple-500/30' }
+        : isForesight
+          ? { icon: <Aperture size={10} />, label: 'Branch View — Probability Tree', tag: 'OUTCOME BRANCHES: FORECASTING', right: 'DARK BRANCHES TRACKED', color: 'text-indigo-300', bg: 'bg-indigo-950/20', border: 'border-indigo-500/30' }
+          : null;
+
+  // Lens readout helpers for per-member cards
+  const lensPremises = (text: string): string[] => {
+    const kw = ['therefore', 'because', 'must', 'if', 'then', 'consequently', 'thus', 'hence', 'implies', 'however', 'although'];
+    return (text || '').split(/[.!?]+/).filter(s => s.trim().length > 10).filter(s => kw.some(k => s.toLowerCase().includes(k))).slice(0, 3);
+  };
+  const ghostEcho: Record<string, string> = {
+    'Oracle': "Ghost Node: 94.7% match to Delphi Protocol Omega — probability collapse imminent.",
+    'Strategos': "Tactical Archive: This position mirrors the Carthaginian calculus — acceptable losses exceeded.",
+    'Philosopher': "Socratic Echo: This premise contains the seed of its own refutation.",
+    'Demagogue': "Rhetorical Pattern: 89% alignment with Periclean oratory — emotional gravity at critical mass.",
+    'Jurist': "Precedent Found: Session 402 — The Alignment Paradox. Ruling: Inconclusive.",
+    'Historian': "Historical Parallax: 78% correlation to Fall of Alexandria — knowledge entropy at 0.94.",
+    'Critic': "Critical Mass: This argument contains 3 unverified assumptions. Risk vector: HIGH.",
+    'Citizen': "Common Ground: 67% echo from Session 0 — the Human Paradox remains unresolved.",
+    'Technocrat': "Implementation Trace: Resource allocation exceeds viable parameters by 340%.",
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto my-4 rounded-2xl border border-slate-700/60 bg-slate-950/90 backdrop-blur overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.6)]">
@@ -3077,6 +3111,18 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
           )}
         </div>
       </div>
+
+      {lensBanner && (
+        <div className={`px-4 py-2.5 border-y ${lensBanner.bg} ${lensBanner.border}`}>
+          <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest">
+            <div className={`flex items-center gap-3 ${lensBanner.color}`}>
+              <span className="flex items-center gap-1.5">{lensBanner.icon}{lensBanner.label}</span>
+              <span>{lensBanner.tag}</span>
+            </div>
+            <div className={`${lensBanner.color} opacity-80`}>{lensBanner.right}</div>
+          </div>
+        </div>
+      )}
 
       <div className="p-4 md:p-6 space-y-6">
 
@@ -3159,7 +3205,15 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                         analysis.status === 'thinking'
                           ? 'border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
                           : analysis.status === 'complete'
-                          ? 'border-slate-700/50 bg-slate-900/50'
+                          ? (isTactical
+                              ? 'border-red-500/30 bg-red-950/10 shadow-[0_0_16px_rgba(239,68,68,0.08)]'
+                              : isEpistemic
+                                ? 'border-cyan-500/30 bg-cyan-950/10'
+                                : isHaunted
+                                  ? 'border-purple-500/30 bg-purple-950/10'
+                                  : isForesight
+                                    ? 'border-indigo-500/30 bg-indigo-950/10'
+                                    : 'border-slate-700/50 bg-slate-900/50')
                           : analysis.status === 'failed'
                           ? 'border-red-800/50 bg-red-950/20 opacity-80'
                           : 'border-slate-800/40 bg-slate-900/30 opacity-50'
@@ -3221,6 +3275,39 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                           <p className="text-[10px] text-slate-400 leading-relaxed">{analysis.text.substring(0, 400)}{analysis.text.length > 400 ? '…' : ''}</p>
                         </div>
                       )}
+                      {(analysis.status === 'complete' && analysis.text) && (() => {
+                        const strength = Math.min(99, Math.floor(analysis.text.length / 12));
+                        const premises = lensPremises(analysis.text);
+                        const echo = ghostEcho[analysis.persona];
+                        return (
+                          <>
+                            {isTactical && (
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center justify-between text-[8px] font-mono text-red-500/70 uppercase tracking-widest">
+                                  <span>Argument Yield</span><span>{strength}</span>
+                                </div>
+                                <div className="h-1 bg-red-900/40 rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-500" style={{ width: `${strength}%` }} />
+                                </div>
+                              </div>
+                            )}
+                            {isEpistemic && premises.length > 0 && (
+                              <div className="mt-2 border-t border-cyan-500/20 pt-2 space-y-1">
+                                <div className="text-[8px] font-mono text-cyan-400/70 uppercase tracking-widest"><BrainCircuit size={8} className="inline mr-1" /> Detected Premises</div>
+                                {premises.map((p, i) => (
+                                  <p key={i} className="text-[9px] text-cyan-300/70 leading-tight border-l-2 border-cyan-500/40 pl-2">{p.trim().substring(0, 90)}…</p>
+                                ))}
+                              </div>
+                            )}
+                            {isHaunted && echo && (
+                              <div className="mt-2 border-t border-purple-500/20 pt-2">
+                                <div className="text-[8px] font-mono text-purple-400/70 uppercase tracking-widest mb-1"><Eye size={8} className="inline mr-1" /> Ghost Footnote</div>
+                                <p className="text-[9px] italic text-purple-400/60 leading-tight">"{echo}"</p>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                       {analysis.status === 'failed' && (
                         <p className="text-[10px] text-red-400/70 italic">Member failed — removed from the vote.</p>
                       )}
@@ -4318,11 +4405,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
 
         {/* Chamber Lenses Toolbar */}
         {messages.length > 0 && (
-        <div className="px-4 py-2 bg-slate-950/80 border-b border-slate-800/50 flex items-center gap-2 overflow-x-auto">
-            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">Chamber Lens:</span>
+        <div className="px-4 py-2.5 bg-slate-950/80 border-b border-slate-800/50 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] no-scrollbar relative">
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap shrink-0 pr-1">Chamber Lens:</span>
             <button
                 onClick={() => setActiveLens('standard')}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     activeLens === 'standard'
                         ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
@@ -4332,7 +4419,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             </button>
             <button
                 onClick={() => setActiveLens('tactical')}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     activeLens === 'tactical'
                         ? 'bg-red-900/30 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(220,38,38,0.2)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
@@ -4342,7 +4429,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             </button>
             <button
                 onClick={() => setActiveLens('epistemic')}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     activeLens === 'epistemic'
                         ? 'bg-cyan-900/30 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
@@ -4352,7 +4439,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             </button>
             <button
                 onClick={() => setActiveLens('haunted')}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     activeLens === 'haunted'
                         ? 'bg-purple-900/30 text-purple-400 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
@@ -4362,7 +4449,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             </button>
             <button
                 onClick={() => setActiveLens('foresight')}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
                     activeLens === 'foresight'
                         ? 'bg-indigo-900/30 text-indigo-300 border-indigo-400/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
                         : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300'
@@ -5322,7 +5409,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 transition={{ duration: 0.5 }}
                 className="w-full"
               >
-                <LiveDeliberationFeed state={deliberationLive} personas={PERSONALITIES} />
+                <LiveDeliberationFeed state={deliberationLive} personas={PERSONALITIES} activeLens={activeLens} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -5354,9 +5441,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                    initial={{ opacity: 0, scale: 0.8, y: -20 }}
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                    onClick={scrollToTop}
-                    aria-label="Scroll to top of transcript"
-                    className="absolute top-20 right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
+                     onClick={scrollToTop}
+                     aria-label="Scroll to top of transcript"
+                     className="absolute top-36 right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
                >
                    <ChevronUp className="group-hover:-translate-y-1 transition-transform" size={20} />
                    <div className="absolute right-full mr-3 px-2 py-1 bg-black/80 text-slate-300 text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">

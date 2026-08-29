@@ -14,7 +14,7 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string, e: React.MouseEvent) => void;
-  onExport: (format: 'json' | 'markdown' | 'csv' | 'script' | 'substack' | 'zip') => void;
+  onOpenExportCenter: () => void;
   hasArchive: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -23,7 +23,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({
     isOpen, onClose,
     sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession,
-    onExport, hasArchive, isCollapsed = false, onToggleCollapse
+    onOpenExportCenter, hasArchive, isCollapsed = false, onToggleCollapse
 }) => {
   const [showPodcast, setShowPodcast] = useState(false);
   const [showLab, setShowLab] = useState(false);
@@ -252,27 +252,15 @@ const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-1.5"><Download size={11} /> Export Center</span>
               <span className="text-[9px] font-mono text-emerald-400/80 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">AUDITED</span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {([
-                { format: 'json', icon: 'dl', label: 'JSON', cls: 'hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-950/20' },
-                { format: 'markdown', icon: 'ft', label: 'MD', cls: 'hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-950/20' },
-                { format: 'csv', icon: 'ft', label: 'CSV', cls: 'hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-950/20' },
-                { format: 'script', icon: 'mic', label: 'Podcast', cls: 'hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-950/20' },
-                { format: 'substack', icon: 'news', label: 'Substack', cls: 'hover:text-orange-400 hover:border-orange-500/40 hover:bg-orange-950/20' },
-                { format: 'zip', icon: 'arch', label: 'ZIP ALL', cls: 'hover:bg-emerald-900/50 hover:border-emerald-500/70 bg-emerald-950/40 border-emerald-500/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' },
-              ] as const).map(({ format, icon, label, cls }) => (
-                <button key={format} onClick={() => onExport(format as any)} title={`Export as ${label}`} className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 transition-all group ${cls}`}>
-                  <span className="group-hover:scale-110 transition-transform">
-                    {icon === 'dl' && <Download size={12} />}
-                    {icon === 'ft' && <FileText size={12} />}
-                    {icon === 'mic' && <Mic size={12} />}
-                    {icon === 'news' && <Newspaper size={12} />}
-                    {icon === 'arch' && <FileArchive size={12} />}
-                  </span>
-                  <span className="text-[9px] font-mono font-bold tracking-wider">{label}</span>
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={onOpenExportCenter}
+              title="Open the Export Center"
+              className="w-full group relative flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 transition-all hover:bg-emerald-900/50 hover:border-emerald-500/70 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+            >
+              <span className="group-hover:scale-110 transition-transform"><FileArchive size={14} /></span>
+              <span className="text-[10px] font-mono font-bold tracking-wider">OPEN EXPORT CENTER</span>
+              <span className="text-[8px] font-mono text-emerald-400/70">formal · argument · ballot · dossier · publish · reproduce</span>
+            </button>
           </div>
         )}
 
