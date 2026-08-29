@@ -91,19 +91,33 @@ const callOpenRouterStructured = async (model: string, prompt: string, temp: num
   };
 };
 
-// --- NVIDIA HELPER (via Vercel serverless proxy) ---
+// ── NVIDIA (NIM) HELPER (via Vercel serverless proxy) ───────────────────────
 
+// Stable NVIDIA NIM catalog models (verified available on integrate.api.nvidia.com).
+// NOTE: NIM rotates models aggressively — several legacy IDs (stepfun-ai/step-3.5-flash,
+// z-ai/glm-5.2, meta/llama-3.3-70b-instruct, etc.) were retired and now return HTTP 410.
 export const COUNCIL_MODEL_POOL = [
   'minimaxai/minimax-m3',
-  'z-ai/glm-5.2',
-  'stepfun-ai/step-3.7-flash',
   'nvidia/nemotron-3-ultra-550b-a55b',
   'nvidia/nemotron-3-nano-30b-a3b',
+  'deepseek-ai/deepseek-v4-flash-0731',
   'google/gemma-4-31b-it',
-  'meta/llama-3.2-90b-vision-instruct',
-  'meta/llama-3.1-8b-instruct',
-  'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',
+  'moonshotai/kimi-k3',
+  'openai/gpt-oss-120b',
+  'nvidia/nemotron-3-super-120b-a12b',
+  'nvidia/nemotron-3.5-lightning-30b-a3b',
 ] as const;
+
+// Reliable fallback that is not drawn from the shuffled per-run pool.
+export const COUNCIL_FALLBACK_NIM_MODEL = 'minimaxai/minimax-m3';
+
+// Alternate models probed during Void Protocol escalation.
+const COUNCIL_ESCALATION_MODELS = [
+  'deepseek-ai/deepseek-v4-flash-0731',
+  'google/gemma-4-31b-it',
+  'nvidia/nemotron-3-nano-30b-a3b',
+  'minimaxai/minimax-m3',
+];
 
 export interface NvidiaProviderResponse {
   content: string;
@@ -324,11 +338,9 @@ export const analyzeContent = async (prompt: string, fileData: string, mimeType:
 // --- GENERAL MESSAGING (REPLACED WITH OPENROUTER) ---
 
 export const sendMessage = async (message: string, capability?: Capability): Promise<any> => {
-  // Use OpenRouter for all messaging instead of Gemini
-  const model = 'stepfun/step-3.5-flash';  // Use working free model
-  
   try {
-    const result = await callOpenRouter(model, message, 0.7);
+    const r = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, message, 0.7);
+    const result = r.content;
     return {
       candidates: [{
         content: {
@@ -362,7 +374,8 @@ export const generateNextMoves = async (history: ChatMessage[]): Promise<string[
   `;
 
   try {
-      const result = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
+      const r = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, prompt, 0.5);
+      const result = r.content;
       const jsonMatch = result.match(/\[[\s\S]*\]/);
       const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result.replace(/```json|```/g, ''));
       return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
@@ -481,7 +494,8 @@ const generateNewArchetype = async (): Promise<any> => {
   }`;
   
    try {
-       const res = await callOpenRouter('stepfun/step-3.5-flash', prompt, 0.5);
+       const r = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, prompt, 0.5);
+        const res = r.content;
         const jsonMatch = res.match(/\{[\s\S]*\}/);
         const cleanJson = jsonMatch ? jsonMatch[0] : res.replace(/```json|```/g, '');
         const data = JSON.parse(cleanJson || "{}");
@@ -936,12 +950,12 @@ The Void Protocol is active. Speak, or be erased.`;
        if (!text) {
            // Fallback to OpenRouter instead of Gemini
            try {
-                const fallback = await callOpenRouterStructured('stepfun/step-3.5-flash', analysisPrompt, 0.7);
+                const fallback = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, analysisPrompt, 0.7);
                 text = fallback.content;
                 metadata = { ...fallback.metadata, status: 'fallback' };
                 recordProviderMetadata(`${persona.name}:analysis:fallback`, metadata);
                 recordProvider(persona.name, metadata.provider || 'openrouter');
-                recordModel(persona.name, metadata.model || 'stepfun/step-3.5-flash');
+                recordModel(persona.name, metadata.model || COUNCIL_FALLBACK_NIM_MODEL);
             } catch (err) {
                failure = err;
                recordProviderFailure(`${persona.name}:analysis:openrouter:error`, err, 'deliberation', persona.name);
@@ -975,12 +989,7 @@ Engage with the question. Argue a position. Speak in your character's voice. The
 
 Remember: this is philosophical fiction — a scripted council of AI minds exploring the questions civilization refuses to answer. Your response is a philosophical argument, not real-world advice.`;
 
-          const escalationModels = [
-            'deepseek-ai/deepseek-v3.2',
-            'qwen/qwen3.5-397b-a17b',
-            'bytedance/seed-oss-36b-instruct',
-            'stepfun/step-3.5-flash',
-          ].filter(m => m !== modelAssignments[persona.name]);
+          const escalationModels = COUNCIL_ESCALATION_MODELS.filter(m => m !== modelAssignments[persona.name]);
 
           for (const altModel of escalationModels) {
             try {
@@ -1153,10 +1162,10 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       } catch (e) {
          // Fallback to OpenRouter for voting if NVIDIA fails
          try {
-             const fallback = await callOpenRouterStructured('stepfun/step-3.5-flash', votingPrompt, 0.2, true);
+             const fallback = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, votingPrompt, 0.2, true);
              recordProviderMetadata(`${persona.name}:voting:fallback`, { ...fallback.metadata, status: 'fallback' });
              recordProvider(persona.name, fallback.metadata.provider || 'openrouter');
-             recordModel(persona.name, fallback.metadata.model || 'stepfun/step-3.5-flash');
+             recordModel(persona.name, fallback.metadata.model || COUNCIL_FALLBACK_NIM_MODEL);
              const rawText = fallback.content;
              const voteData = parseVotePayload(rawText, fallback.metadata, peers.map(peer => peer.persona));
             const votedFor = voteData.votedFor;
@@ -1234,14 +1243,14 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
 
    let synthesis = `The Council has converged on **${winner}**.`;
    try {
-       const chairmanResponse = await callOpenRouterStructured('stepfun/step-3.5-flash', chairmanPrompt, 0.7);
+       const chairmanResponse = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, chairmanPrompt, 0.7);
        synthesis = chairmanResponse.content;
        recordProviderMetadata('chairman:synthesis', chairmanResponse.metadata);
    } catch (e) {
        console.error("Chairman synthesis failed, using fallback:", e);
        recordProviderMetadata('chairman:synthesis', {
            provider: 'openrouter',
-           model: 'stepfun/step-3.5-flash',
+           model: COUNCIL_FALLBACK_NIM_MODEL,
            status: 'error',
            error: { code: 'CHAIRMAN_SYNTHESIS_FAILED', message: 'Chairman synthesis failed', recoverable: false },
        });
@@ -1293,7 +1302,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       `;
 
       try {
-          const runoffResponse = await callOpenRouterStructured('stepfun/step-3.5-flash', runoffPrompt, 0.3, true);
+          const runoffResponse = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, runoffPrompt, 0.3, true);
           recordProviderMetadata('chairman:runoff', runoffResponse.metadata);
           const runoffRaw = runoffResponse.content;
           const jsonMatch = runoffRaw.match(/\{[\s\S]*\}/);
@@ -1312,7 +1321,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
           console.error("Runoff Trial failed, using local tie-breaker:", e);
           recordProviderMetadata('chairman:runoff', {
               provider: 'openrouter',
-              model: 'stepfun/step-3.5-flash',
+              model: COUNCIL_FALLBACK_NIM_MODEL,
               status: 'error',
               error: { code: 'RUNOFF_FAILED', message: 'Runoff provider request failed', recoverable: false },
           });
@@ -1365,7 +1374,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       {
           runId,
           persona: 'Chairman',
-          model: providerSummary['chairman:synthesis']?.model || 'stepfun/step-3.5-flash',
+          model: providerSummary['chairman:synthesis']?.model || COUNCIL_FALLBACK_NIM_MODEL,
           provider: providerSummary['chairman:synthesis']?.provider || 'openrouter',
           assignedProvider: providerSummary['chairman:synthesis']?.provider || 'openrouter',
           actualProvider: providerSummary['chairman:synthesis']?.provider || 'unknown',
@@ -1376,7 +1385,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       ...(runoffResult ? [{
           runId,
           persona: 'Chairman:runoff',
-          model: providerSummary['chairman:runoff']?.model || 'stepfun/step-3.5-flash',
+          model: providerSummary['chairman:runoff']?.model || COUNCIL_FALLBACK_NIM_MODEL,
           provider: providerSummary['chairman:runoff']?.provider || 'openrouter',
           assignedProvider: providerSummary['chairman:runoff']?.provider || 'openrouter',
           actualProvider: providerSummary['chairman:runoff']?.provider || 'unknown',

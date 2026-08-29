@@ -13,7 +13,9 @@ export default async function handler(request: Request) {
     process.env.VITE_OPENROUTER_API_KEY_2,
     process.env.VITE_OPENROUTER_API_KEY_3,
     process.env.VITE_OPENROUTER_API_KEY_4,
-  ].filter((k): k is string => Boolean(k) && k.startsWith('sk-or-v1-'));
+  ]
+    .map(k => (typeof k === 'string' ? k.trim() : k))
+    .filter((k): k is string => Boolean(k) && k.startsWith('sk-or-v1-'));
   
   if (keys.length === 0) {
     return new Response(

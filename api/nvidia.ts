@@ -8,7 +8,17 @@ export default async function handler(request: Request) {
     process.env.NVIDIA_API_KEY_2,
     process.env.NVIDIA_API_KEY_3,
     process.env.NVIDIA_API_KEY_4,
-  ].filter((k): k is string => Boolean(k) && k.startsWith('nvapi-'));
+    process.env.VITE_NVIDIA_API_KEY,
+    process.env.VITE_NVIDIA_API_KEY_1,
+    process.env.VITE_NVIDIA_API_KEY_2,
+    process.env.VITE_NVIDIA_API_KEY_3,
+    process.env.VITE_NVIDIA_API_KEY_4,
+    process.env.VITE_NVIDIA_API_KEY_5,
+    process.env.VITE_NVIDIA_API_KEY_6,
+    process.env.VITE_NVIDIA_API_KEY_7,
+  ]
+    .map(k => (typeof k === 'string' ? k.trim() : k))
+    .filter((k): k is string => Boolean(k) && k.startsWith('nvapi-'));
   
   if (keys.length === 0) {
     return new Response(JSON.stringify({ provider: 'nvidia', error: { status: 500, code: 'NVIDIA_CONFIGURATION_ERROR', message: 'NVIDIA provider is not configured', recoverable: false } }), { 
