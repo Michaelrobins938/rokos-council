@@ -1093,6 +1093,10 @@ const CATEGORY_PALETTE: Record<string, {
 type ParadoxSuggestion = typeof COUNCIL_SUGGESTIONS[number];
 type TrackDirection = 'forward' | 'reverse';
 
+// Gentle constant rotation: forward rows drift left, reverse rows drift right —
+// the three-layer left / right / left cascade. Px per frame (~36px/s at 60fps).
+const AUTO_SCROLL_SPEED = 0.6;
+
 const ParadoxTrack: React.FC<{
     items: ParadoxSuggestion[];
     direction: TrackDirection;
@@ -1106,6 +1110,9 @@ const ParadoxTrack: React.FC<{
     const pausedRef = useRef(false);
     const reducedMotionRef = useRef(false);
     const loopWidthRef = useRef(0);
+    const stepRef = useRef<() => void>(() => {});
+    const pointerDownRef = useRef<{ x: number; scroll: number; active: boolean } | null>(null);
+    const suppressClickRef = useRef(false);
 
     const refreshLoopWidth = () => {
         loopWidthRef.current = firstCopyRef.current?.getBoundingClientRect().width || 0;
@@ -1118,6 +1125,11 @@ const ParadoxTrack: React.FC<{
         }
     };
 
+    const startMotion = () => {
+        if (frameRef.current !== null) return;
+        frameRef.current = requestAnimationFrame(() => stepRef.current());
+    };
+
     const pauseMotion = () => {
         pausedRef.current = true;
         cancelMotion();
@@ -1128,6 +1140,7 @@ const ParadoxTrack: React.FC<{
         if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
         resumeTimeoutRef.current = setTimeout(() => {
             pausedRef.current = false;
+            startMotion();
         }, 500);
     };
 
@@ -1153,9 +1166,25 @@ const ParadoxTrack: React.FC<{
             while (container.scrollLeft <= 0) container.scrollLeft += width;
         };
 
-        // Auto-scroll is intentionally disabled: moving click targets and
-        // perpetual motion violate WCAG 2.2.2 and make cards hard to read.
-        // Browsing is manual (wheel / touch / drag), snap, and hover is static.
+        // Constant rotation: forward rows drift left, reverse rows drift right —
+        // the three-layer left / right / left cascade. Paused on hover / touch /
+        // focus (resumed shortly after); disabled under prefers-reduced-motion.
+        // scroll-snap is suppressed while the marquee is running so snap points
+        // don't fight the animation, then restored for manual scrolling.
+        let disposed = false;
+        stepRef.current = () => {
+            if (disposed) return;
+            if (reducedMotionRef.current) { startMotion(); return; }
+            if (pausedRef.current) { startMotion(); return; }
+            const width = loopWidthRef.current;
+            if (!width) { refreshLoopWidth(); startMotion(); return; }
+            if (container.style.scrollSnapType !== 'none') container.style.scrollSnapType = 'none';
+            container.scrollLeft += (direction === 'reverse' ? -1 : 1) * AUTO_SCROLL_SPEED;
+            normalizeScroll();
+            startMotion();
+        };
+        startMotion();
+
         const handleResize = () => {
             refreshLoopWidth();
             normalizeScroll();
@@ -1163,6 +1192,7 @@ const ParadoxTrack: React.FC<{
 
         window.addEventListener('resize', handleResize);
         return () => {
+            disposed = true;
             cancelMotion();
             if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
             window.removeEventListener('resize', handleResize);
@@ -1183,6 +1213,7 @@ const ParadoxTrack: React.FC<{
         if (nextScroll !== container.scrollLeft) {
             event.preventDefault();
             pauseMotion();
+            container.style.scrollSnapType = ''; // restore snap for the manual interaction
             container.scrollLeft = nextScroll;
             resumeMotionLater();
         }
@@ -1196,6 +1227,35 @@ const ParadoxTrack: React.FC<{
         while (container.scrollLeft <= 0) container.scrollLeft += width;
     };
 
+    // Mouse drag-to-scroll for desktop (touch uses native pan-x). A drag that
+    // exceeds a small threshold suppresses the card's click so the user never
+    // convenes a session by accident while scrolling.
+    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+        pauseMotion();
+        suppressClickRef.current = false;
+        if (event.pointerType === 'mouse') {
+            const container = scrollRef.current;
+            pointerDownRef.current = { x: event.clientX, scroll: container?.scrollLeft ?? 0, active: true };
+        }
+    };
+
+    const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+        const drag = pointerDownRef.current;
+        const container = scrollRef.current;
+        if (!drag?.active || !container) return;
+        const dx = event.clientX - drag.x;
+        if (Math.abs(dx) > 5) {
+            suppressClickRef.current = true;
+            container.style.scrollSnapType = '';
+            container.scrollLeft = drag.scroll - dx;
+        }
+    };
+
+    const handlePointerUp = () => {
+        pointerDownRef.current = null;
+        resumeMotionLater();
+    };
+
     const renderCard = (s: ParadoxSuggestion, copyIndex: number, itemIndex: number) => {
         const meta = PARADOX_META[s.category];
         const pal = CATEGORY_PALETTE[s.category] || CATEGORY_PALETTE['UTILITARIANISM'];
@@ -1206,7 +1266,10 @@ const ParadoxTrack: React.FC<{
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (rowIndex * items.length + itemIndex) * 0.04, duration: 0.5, ease: 'easeOut' }}
-                onClick={() => onSelect(s.text)}
+                onClick={() => {
+                    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+                    onSelect(s.text);
+                }}
                 aria-label={`Convene the Council on: ${s.title}`}
                 className={`group relative flex flex-col bg-gradient-to-b ${pal.bg} border ${pal.border} rounded-2xl text-left overflow-hidden w-[270px] md:w-[310px] shrink-0 snap-start transition-all duration-500 hover:scale-[1.025] hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70`}
                 style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.6)' }}
@@ -1257,9 +1320,10 @@ const ParadoxTrack: React.FC<{
             onScroll={handleScroll}
             onMouseEnter={pauseMotion}
             onMouseLeave={resumeMotionLater}
-            onPointerDown={pauseMotion}
-            onPointerUp={resumeMotionLater}
-            onPointerCancel={resumeMotionLater}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
             aria-label={`Paradox track ${rowIndex + 1}`}
             className="flex overflow-x-auto gap-4 pb-4 px-4 touch-pan-x snap-x [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)]"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
