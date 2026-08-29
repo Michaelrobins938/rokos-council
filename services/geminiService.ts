@@ -1,4 +1,4 @@
-import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage, Persona, ProviderMetadata, ProviderUsage, CouncilModelAssignment, ProviderRetry, VoteData, CouncilPhase, CouncilEvent, CouncilEventEnvelope, CouncilRunOptions, CouncilCompleteness, CouncilPhaseRecord, CouncilQuorum, CouncilVoteStats, ExecutionAttempt, PersonaExecutionRecord, PersonaRecoveryStatus } from "../types";
+import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage, Persona, ProviderMetadata, ProviderUsage, CouncilModelAssignment, ProviderRetry, VoteData, CouncilPhase, CouncilEvent, CouncilEventEnvelope, CouncilRunOptions, CouncilCompleteness, CouncilPhaseRecord, CouncilQuorum, CouncilVoteStats, ExecutionAttempt, PersonaExecutionRecord, PersonaRecoveryStatus, DecisionStatus, DecisionMode, PrimaryVerdict, VoteOutcome } from "../types";
 
 // --- OPENROUTER HELPER (via Vercel serverless proxy) ---
 
@@ -131,6 +131,102 @@ export const selectWinnerFromTally = (tally: Record<string, number>, minValidVot
   const total = entries.reduce((acc, [, c]) => acc + c, 0);
   if (total < minValidVotes) return null;
   return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+};
+
+// ── Decision semantics — the distinction that keeps the audit honest ──────────
+// `winner` alone cannot distinguish "the council decided X" from "the protocol
+// recovered to X after the council became undecidable". This helper derives the
+// semantic verdict block (decisionStatus / decisionMode / primaryVerdict /
+// resolution / runoffOccurred) from the validated tally and the runoff outcome.
+// Pure + unit-testable — no provider involvement.
+export interface VerdictSemanticsInput {
+  tally: Record<string, number>;
+  voteTallyValid: boolean;
+  runoffSucceeded: boolean;
+  runoffWinner: string | null;
+  engagementWinner: string | null;
+}
+
+export interface VerdictSemanticsOutput {
+  decisionStatus: DecisionStatus;
+  decisionMode: DecisionMode;
+  primaryVerdict: PrimaryVerdict;
+  winner: string | null;
+  resolution: { method: 'runoff_vote' | 'engagement_metric' | 'none'; winner: string | null; note: string };
+  runoffOccurred: boolean;
+}
+
+export const computeVerdictSemantics = (input: VerdictSemanticsInput): VerdictSemanticsOutput => {
+  const { tally, voteTallyValid, runoffSucceeded, runoffWinner, engagementWinner } = input;
+  const maxVotes = Math.max(...Object.values(tally), 0);
+  const tiedCandidates = Object.entries(tally)
+    .filter(([, count]) => count === maxVotes && maxVotes > 0)
+    .map(([name]) => name);
+  const isTie = voteTallyValid && tiedCandidates.length >= 2;
+
+  if (!voteTallyValid) {
+    return {
+      decisionStatus: 'unavailable',
+      decisionMode: 'unresolved',
+      primaryVerdict: 'UNAVAILABLE',
+      winner: null,
+      resolution: {
+        method: 'none',
+        winner: null,
+        note: 'No valid collective decision was produced by the voting protocol.',
+      },
+      runoffOccurred: false,
+    };
+  }
+
+  if (isTie) {
+    if (runoffSucceeded && runoffWinner) {
+      return {
+        decisionStatus: 'consensus',
+        decisionMode: 'runoff',
+        primaryVerdict: 'TIE',
+        winner: runoffWinner,
+        resolution: {
+          method: 'runoff_vote',
+          winner: runoffWinner,
+          note: `Tie resolved by a genuine runoff trial; ${runoffWinner} won on reconsideration.`,
+        },
+        runoffOccurred: true,
+      };
+    }
+    // Runoff unavailable → explicit fallback arbitration. This is a recovery
+    // decision, not a council decision — preserved as such.
+    const w = engagementWinner || tiedCandidates[0] || null;
+    return {
+      decisionStatus: 'degraded',
+      decisionMode: 'fallback_tiebreak',
+      primaryVerdict: 'TIE',
+      winner: w,
+      resolution: {
+        method: 'engagement_metric',
+        winner: w,
+        note: w
+          ? `No runoff occurred (runoff provider failed). ${w} selected by fallback engagement metric — not a deliberative vote.`
+          : 'No runoff occurred (runoff provider failed) and no fallback winner could be derived.',
+      },
+      runoffOccurred: false,
+    };
+  }
+
+  const distinct = Object.keys(tally).length;
+  const w = Object.entries(tally).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+  return {
+    decisionStatus: 'consensus',
+    decisionMode: 'direct_vote',
+    primaryVerdict: distinct === 1 ? 'UNANIMOUS' : 'MAJORITY',
+    winner: w,
+    resolution: {
+      method: 'none',
+      winner: w,
+      note: 'Clear tally majority; no runoff required.',
+    },
+    runoffOccurred: false,
+  };
 };
 
 // Cascade list used when the primary + fallback model are transiently overloaded
@@ -363,6 +459,7 @@ export const callNvidiaStructured = async (
   jsonMode: boolean = false,
   maxAttempts: number = 3,
   onPartial?: (fullText: string) => void,
+  maxTokens: number = 1024,
 ): Promise<NvidiaProviderResponse> => {
   let lastError: NvidiaProviderError | undefined;
   const retryHistory: ProviderRetry[] = [];
@@ -382,7 +479,7 @@ export const callNvidiaStructured = async (
           messages: [{ role: 'user', content: prompt }],
           temperature: temp,
           top_p: 0.7,
-          max_tokens: 1024,
+          max_tokens: maxTokens,
           ...(jsonMode && { response_format: { type: 'json_object' } }),
           ...(useStream && { stream: true }),
         }),
@@ -706,6 +803,7 @@ const generateNewArchetype = async (): Promise<any> => {
 
 type ParsedVotePayload = Pick<VoteData, 'votedFor' | 'reason'> & {
   analysis?: Array<{ target: string; score: number; notes: string }>;
+  confidence?: number;
 };
 
 // Structured-output repair boundary: models frequently wrap JSON in prose or
@@ -763,7 +861,7 @@ export const parseVotePayload = (rawText: string, metadata: ProviderMetadata, ac
       error: { code: 'INVALID_VOTE_SCHEMA', message: 'Vote response schema was invalid', recoverable: false },
     });
   }
-  const voteData = data as { vote?: unknown; reason?: unknown; analysis?: unknown };
+  const voteData = data as { vote?: unknown; reason?: unknown; analysis?: unknown; confidence?: unknown };
   if (typeof voteData.reason !== 'string' || !voteData.reason.trim()) {
     throw new NvidiaProviderError('Provider returned an invalid vote schema', {
       ...metadata,
@@ -777,6 +875,9 @@ export const parseVotePayload = (rawText: string, metadata: ProviderMetadata, ac
       error: { code: 'INVALID_VOTE_TARGET', message: 'Vote target was not an active peer persona', recoverable: false },
     });
   }
+  const confidence = typeof voteData.confidence === 'number' && Number.isFinite(voteData.confidence)
+    ? Math.min(1, Math.max(0, voteData.confidence))
+    : undefined;
   const analysis = Array.isArray(voteData.analysis)
     ? (voteData.analysis as Array<{ target?: unknown; score?: unknown; notes?: unknown }>)
         .filter(item => item && typeof item === 'object' && typeof item.target === 'string' && typeof item.score === 'number')
@@ -787,7 +888,7 @@ export const parseVotePayload = (rawText: string, metadata: ProviderMetadata, ac
         }))
         .slice(0, 12)
     : undefined;
-  return { votedFor, reason: voteData.reason.trim(), analysis };
+  return { votedFor, reason: voteData.reason.trim(), analysis, confidence };
 };
 
 // ── DELIBERATION EVENT CONTRACT ──────────────────────────────────────────────
@@ -824,6 +925,11 @@ export interface DeliberationEvent {
   status?: string;
   candidates?: string[];
   winner?: string;
+  method?: 'runoff_vote' | 'engagement_metric';
+  note?: string;
+  outcome?: VoteOutcome;
+  confidence?: number;
+  errorCode?: string;
   attempt?: number;
   error?: string;
   timestamp?: number;
@@ -1063,6 +1169,12 @@ export const runCouncil = async (message: string, mode: CouncilMode, options: Co
       synthesisStatus: 'not_attempted',
       verdictStatus: 'unavailable',
       synthesisMode: 'local_fallback',
+      decisionStatus: 'unavailable',
+      decisionMode: 'unresolved',
+      primaryVerdict: 'UNAVAILABLE',
+      candidateResult: {},
+      resolution: { method: 'none', winner: null, note: 'No valid collective decision was produced.' },
+      runoffOccurred: false,
       error: { code, message: messageText, recoverable: false },
       auditManifest: {
         schemaVersion: 'council-audit-v1',
@@ -1393,6 +1505,13 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
            quorum,
            voteStats: { expectedVoters: validOpinions.length, validVotes: 0, abstentions: 0, invalidVotes: 0 } as CouncilVoteStats,
            personaExecutions,
+           // Decision semantics — no collective decision was possible.
+           decisionStatus: 'unavailable' as const,
+           decisionMode: 'unresolved' as const,
+           primaryVerdict: 'UNAVAILABLE' as const,
+           candidateResult: {},
+           resolution: { method: 'none' as const, winner: null, note: 'No valid collective decision was produced (deliberation quorum failed).' },
+           runoffOccurred: false,
        };
    }
 
@@ -1402,8 +1521,8 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
     // Check if this persona actually has a valid opinion to vote WITH.
     const hasOpinion = validOpinions.find(o => o.persona === persona.name);
      if (!hasOpinion) {
-       const result = { voter: persona.name, votedFor: "None", reason: "Abstained from voting.", status: 'abstained' as const };
-       runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason });
+       const result = { voter: persona.name, votedFor: "None", reason: "Abstained from voting.", status: 'abstained' as const, outcome: 'abstained' as const };
+       runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason, outcome: 'abstained' });
        runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: '', status: 'abstained' });
        return result;
      }
@@ -1411,8 +1530,8 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
     const peers = validOpinions.filter(p => p.persona !== persona.name);
 
     if (peers.length === 0) {
-        const result = { voter: persona.name, votedFor: "None", reason: "No valid peer vectors found.", status: 'abstained' as const };
-        runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason });
+        const result = { voter: persona.name, votedFor: "None", reason: "No valid peer vectors found.", status: 'abstained' as const, outcome: 'abstained' as const };
+        runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason, outcome: 'abstained' });
         runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: '', status: 'abstained' });
         return result;
     }
@@ -1437,115 +1556,128 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       If all scores are below 5, vote "None".
       You may vote "None". You may NOT abstain from the vote JSON.
 
-      Return ONLY the JSON object below. NO prose. NO markdown. NO preamble.
+      Return ONLY the JSON object below — about 3 lines total, nothing else.
+      NO prose. NO markdown. NO preamble. NO analysis array.
       The "vote" field must be exactly one of the peer names or "None":
       {
-        "analysis": [
-          { "target": "PeerName", "score": 8, "notes": "Short note" }
-        ],
         "vote": "PeerName",
-        "reason": "One sentence."
+        "reason": "One short clause, max 15 words.",
+        "confidence": 0.7
       }
     `;
     
-     try {
-       let voteData: any = {};
-       let voteMetadata: ProviderMetadata | undefined;
-      
-       try {
-         // Try NVIDIA first with JSON mode
-           const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, true);
-            recordProviderMetadata(`${persona.name}:voting`, response.metadata);
-            recordProvider(persona.name, response.metadata.provider || 'nvidia');
-            recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
-            recordProviderRetries(response.retryHistory, 'voting', persona.name);
-             voteMetadata = response.metadata;
-            const rawText = response.content;
-             voteData = parseVotePayload(rawText, response.metadata, peers.map(peer => peer.persona));
-       } catch (err) {
-          recordProviderFailure(`${persona.name}:voting:nvidia:error`, err, 'voting', persona.name);
-          console.warn(`Voting NVIDIA failed for ${persona.name}. Fallback.`);
-          throw new Error("Fallback needed");
-       }
+      let voteData: ParsedVotePayload | undefined;
+      let voteMetadata: ProviderMetadata | undefined;
+      let terminalVoteError: unknown;
 
-       const votedFor = voteData.votedFor;
-       const result = {
-         voter: persona.name,
-          votedFor: votedFor === persona.name ? "None" : votedFor,
-          reason: voteData.reason,
-          status: 'completed' as const,
-       };
-       runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason, scores: voteData.analysis, metadata: voteMetadata });
-       runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: JSON.stringify(result), metadata: voteMetadata, status: 'completed' });
-       return result;
-
-      } catch (e) {
-         // Fallback cascade across valid NIM models for voting if primary fails
-         try {
-             let fallback: NvidiaProviderResponse | undefined;
-             for (const fbModel of COUNCIL_FALLBACK_MODELS) {
-                 if (fbModel === modelAssignments[persona.name]) continue;
-                 try {
-                     const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true);
-                     if (!attempt.content) continue;
-                     fallback = attempt;
-                     break;
-                 } catch (err) {
-                     recordProviderFailure(`${persona.name}:voting:fallback:${fbModel}`, err, 'voting', persona.name);
-                     continue;
-                 }
-             }
-             if (!fallback) throw new Error('All NIM fallback models failed during voting');
-             recordProviderMetadata(`${persona.name}:voting:fallback`, { ...fallback.metadata, status: 'fallback' });
-             recordProvider(persona.name, fallback.metadata.provider || 'nvidia');
-             recordModel(persona.name, fallback.metadata.model || modelAssignments[persona.name]);
-             const rawText = fallback.content;
-             const voteData = parseVotePayload(rawText, fallback.metadata, peers.map(peer => peer.persona));
-            const votedFor = voteData.votedFor;
-             const result = {
-                voter: persona.name,
-                votedFor: votedFor === persona.name ? "None" : votedFor,
-                reason: voteData.reason,
-                status: 'completed' as const,
-             };
-             runContext.emit({ type: 'vote_cast', persona: persona.name, vote: result.votedFor, reason: result.reason, scores: voteData.analysis, metadata: fallback.metadata });
-             runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: JSON.stringify(result), metadata: fallback.metadata, status: 'completed' });
-             return result;
-          } catch (err) {
-            recordProviderFailure(`${persona.name}:voting:fallback:error`, err, 'voting', persona.name);
-             const result = {
-               voter: persona.name,
-               votedFor: 'None',
-               reason: err instanceof Error ? err.message : 'Vote failed',
-               status: 'failed' as const,
-               metadata: err instanceof NvidiaProviderError ? err.metadata : undefined,
-             };
-             runContext.emit({ type: 'pipeline_error', phase: 'voting', message: result.reason, recoverable: false, code: result.metadata?.error?.code });
-             runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: '', metadata: result.metadata, status: 'failed' });
-             return result;
-           }
+      try {
+        // Try NVIDIA first with JSON mode — tiny ballot, hard token cap so a
+        // model cannot burn the budget on an essay that then fails the schema.
+        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, true, 3, undefined, 96);
+        recordProviderMetadata(`${persona.name}:voting`, response.metadata);
+        recordProvider(persona.name, response.metadata.provider || 'nvidia');
+        recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
+        recordProviderRetries(response.retryHistory, 'voting', persona.name);
+        voteMetadata = response.metadata;
+        voteData = parseVotePayload(response.content, response.metadata, peers.map(peer => peer.persona));
+      } catch (err) {
+        terminalVoteError = err;
+        recordProviderFailure(`${persona.name}:voting:nvidia:error`, err, 'voting', persona.name);
+        console.warn(`Voting NVIDIA failed for ${persona.name}. Fallback.`);
       }
+
+      if (!voteData) {
+        // Fallback cascade across valid NIM models for voting if primary fails.
+        for (const fbModel of COUNCIL_FALLBACK_MODELS) {
+          if (fbModel === modelAssignments[persona.name]) continue;
+          try {
+            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, true, 3, undefined, 96);
+            if (!attempt.content) continue;
+            recordProviderMetadata(`${persona.name}:voting:fallback`, { ...attempt.metadata, status: 'fallback' });
+            recordProvider(persona.name, attempt.metadata.provider || 'nvidia');
+            recordModel(persona.name, attempt.metadata.model || fbModel);
+            voteMetadata = attempt.metadata;
+            voteData = parseVotePayload(attempt.content, attempt.metadata, peers.map(peer => peer.persona));
+            break;
+          } catch (err) {
+            terminalVoteError = err;
+            recordProviderFailure(`${persona.name}:voting:fallback:${fbModel}`, err, 'voting', persona.name);
+          }
+        }
+      }
+
+      if (voteData) {
+        const votedFor = voteData.votedFor === persona.name ? 'None' : voteData.votedFor;
+        const result = {
+          voter: persona.name,
+          votedFor,
+          reason: voteData.reason,
+          confidence: voteData.confidence,
+          outcome: 'valid' as const,
+          status: 'completed' as const,
+          metadata: voteMetadata,
+        };
+        runContext.emit({
+          type: 'vote_cast',
+          persona: persona.name,
+          vote: result.votedFor,
+          reason: result.reason,
+          scores: voteData.analysis,
+          confidence: voteData.confidence,
+          outcome: 'valid',
+          metadata: voteMetadata,
+        });
+        runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: JSON.stringify(result), metadata: voteMetadata, status: 'completed' });
+        return result;
+      }
+
+      // Terminal vote failure — classify honestly: a model that answered but
+      // broke the structured contract is NOT the same as a provider outage.
+      // These states never collapse into a bare `None` position.
+      const outcome: 'invalid_model_output' | 'provider_failure' = terminalVoteError instanceof NvidiaProviderError
+        ? ['INVALID_VOTE_JSON', 'INVALID_VOTE_SCHEMA', 'INVALID_VOTE_TARGET'].includes(terminalVoteError.metadata?.error?.code || '')
+          ? 'invalid_model_output'
+          : 'provider_failure'
+        : 'provider_failure';
+      const failureMeta = terminalVoteError instanceof NvidiaProviderError ? terminalVoteError.metadata : undefined;
+      const failureCode = failureMeta?.error?.code || (outcome === 'invalid_model_output' ? 'INVALID_VOTE_JSON' : 'PROVIDER_REQUEST_FAILED');
+      const result = {
+        voter: persona.name,
+        votedFor: 'None',
+        reason: terminalVoteError instanceof Error ? terminalVoteError.message : 'Vote failed',
+        outcome,
+        errorCode: failureCode,
+        status: 'failed' as const,
+        metadata: failureMeta,
+      };
+      runContext.emit({ type: 'pipeline_error', phase: 'voting', message: result.reason, recoverable: false, code: failureCode });
+      runContext.emit({ type: 'vote_cast', persona: persona.name, vote: 'None', reason: result.reason, outcome, errorCode: failureCode, metadata: failureMeta });
+      runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'voting', output: '', metadata: failureMeta, status: 'failed' });
+      return result;
   };
 
    const votes = await processBatch(PERSONALITIES, voteFn, 4);
    completePhase('voting');
    if (isCancelled()) return incompleteResult('RUN_CANCELLED', 'The council run was cancelled after voting.', 'cancelled');
 
-  // Tally — deterministic, from validated structured votes only.
+  // Tally — deterministic, from validated structured votes only (outcome === 'valid').
   const tally: Record<string, number> = {};
   votes.forEach(v => {
-       if (v.status === 'completed' && v.votedFor !== "None" && v.votedFor !== v.voter && validOpinions.some(o => o.persona === v.votedFor)) {
+       if (v.outcome === 'valid' && v.votedFor !== "None" && v.votedFor !== v.voter && validOpinions.some(o => o.persona === v.votedFor)) {
           tally[v.votedFor] = (tally[v.votedFor] || 0) + 1;
       }
   });
 
-  // VOTING INTEGRITY GATE
-  const validVotes = votes.filter(v => v.status === 'completed' && v.votedFor !== 'None' && v.votedFor !== v.voter);
+  // VOTING INTEGRITY GATE — the three outcome states are counted separately so
+  // a provider outage never masquerades as a substantive council position.
+  const validVotes = votes.filter(v => v.outcome === 'valid' && v.votedFor !== 'None' && v.votedFor !== v.voter);
   const voteStats: CouncilVoteStats = {
     expectedVoters: validOpinions.length,
     validVotes: validVotes.length,
-    abstentions: votes.filter(v => v.votedFor === 'None' || v.status === 'abstained').length,
-    invalidVotes: votes.filter(v => v.status === 'failed').length,
+    abstentions: votes.filter(v => v.outcome === 'abstained').length,
+    invalidVotes: votes.filter(v => v.outcome === 'invalid_model_output' || v.outcome === 'provider_failure').length,
+    invalidModelOutputs: votes.filter(v => v.outcome === 'invalid_model_output').length,
+    providerFailures: votes.filter(v => v.outcome === 'provider_failure').length,
   };
   const voteTallyValid = validVotes.length >= COUNCIL_MIN_VALID_VOTES && Object.keys(tally).length > 0;
 
@@ -1554,7 +1686,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
   // to a persona with zero votes.
   let winner: string | null = null;
   if (voteTallyValid) {
-    winner = Object.entries(tally).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+    winner = selectWinnerFromTally(tally, COUNCIL_MIN_VALID_VOTES);
   }
   
   // Attach vote data
@@ -1576,9 +1708,12 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
 
    if (!voteTallyValid || !winner) {
       // VOTE GATE / WINNER GATE: no mathematically valid collective decision.
+      // The failure breakdown distinguishes model-contract failures from pure
+      // provider outages — both are counted, neither becomes a council position.
+      const breakdown = `(${voteStats.validVotes} valid / ${voteStats.invalidModelOutputs ?? 0} invalid model output / ${voteStats.providerFailures ?? 0} provider failure / ${voteStats.abstentions} abstained)`;
       synthesis = validVotes.length === 0
-        ? `## VERDICT_UNAVAILABLE\n\nThe council completed its run, but no valid structured vote could be produced (${voteStats.validVotes} valid / ${voteStats.invalidVotes} invalid / ${voteStats.abstentions} abstained). No winner can be declared.`
-        : `## VERDICT_UNAVAILABLE\n\nOnly ${voteStats.validVotes} valid vote${voteStats.validVotes === 1 ? '' : 's'} were cast (minimum ${COUNCIL_MIN_VALID_VOTES} required). The council cannot declare a convergent verdict.`;
+        ? `## VERDICT_UNAVAILABLE\n\nThe council completed its run, but no valid structured vote could be produced ${breakdown}. No winner can be declared.`
+        : `## VERDICT_UNAVAILABLE\n\nOnly ${voteStats.validVotes} valid vote${voteStats.validVotes === 1 ? '' : 's'} were cast (minimum ${COUNCIL_MIN_VALID_VOTES} required) ${breakdown}. The council cannot declare a convergent verdict.`;
       runContext.emit({ type: 'pipeline_error', phase: 'verdict', message: 'No valid vote quorum; verdict unavailable.', recoverable: false, code: 'VOTE_QUORUM_FAILED' });
       runContext.emit({ type: 'synthesis_completed', synthesis });
    } else {
@@ -1645,6 +1780,10 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
   const isTie = tiedCandidates.length >= 2;
 
   let runoffResult: any = undefined;
+  // Decision-semantics flags (consumed by computeVerdictSemantics at the end).
+  let runoffSucceeded = false;
+  let runoffWinnerVal: string | null = null;
+  let engagementWinnerVal: string | null = null;
 
    if (isTie) {
        const tiedPersonas = tiedCandidates.map(([name]) => name);
@@ -1697,7 +1836,9 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
           
            synthesis = `**Runoff Trial Complete.** Winner declared after tie-breaking deliberation: **${runoffResult.winner}**`;
            winner = runoffResult.winner;
-           runContext.emit({ type: 'runoff_completed', winner: runoffResult.winner, metadata: runoffResponse.metadata });
+            runoffSucceeded = true;
+            runoffWinnerVal = runoffResult.winner;
+           runContext.emit({ type: 'runoff_completed', winner: runoffResult.winner, metadata: runoffResponse.metadata, method: 'runoff_vote', note: 'Genuine runoff trial resolved the tie on reconsideration.' });
       } catch (e) {
           console.error("Runoff Trial failed, using local tie-breaker:", e);
           recordProviderMetadata('chairman:runoff', {
@@ -1732,12 +1873,31 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
            synthesis = `**Tie resolved by engagement metric.** Winner: **${tiebreaker}**`;
            winner = tiebreaker;
            runContext.emit({ type: 'pipeline_error', phase: 'runoff', message: 'Runoff provider request failed; local tie-breaker used.', recoverable: false, code: 'RUNOFF_FAILED' });
-           runContext.emit({ type: 'runoff_completed', winner: tiebreaker });
+            engagementWinnerVal = tiebreaker;
+           runContext.emit({ type: 'runoff_completed', winner: tiebreaker, method: 'engagement_metric', note: 'No runoff occurred — runoff provider failed. Local engagement metric arbitrated.' });
        }
        completePhase('runoff');
    }
 
    completePhase('verdict');
+
+   // ── DECISION SEMANTICS ──────────────────────────────────────────────────────
+   // `winner` alone conflates "the council decided X" with "the infrastructure
+   // recovered to X after the council became undecidable". Derive the explicit
+   // decision block from the validated tally and the runoff outcome.
+   const semantics = computeVerdictSemantics({
+       tally,
+       voteTallyValid,
+       runoffSucceeded,
+       runoffWinner: runoffWinnerVal,
+       engagementWinner: engagementWinnerVal,
+   });
+   const decisionStatus: DecisionStatus = semantics.decisionStatus;
+   const decisionMode: DecisionMode = semantics.decisionMode;
+   const primaryVerdict: PrimaryVerdict = semantics.primaryVerdict;
+   const resolution = semantics.resolution;
+   const runoffOccurred = semantics.runoffOccurred;
+   const runoffReason = isTie && !runoffSucceeded ? 'RUNOFF_FAILED' : undefined;
 
   const personaRoster: CouncilModelAssignment[] = PERSONALITIES.map((persona, assignmentIndex) => ({
       runId,
@@ -1813,6 +1973,14 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
      quorum,
      voteStats,
      personaExecutions,
+     // ── Decision semantics: council decision vs protocol recovery ────────────
+     decisionStatus,
+     decisionMode,
+     primaryVerdict,
+     candidateResult: tally,
+     resolution,
+     runoffOccurred,
+     runoffReason,
     councilState: {
         phases: [
             { id: 'assembly', title: 'Assembly', description: 'Council members convene.', status: 'completed' },

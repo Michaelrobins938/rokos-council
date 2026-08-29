@@ -103,9 +103,9 @@ export type CouncilEvent = CouncilEventEnvelope & (
   | { type: 'member_assigned'; persona: string; model: string; provider?: string; assignmentIndex?: number }
   | { type: 'member_started'; persona: string; phase: CouncilPhase; model?: string; provider?: string }
   | { type: 'member_completed'; persona: string; phase: CouncilPhase; output: string; metadata?: ProviderMetadata; status?: 'completed' | 'failed' | 'abstained' }
-  | { type: 'vote_cast'; persona: string; vote: string; reason?: string; scores?: Array<{ target: string; score: number; notes: string }>; metadata?: ProviderMetadata }
+  | { type: 'vote_cast'; persona: string; vote: string; reason?: string; scores?: Array<{ target: string; score: number; notes: string }>; metadata?: ProviderMetadata; outcome?: VoteOutcome; confidence?: number; errorCode?: string }
   | { type: 'runoff_started'; candidates: string[] }
-  | { type: 'runoff_completed'; winner: string; metadata?: ProviderMetadata }
+  | { type: 'runoff_completed'; winner: string; metadata?: ProviderMetadata; method?: 'runoff_vote' | 'engagement_metric'; note?: string }
   | { type: 'phase_completed'; phase: CouncilPhase }
   | { type: 'synthesis_completed'; synthesis: string }
   | { type: 'retry'; phase: CouncilPhase; persona?: string; attempt: number; error: string; provider?: string; model?: string }
@@ -142,6 +142,11 @@ export interface VoteData {
   reason: string;
   score?: number;
   status?: 'completed' | 'failed' | 'abstained';
+  // Vote outcome semantics — these three states must never collapse into a
+  // single `None`. A provider outage is NOT a council position.
+  outcome?: VoteOutcome;
+  confidence?: number;
+  errorCode?: string;
   metadata?: ProviderMetadata;
 }
 
@@ -252,6 +257,29 @@ export type SynthesisStatus = 'generated' | 'deterministic' | 'fallback' | 'fail
 export type VerdictStatus = 'valid' | 'invalid' | 'unavailable';
 export type PersonaRecoveryStatus = 'success' | 'recovered' | 'terminal_failure' | 'abstained';
 
+// ── Vote outcome semantics ────────────────────────────────────────────────────
+// The three failure states are epistemically distinct and must never collapse
+// into a single `None`:
+//   - valid              → the member cast a schema-valid structured vote
+//   - invalid_model_output → the model responded but failed the vote contract
+//                            (INVALID_VOTE_JSON / INVALID_VOTE_SCHEMA / ...)
+//   - provider_failure   → the provider errored before producing a vote
+//   - abstained          → the member declined / had no valid opinion to vote with
+export type VoteOutcome = 'valid' | 'invalid_model_output' | 'provider_failure' | 'abstained';
+
+// ── Decision semantics: council decision vs protocol recovery ─────────────────
+// decisionMode names HOW the final winner was reached:
+//   - direct_vote       → clear tally majority (or unanimity)
+//   - runoff            → a genuine tie-breaking runoff trial resolved it
+//   - fallback_tiebreak → the runoff provider failed; a local engagement
+//                         metric arbitrated (NO runoff occurred)
+//   - unresolved        → no valid collective decision was produced
+export type DecisionMode = 'direct_vote' | 'runoff' | 'fallback_tiebreak' | 'unresolved';
+// decisionStatus says whether the outcome is a genuine council consensus or a
+// degraded recovery artifact.
+export type DecisionStatus = 'consensus' | 'degraded' | 'unavailable';
+export type PrimaryVerdict = 'UNANIMOUS' | 'MAJORITY' | 'TIE' | 'UNAVAILABLE';
+
 export interface CouncilQuorum {
   assigned: number;
   participated: number;
@@ -266,6 +294,8 @@ export interface CouncilVoteStats {
   validVotes: number;
   abstentions: number;
   invalidVotes: number;
+  invalidModelOutputs?: number;
+  providerFailures?: number;
 }
 
 export interface ExecutionAttempt {
@@ -338,6 +368,21 @@ export interface CouncilResult {
   quorum?: CouncilQuorum;
   voteStats?: CouncilVoteStats;
   personaExecutions?: Record<string, PersonaExecutionRecord>;
+  // ── Decision semantics: council decision vs protocol recovery ─────────────
+  // `winner` alone conflates "the council decided X" with "the infrastructure
+  // recovered to X after the council became undecidable". These fields make the
+  // distinction explicit and auditable.
+  decisionStatus?: DecisionStatus;
+  decisionMode?: DecisionMode;
+  primaryVerdict?: PrimaryVerdict;
+  candidateResult?: Record<string, number>; // raw validated tally (per candidate)
+  resolution?: {
+    method: 'runoff_vote' | 'engagement_metric' | 'none';
+    winner: string | null;
+    note: string;
+  };
+  runoffOccurred?: boolean;
+  runoffReason?: string;
   error?: {
     code: string;
     message: string;

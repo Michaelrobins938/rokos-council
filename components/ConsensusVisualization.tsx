@@ -135,6 +135,17 @@ const ConsensusVisualization: React.FC<ConsensusVisualizationProps> = ({ result 
             <div>
               <p className="text-xs text-slate-500 uppercase tracking-wider">Winning Vector</p>
               <p className="text-lg font-cinzel font-bold text-yellow-400">{result.winner}</p>
+              {result.decisionMode && (
+                <p className={`text-[10px] font-mono mt-1 ${result.decisionMode === 'fallback_tiebreak' ? 'text-amber-400/80' : result.decisionMode === 'unresolved' ? 'text-red-400/80' : 'text-emerald-400/70'}`}>
+                  {result.decisionMode === 'fallback_tiebreak'
+                    ? `Council: TIE — fallback arbitration${result.resolution?.method === 'engagement_metric' ? ' (engagement metric, no runoff)' : ''}`
+                    : result.decisionMode === 'runoff'
+                      ? 'Resolved by runoff trial'
+                      : result.decisionMode === 'unresolved'
+                        ? 'No valid collective decision'
+                        : `Direct vote · ${result.primaryVerdict || 'MAJORITY'}`}
+                </p>
+              )}
             </div>
           </div>
           <div className="text-right">

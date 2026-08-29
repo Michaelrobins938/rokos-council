@@ -7,6 +7,7 @@ interface ExitDebriefProps {
   debrief: CouncilDebrief;
   winner: string;
   isTie?: boolean;
+  decisionMode?: string;
 }
 
 const columnConfig = [
@@ -42,10 +43,18 @@ const columnConfig = [
   },
 ];
 
-const ExitDebrief: React.FC<ExitDebriefProps> = ({ debrief, winner, isTie }) => {
+const ExitDebrief: React.FC<ExitDebriefProps> = ({ debrief, winner, isTie, decisionMode }) => {
   if (!debrief || (!debrief.decided?.length && !debrief.rejected?.length && !debrief.unresolved?.length)) {
     return null;
   }
+
+  const subtitle = decisionMode === 'fallback_tiebreak'
+    ? `Council: Tie — ${winner} selected by fallback engagement metric (no runoff occurred)`
+    : decisionMode === 'runoff'
+      ? `Gridlock resolved by runoff — ${winner} declared`
+      : decisionMode === 'unresolved'
+        ? 'Council outcome unavailable — no valid collective decision'
+        : `Winning Vector: ${winner}`;
 
   return (
     <motion.div
@@ -65,9 +74,7 @@ const ExitDebrief: React.FC<ExitDebriefProps> = ({ debrief, winner, isTie }) => 
           </h4>
         </div>
         <p className="text-sm text-slate-500 font-medium ml-[38px]">
-          {isTie
-            ? `Gridlock resolved by runoff — ${winner} declared`
-            : `Winning Vector: ${winner}`}
+          {subtitle}
         </p>
       </div>
 

@@ -74,8 +74,9 @@ export const updateMemoryAfterSession = (result: CouncilResult, sessionId: strin
     all[op.persona] = mem;
   });
 
-  // Track vote shifts in runoff
-  if (result.runoffResult) {
+  // Track vote shifts in runoff — ONLY for genuine runoff trials. A fallback
+  // engagement-metric tie-break is a recovery artifact, not a runoff win.
+  if (result.decisionMode === 'runoff' && result.runoffResult) {
     result.runoffResult.runoffVotes.forEach(vote => {
       if (vote.changedMind) {
         const mem = all[vote.voter] || getCharacterMemory(vote.voter);

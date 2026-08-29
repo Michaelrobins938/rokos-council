@@ -417,6 +417,18 @@ export const exportToMarkdown = (exportData: ExportSession): string => {
   if (session.tieBreakRules.runoffTrial) {
     md.push(`- **Tie-Break Method:** Runoff Trial + Reconsideration`);
   }
+  if (r.decisionMode) {
+    md.push(`- **Decision Mode:** ${r.decisionMode}`);
+  }
+  if (r.decisionStatus) {
+    md.push(`- **Decision Status:** ${r.decisionStatus}`);
+  }
+  if (r.primaryVerdict) {
+    md.push(`- **Primary Verdict:** ${r.primaryVerdict}`);
+  }
+  if (r.runoffOccurred === false && r.decisionMode === 'fallback_tiebreak') {
+    md.push(`- **Runoff Occurred:** No — runoff provider failed; local arbitration used`);
+  }
   if ((session.councilState.phases?.length ?? 0) > 0) {
     md.push(``);
     md.push(`**Decision Process Timeline:**`);
@@ -526,7 +538,9 @@ export const exportToMarkdown = (exportData: ExportSession): string => {
   md.push(``);
 
   // ── RUNOFF TRIAL ─────────────────────────────────────────────────────────────
-  if (result.runoffResult) {
+  // Only a genuine runoff trial renders as a runoff. A fallback tie-break is a
+  // recovery decision and is reported as such — never as a deliberative trial.
+  if (r.decisionMode === 'runoff' && result.runoffResult) {
     md.push(`## Runoff Trial`);
     md.push(``);
     md.push(`*A tie. The chamber does not accept ties. The tied voices were brought back for final arguments.*`);
@@ -554,6 +568,13 @@ export const exportToMarkdown = (exportData: ExportSession): string => {
       md.push(`| ${vote.voter} | ${vote.originalVote} | ${vote.finalVote} | ${changed} | ${vote.reasoning} |`);
     });
     md.push(``);
+  } else if (r.decisionMode === 'fallback_tiebreak') {
+    md.push(`## Runoff Trial — Unavailable`);
+    md.push(``);
+    md.push(`*The tally was tied, but the runoff provider failed and **no runoff occurred**.*`);
+    md.push(``);
+    md.push(`**Resolution:** ${r.resolution?.note || 'Winner selected by fallback arbitration.'}`);
+    md.push(``);
   }
 
   // ── THE VERDICT ──────────────────────────────────────────────────────────────
@@ -564,9 +585,15 @@ export const exportToMarkdown = (exportData: ExportSession): string => {
 
   md.push(`## The Verdict`);
   md.push(``);
-  md.push(`**Winner:** ${result.winner}`);
-  if (result.runoffResult) {
-    md.push(`*Reached after a tie-breaking runoff trial.*`);
+  md.push(`**Winner:** ${result.winner || '—'}`);
+  if (r.decisionMode === 'fallback_tiebreak') {
+    md.push(`> **Council: Tie (${r.primaryVerdict || 'TIE'}) — ${result.winner} selected by fallback engagement metric.** ${r.resolution?.note || ''}`);
+  } else if (r.decisionMode === 'runoff') {
+    md.push(`*Reached after a tie-breaking runoff trial — ${result.winner} won on reconsideration.*`);
+  } else if (r.decisionMode === 'unresolved') {
+    md.push(`*No valid collective decision was produced. The council outcome is VERDICT_UNAVAILABLE.*`);
+  } else {
+    md.push(`*Clear tally majority (${r.primaryVerdict || 'MAJORITY'}); no runoff required.*`);
   }
   md.push(``);
   md.push(`### Chairman's Synthesis`);

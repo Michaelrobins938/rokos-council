@@ -8,6 +8,7 @@ import {
   executionStatusFromHttp,
   classifyNvidiaError,
   NvidiaProviderError,
+  computeVerdictSemantics,
   COUNCIL_MIN_VALID_VOTES,
   COUNCIL_QUORUM_THRESHOLD,
 } from '../services/geminiService';
@@ -130,6 +131,62 @@ const gatedDiag = computeDiagnostics(gatedResult);
 ok(gatedDiag.protocol?.verdictStatus === 'unavailable', 'protocol report exposes verdictStatus');
 ok(gatedDiag.protocol?.quorum?.achieved === false, 'protocol report exposes quorum failure');
 ok(gatedResult.winner === null, 'verdict unavailable ⇒ winner null (structural invariant)');
+
+// ── DECISION SEMANTICS (council decision vs protocol recovery) ─────────────────
+console.log('DECISION SEMANTICS');
+// The smoking gun from the production run: Technocrat 1 / Citizen 1 tie, runoff
+// provider failed, local engagement metric selected Citizen. The semantics must
+// say so — Citizen did NOT win a deliberative vote.
+const tieSem = computeVerdictSemantics({
+  tally: { Technocrat: 1, Citizen: 1 },
+  voteTallyValid: true,
+  runoffSucceeded: false,
+  runoffWinner: null,
+  engagementWinner: 'Citizen',
+});
+ok(tieSem.decisionStatus === 'degraded', 'tie + failed runoff → decisionStatus DEGRADED');
+ok(tieSem.decisionMode === 'fallback_tiebreak', 'tie + failed runoff → decisionMode fallback_tiebreak');
+ok(tieSem.primaryVerdict === 'TIE', 'tie → primaryVerdict TIE (council did NOT decide Citizen)');
+ok(tieSem.winner === 'Citizen', 'fallback arbitration selected Citizen as resolution winner');
+ok(tieSem.resolution.method === 'engagement_metric', 'resolution method is engagement_metric, NOT runoff_vote');
+ok(tieSem.runoffOccurred === false, 'runoffOccurred=false — no runoff happened');
+ok(tieSem.resolution.note.includes('not a deliberative vote'), 'resolution note is epistemically explicit');
+
+const runoffSem = computeVerdictSemantics({
+  tally: { Technocrat: 1, Citizen: 1 },
+  voteTallyValid: true,
+  runoffSucceeded: true,
+  runoffWinner: 'Technocrat',
+  engagementWinner: null,
+});
+ok(runoffSem.decisionMode === 'runoff' && runoffSem.decisionStatus === 'consensus', 'genuine runoff → consensus via runoff');
+ok(runoffSem.runoffOccurred === true, 'runoffOccurred=true for a genuine trial');
+
+const clearSem = computeVerdictSemantics({
+  tally: { Oracle: 3, Strategos: 1 },
+  voteTallyValid: true,
+  runoffSucceeded: false,
+  runoffWinner: null,
+  engagementWinner: null,
+});
+ok(clearSem.decisionMode === 'direct_vote' && clearSem.decisionStatus === 'consensus' && clearSem.primaryVerdict === 'MAJORITY', 'clear majority → direct_vote consensus MAJORITY');
+ok(clearSem.winner === 'Oracle', 'clear majority winner is Oracle');
+
+const noneSem = computeVerdictSemantics({
+  tally: {},
+  voteTallyValid: false,
+  runoffSucceeded: false,
+  runoffWinner: null,
+  engagementWinner: null,
+});
+ok(noneSem.decisionStatus === 'unavailable' && noneSem.decisionMode === 'unresolved', 'no valid tally → UNAVAILABLE / unresolved');
+ok(noneSem.winner === null, 'no valid tally → winner null');
+
+// Compact ballot contract: confidence parses + clamps; reason stays required.
+const cv = parseVotePayload('{"vote":"Citizen","reason":"safety first","confidence":0.78}', meta, peers);
+ok(cv.votedFor === 'Citizen' && cv.confidence === 0.78, 'compact ballot: confidence parsed');
+const cvClamp = parseVotePayload('{"vote":"Citizen","reason":"x","confidence":1.9}', meta, peers);
+ok(cvClamp.confidence === 1, 'confidence clamped to [0,1]');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) {

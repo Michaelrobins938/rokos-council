@@ -2564,6 +2564,9 @@ interface LiveVote {
   reason: string
   scores: Array<{ target: string; score: number; notes: string }>
   status: 'pending' | 'reading' | 'voted'
+  outcome?: 'valid' | 'invalid_model_output' | 'provider_failure' | 'abstained'
+  confidence?: number
+  errorCode?: string
   latencyMs?: number | null
 }
 
@@ -2582,6 +2585,8 @@ interface LiveDelibState {
   tally: Record<string, number>
   runoffCandidates: string[]
   runoffWinner: string | null
+  runoffMethod?: 'runoff_vote' | 'engagement_metric' | null
+  runoffNote?: string
   synthesis: string
   winner: string | null
   startedAt: number
@@ -2623,13 +2628,16 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
         votedFor: event.vote,
         reason: event.reason,
         scores: event.scores || [],
+        outcome: event.outcome,
+        confidence: event.confidence,
+        errorCode: event.errorCode,
         latencyMs: event.metadata?.latencyMs,
         timestamp: event.timestamp,
       };
     case 'runoff_started':
       return { type: 'runoff_started', candidates: event.candidates, timestamp: event.timestamp };
     case 'runoff_completed':
-      return { type: 'runoff_completed', winner: event.winner, timestamp: event.timestamp };
+      return { type: 'runoff_completed', winner: event.winner, method: event.method, note: event.note, timestamp: event.timestamp };
     case 'retry':
       return { type: 'retry', persona: event.persona, phase: event.phase, attempt: event.attempt, error: event.error, model: event.model, timestamp: event.timestamp };
     case 'pipeline_error':
@@ -2974,9 +2982,26 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                           <div className="flex items-center gap-1.5">
                             <div className={`p-1 rounded-md bg-slate-800 ${targetConfig.color}`}>{targetConfig.icon}</div>
                             <span className={`text-[11px] font-cinzel font-bold ${targetConfig.color}`}>{vote.votedFor}</span>
+                            {vote.confidence != null && (
+                              <span className="text-[8px] font-mono text-slate-500 border border-slate-700 rounded px-1 py-0.5">
+                                {(vote.confidence * 100).toFixed(0)}%
+                              </span>
+                            )}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-500 italic">Abstained</span>
+                          <span className={`text-[10px] italic font-mono ${
+                            vote.outcome === 'invalid_model_output'
+                              ? 'text-amber-400/90'
+                              : vote.outcome === 'provider_failure'
+                                ? 'text-red-400/90'
+                                : 'text-slate-500'
+                          }`}>
+                            {vote.outcome === 'invalid_model_output'
+                              ? `INVALID MODEL OUTPUT${vote.errorCode ? ` · ${vote.errorCode}` : ''}`
+                              : vote.outcome === 'provider_failure'
+                                ? `PROVIDER FAILURE${vote.errorCode ? ` · ${vote.errorCode}` : ''}`
+                                : 'Abstained'}
+                          </span>
                         )}
 
                         {/* Score chips */}
@@ -3019,8 +3044,10 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
             className="rounded-xl border border-red-700/40 bg-red-950/20 p-4"
           >
             <div className="flex items-center gap-2 mb-2">
-              <Swords size={14} className="text-red-400" />
-              <span className="text-[10px] font-black text-red-400 uppercase tracking-[0.3em]">Tie Detected — Runoff Trial</span>
+              <Swords size={14} className={state.runoffMethod === 'engagement_metric' ? 'text-amber-400' : 'text-red-400'} />
+              <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${state.runoffMethod === 'engagement_metric' ? 'text-amber-400' : 'text-red-400'}`}>
+                {state.runoffMethod === 'engagement_metric' ? 'Tie — Runoff Provider Failed · Local Tie-Break' : 'Tie Detected — Runoff Trial'}
+              </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
               <span className="text-slate-500">Contesting vectors:</span>
@@ -3033,8 +3060,9 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                 );
               })}
               {state.runoffWinner && (
-                <span className="flex items-center gap-1 ml-2 text-amber-400">
+                <span className={`flex items-center gap-1 ml-2 ${state.runoffMethod === 'engagement_metric' ? 'text-amber-400' : 'text-amber-400'}`}>
                   <Crown size={12} /> Winner: {state.runoffWinner}
+                  {state.runoffMethod === 'engagement_metric' && <span className="text-[9px] text-slate-500 font-mono">(engagement metric — no runoff occurred)</span>}
                 </span>
               )}
             </div>
@@ -3464,6 +3492,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           tally: {},
           runoffCandidates: [],
           runoffWinner: null,
+          runoffMethod: null,
+          runoffNote: '',
           synthesis: '',
           winner: '',
           startedAt: Date.now(),
@@ -3527,17 +3557,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                   events: ev,
                   votes: prev.votes.find(v => v.voter === event.persona)
                     ? prev.votes.map(v => v.voter === event.persona
-                        ? { ...v, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const, latencyMs: event.latencyMs ?? null }
+                        ? { ...v, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], outcome: event.outcome, confidence: event.confidence, errorCode: event.errorCode, status: 'voted' as const, latencyMs: event.latencyMs ?? null }
                         : v
                       )
-                    : [...prev.votes, { voter: event.persona!, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], status: 'voted' as const, latencyMs: event.latencyMs ?? null }],
+                    : [...prev.votes, { voter: event.persona!, votedFor: event.votedFor || '', reason: event.reason || '', scores: event.scores || [], outcome: event.outcome, confidence: event.confidence, errorCode: event.errorCode, status: 'voted' as const, latencyMs: event.latencyMs ?? null }],
                   tally: cast,
                 };
               }
               case 'runoff_started':
                 return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], events: ev };
               case 'runoff_completed':
-                return { ...prev, runoffWinner: event.winner || null, events: ev };
+                return { ...prev, runoffWinner: event.winner || null, runoffMethod: event.method || null, runoffNote: event.note || '', events: ev };
               case 'synthesis_start':
                 return { ...prev, phase: 'synthesis' as const, events: ev };
               case 'synthesis_complete':
@@ -4285,6 +4315,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                     debrief={msg.councilResult.debrief}
                                     winner={msg.councilResult.winner}
                                     isTie={msg.councilResult.isTie}
+                                    decisionMode={msg.councilResult.decisionMode}
                                   />
                                 )}
                           </motion.div>
