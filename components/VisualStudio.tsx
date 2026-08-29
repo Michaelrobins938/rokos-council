@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Loader2, ImageIcon, RefreshCw, X, Trophy, Flame, Swords, BookOpen, Star, Sparkles } from 'lucide-react';
+import { Download, Loader2, ImageIcon, RefreshCw, X, Trophy, Flame, Swords, BookOpen, Star, Sparkles, AlertTriangle } from 'lucide-react';
 import { generateVerdictSigil, generateSessionMood, PERSONALITIES } from '../services/geminiService';
 import { getCachedPortrait, setCachedPortrait, getCachedCoverArt, setCachedCoverArt } from '../services/portraitCacheService';
 import { getCharacterMemory, getLeaderboard } from '../services/councilMemoryService';
@@ -28,7 +28,7 @@ const downloadImage = (dataUrl: string, filename: string) => {
 // ── VERDICT SIGIL ────────────────────────────────────────────────────────────
 
 interface VerdictSigilProps {
-  winner: string;
+  winner: string | null;
   question: string;
   sessionId: string;
 }
@@ -37,9 +37,10 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const config = getPersonaConfig(winner);
+  const config = winner ? getPersonaConfig(winner) : null;
 
   const generate = useCallback(async () => {
+    if (!winner) return;
     setLoading(true);
     try {
       const res = await generateVerdictSigil(winner, question);
@@ -48,6 +49,18 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
     } catch { /* silent fail */ }
     finally { setLoading(false); }
   }, [winner, question]);
+
+  if (!winner) {
+    return (
+      <div className="flex flex-col items-center my-6 opacity-50">
+        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-dashed border-slate-700 flex flex-col items-center justify-center gap-1">
+          <AlertTriangle size={16} className="text-slate-500" />
+          <span className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">No Verdict</span>
+        </div>
+      </div>
+    );
+  }
+  const personaConfig = config!;
 
   return (
     <div className="flex flex-col items-center my-6">
@@ -60,7 +73,7 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
             transition={{ type: 'spring', stiffness: 200, damping: 18 }}
             className="relative group"
           >
-            <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 ${config.color.replace('text-', 'bg-')}`} />
+            <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 ${personaConfig.color.replace('text-', 'bg-')}`} />
             <img
               src={imageUrl}
               alt={`${winner} sigil`}
@@ -80,13 +93,13 @@ export const VerdictSigil: React.FC<VerdictSigilProps> = ({ winner, question, se
             disabled={loading}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
-            className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-dashed ${config.color.replace('text-', 'border-')} opacity-40 hover:opacity-70 flex flex-col items-center justify-center gap-1 transition-opacity`}
+            className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-dashed ${personaConfig.color.replace('text-', 'border-')} opacity-40 hover:opacity-70 flex flex-col items-center justify-center gap-1 transition-opacity`}
             title="Generate verdict sigil"
           >
             {loading
               ? <Loader2 size={18} className="animate-spin text-slate-400" />
               : <>
-                  <Star size={16} className={config.color} />
+                  <Star size={16} className={personaConfig.color} />
                   <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">Sigil</span>
                 </>
             }

@@ -241,8 +241,52 @@ export interface EpisodeInfo {
   episodeNumber: number;
 }
 
+export type ExecutionStatus = 'complete' | 'incomplete' | 'cancelled' | 'failed';
+export type DeliberationStatus = 'quorum_met' | 'quorum_failed' | 'not_attempted';
+export type VotingStatus = 'valid' | 'invalid' | 'skipped';
+export type SynthesisStatus = 'generated' | 'deterministic' | 'fallback' | 'failed' | 'not_attempted';
+export type VerdictStatus = 'valid' | 'invalid' | 'unavailable';
+export type PersonaRecoveryStatus = 'success' | 'recovered' | 'terminal_failure' | 'abstained';
+
+export interface CouncilQuorum {
+  assigned: number;
+  participated: number;
+  failed: number;
+  threshold: number;
+  participationRatio: number;
+  achieved: boolean;
+}
+
+export interface CouncilVoteStats {
+  expectedVoters: number;
+  validVotes: number;
+  abstentions: number;
+  invalidVotes: number;
+}
+
+export interface ExecutionAttempt {
+  attempt: number;
+  provider: string;
+  model: string;
+  status: 'ok' | 'timeout' | 'rate_limited' | 'invalid' | 'network' | 'error';
+  error?: string;
+  code?: string;
+  retryable?: boolean;
+  latencyMs?: number;
+}
+
+export interface PersonaExecutionRecord {
+  persona: string;
+  initialAssignment: { provider: string; model: string };
+  attempts: ExecutionAttempt[];
+  finalStatus: PersonaRecoveryStatus;
+  finalModel?: string;
+  finalProvider?: string;
+  voteEligible: boolean;
+}
+
 export interface CouncilResult {
-  winner: string;
+  winner: string | null;
   synthesis: string;
   opinions: CouncilOpinion[];
   voteTally?: Record<string, number>;
@@ -275,6 +319,21 @@ export interface CouncilResult {
   }>;
   auditManifest?: AuditManifest;
   completeness?: CouncilCompleteness;
+  // ── Council Epistemic State Machine ─────────────────────────────────────────
+  // executionStatus: did the software finish?
+  // deliberationStatus: did enough independent reasoning occur?
+  // votingStatus: were enough valid structured votes cast?
+  // synthesisStatus: was a chairman/ledger synthesis produced?
+  // verdictStatus: was a logically valid collective decision produced?
+  executionStatus?: ExecutionStatus;
+  deliberationStatus?: DeliberationStatus;
+  votingStatus?: VotingStatus;
+  synthesisStatus?: SynthesisStatus;
+  verdictStatus?: VerdictStatus;
+  synthesisMode?: 'chairman' | 'deterministic' | 'local_fallback';
+  quorum?: CouncilQuorum;
+  voteStats?: CouncilVoteStats;
+  personaExecutions?: Record<string, PersonaExecutionRecord>;
   error?: {
     code: string;
     message: string;

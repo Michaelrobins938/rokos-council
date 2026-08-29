@@ -42,10 +42,12 @@ export const updateMemoryAfterSession = (result: CouncilResult, sessionId: strin
     mem.sessionsParticipated++;
     mem.lastSessionId = sessionId;
 
-    if (result.winner === op.persona) {
-      mem.wins++;
-    } else {
-      mem.losses++;
+    if (result.winner) {
+      if (result.winner === op.persona) {
+        mem.wins++;
+      } else {
+        mem.losses++;
+      }
     }
 
     // Track alliances (voted for whom)
@@ -64,7 +66,7 @@ export const updateMemoryAfterSession = (result: CouncilResult, sessionId: strin
     if (op.text) {
       const position = op.text.split(/[.!?]/)[0].trim();
       mem.notablePositions = [
-        { topic: sessionId, position, sessionId, won: result.winner === op.persona },
+        { topic: sessionId, position, sessionId, won: result.winner ? result.winner === op.persona : false },
         ...mem.notablePositions,
       ].slice(0, 5);
     }

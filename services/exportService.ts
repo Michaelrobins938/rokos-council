@@ -130,6 +130,16 @@ const computeEpistemicScore = (result: CouncilResult): number => {
 };
 
 export interface DiagnosticsBlock {
+  protocol?: {
+    executionStatus?: string;
+    deliberationStatus?: string;
+    votingStatus?: string;
+    synthesisStatus?: string;
+    verdictStatus?: string;
+    synthesisMode?: string;
+    quorum?: import('../types').CouncilQuorum;
+    voteStats?: import('../types').CouncilVoteStats;
+  };
   memberFailures: Array<{
     persona: string;
     outcome: 'ok' | 'recovered' | 'failed';
@@ -260,6 +270,16 @@ export const computeDiagnostics = (result: CouncilResult): DiagnosticsBlock => {
   }
 
   return {
+    protocol: {
+      executionStatus: result.executionStatus,
+      deliberationStatus: result.deliberationStatus,
+      votingStatus: result.votingStatus,
+      synthesisStatus: result.synthesisStatus,
+      verdictStatus: result.verdictStatus,
+      synthesisMode: result.synthesisMode,
+      quorum: result.quorum,
+      voteStats: result.voteStats,
+    },
     memberFailures,
     retrySummary,
     latencyStats,

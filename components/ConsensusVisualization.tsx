@@ -33,7 +33,7 @@ const ConsensusVisualization: React.FC<ConsensusVisualizationProps> = ({ result 
   const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
   const maxVotes = sortedVotes[0]?.[1] || 1;
 
-  const winPercentage = totalVotes > 0 ? Math.round((voteCounts[result.winner] || 0) / totalVotes * 100) : 0;
+  const winPercentage = result.winner ? (totalVotes > 0 ? Math.round((voteCounts[result.winner] || 0) / totalVotes * 100) : 0) : null;
 
   return (
     <motion.div 
@@ -99,7 +99,7 @@ const ConsensusVisualization: React.FC<ConsensusVisualizationProps> = ({ result 
             <Target className="w-4 h-4 text-yellow-500" />
             <span className="text-xs text-slate-500 uppercase">Consensus</span>
           </div>
-          <div className="text-2xl font-cinzel font-bold text-yellow-400">{winPercentage}%</div>
+          <div className="text-2xl font-cinzel font-bold text-yellow-400">{winPercentage === null ? '—' : `${winPercentage}%`}</div>
         </div>
         
         <div className="bg-slate-950/50 rounded-xl p-4 text-center">

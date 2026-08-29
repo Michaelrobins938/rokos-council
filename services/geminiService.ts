@@ -1,4 +1,4 @@
-import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage, Persona, ProviderMetadata, ProviderUsage, CouncilModelAssignment, ProviderRetry, VoteData, CouncilPhase, CouncilEvent, CouncilEventEnvelope, CouncilRunOptions, CouncilCompleteness, CouncilPhaseRecord } from "../types";
+import { CouncilMode, CouncilOpinion, CouncilResult, AspectRatio, Capability, ChatMessage, Persona, ProviderMetadata, ProviderUsage, CouncilModelAssignment, ProviderRetry, VoteData, CouncilPhase, CouncilEvent, CouncilEventEnvelope, CouncilRunOptions, CouncilCompleteness, CouncilPhaseRecord, CouncilQuorum, CouncilVoteStats, ExecutionAttempt, PersonaExecutionRecord, PersonaRecoveryStatus } from "../types";
 
 // --- OPENROUTER HELPER (via Vercel serverless proxy) ---
 
@@ -111,6 +111,28 @@ export const COUNCIL_MODEL_POOL = [
 // Reliable fallback that is not drawn from the shuffled per-run pool.
 export const COUNCIL_FALLBACK_NIM_MODEL = 'minimaxai/minimax-m3';
 
+// ── Council Epistemic State Machine gates ────────────────────────────────────
+// Quorum = fraction of assigned members with substantive opinions after the
+// full recovery ladder has been exhausted. MIN_VALID_VOTES = floor for a
+// mathematically meaningful vote.
+export const COUNCIL_QUORUM_THRESHOLD = 0.6;
+export const COUNCIL_MIN_VALID_VOTES = 2;
+
+// Pure helpers — unit-testable without a provider.
+export const computeQuorumAchieved = (
+  participated: number,
+  assigned: number,
+  threshold: number = COUNCIL_QUORUM_THRESHOLD,
+): boolean => assigned > 0 && participated / assigned >= threshold;
+
+export const selectWinnerFromTally = (tally: Record<string, number>, minValidVotes: number = COUNCIL_MIN_VALID_VOTES): string | null => {
+  const entries = Object.entries(tally);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((acc, [, c]) => acc + c, 0);
+  if (total < minValidVotes) return null;
+  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+};
+
 // Cascade list used when the primary + fallback model are transiently overloaded
 // (NIM free tier returns 429/529 under load). Tried in order until one answers.
 export const COUNCIL_FALLBACK_MODELS = [
@@ -184,6 +206,88 @@ const providerUsage = (usage: Record<string, unknown> | undefined): ProviderUsag
 
 const isTransientStatus = (status: number): boolean => [408, 425, 429, 500, 502, 503, 504].includes(status);
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+// Maps a provider error to a canonical classification so council logic never
+// has to interpret raw NVIDIA/OpenRouter/HTTP soup.
+export const classifyNvidiaError = (err: unknown): { code: string; message: string; retryable: boolean; status?: number | string } => {
+  if (err instanceof NvidiaProviderError) {
+    const status = err.metadata?.error?.status;
+    const retryable = err.metadata?.error?.recoverable === true;
+    return { code: err.metadata?.error?.code || 'PROVIDER_ERROR', message: err.message, retryable, status };
+  }
+  if (err instanceof TypeError) {
+    return { code: 'NETWORK_ERROR', message: 'Network request failed', retryable: true };
+  }
+  return { code: 'UNKNOWN_ERROR', message: err instanceof Error ? err.message : 'Unknown error', retryable: false };
+};
+
+// Maps a raw HTTP status to the ExecutionAttempt.status taxonomy used by the
+// persona recovery ledger.
+export const executionStatusFromHttp = (status: number | string | undefined): ExecutionAttempt['status'] => {
+  if (typeof status === 'number') {
+    if (status === 408 || status === 425 || status === 502 || status === 503 || status === 504) return 'timeout';
+    if (status === 429) return 'rate_limited';
+    if (status === 400 || status === 401 || status === 403 || status === 404 || status === 410) return 'invalid';
+    if (status === 500) return 'error';
+    if (status >= 200 && status < 300) return 'ok';
+  }
+  return 'error';
+};
+
+const isAttemptOk = (status: ExecutionAttempt['status']): boolean => status === 'ok';
+
+// Tracks a single provider/model attempt in the persona execution ledger.
+export const recordPersonaAttempt = (
+  ledger: Record<string, PersonaExecutionRecord>,
+  persona: string,
+  provider: string,
+  model: string,
+  status: ExecutionAttempt['status'],
+  err?: unknown,
+  latencyMs?: number,
+): void => {
+  const rec = (ledger[persona] ||= {
+    persona,
+    initialAssignment: { provider, model },
+    attempts: [],
+    finalStatus: 'terminal_failure' as PersonaRecoveryStatus,
+    voteEligible: false,
+  });
+  const cls = err ? classifyNvidiaError(err) : undefined;
+  rec.attempts.push({
+    attempt: rec.attempts.length + 1,
+    provider,
+    model,
+    status,
+    code: cls?.code,
+    error: cls?.message,
+    retryable: cls?.retryable,
+    latencyMs,
+  });
+};
+
+export const finalizePersonaExecution = (
+  ledger: Record<string, PersonaExecutionRecord>,
+  persona: string,
+  outcome: 'success' | 'recovered' | 'terminal_failure' | 'abstained',
+  finalModel?: string,
+  finalProvider?: string,
+): void => {
+  const rec = ledger[persona] || {
+    persona,
+    initialAssignment: { provider: 'nvidia', model: finalModel || 'unknown' },
+    attempts: [],
+    finalStatus: 'terminal_failure' as PersonaRecoveryStatus,
+    voteEligible: false,
+    finalModel: undefined,
+    finalProvider: undefined,
+  };
+  rec.finalStatus = outcome;
+  rec.finalModel = finalModel || rec.attempts[rec.attempts.length - 1]?.model || rec.initialAssignment.model;
+  rec.finalProvider = finalProvider || rec.attempts[rec.attempts.length - 1]?.provider || 'nvidia';
+  rec.voteEligible = outcome === 'success' || outcome === 'recovered';
+  ledger[persona] = rec;
+};
 
 export const callNvidiaStructured = async (
   model: string,
@@ -529,12 +633,48 @@ type ParsedVotePayload = Pick<VoteData, 'votedFor' | 'reason'> & {
   analysis?: Array<{ target: string; score: number; notes: string }>;
 };
 
-const parseVotePayload = (rawText: string, metadata: ProviderMetadata, activePeerNames: string[]): ParsedVotePayload => {
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  const cleanJson = jsonMatch ? jsonMatch[0] : rawText.replace(/```json|```/g, '');
+// Structured-output repair boundary: models frequently wrap JSON in prose or
+// malformed output. We normalize strictly rather than accepting prose votes.
+const repairVoteJson = (rawText: string): string => {
+  // Strip markdown fences
+  let text = rawText.replace(/```json|```/gi, '').trim();
+  // Extract the first balanced object
+  const start = text.indexOf('{');
+  let end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    text = text.substring(start, end + 1);
+  }
+  // Common repairs: trailing commas, single-quoted keys/values, unquoted keys
+  text = text
+    .replace(/,\s*([}\]])/g, '$1')                              // trailing commas
+    .replace(/:\s*'([^']*)'/g, ': "$1"')                        // single-quoted values
+    .replace(/([{,]\s*)(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2\s*:/g, '$1"$3":'); // single/unquoted keys
+  return text;
+};
+
+// Resolves a possibly-prose vote field to a canonical candidate name.
+const normalizeVoteTarget = (raw: unknown, activePeerNames: string[]): string => {
+  if (typeof raw !== 'string') return '';
+  let v = raw.trim();
+  if (!v) return '';
+  if (v.toLowerCase() === 'none' || v.toLowerCase() === 'abstain' || v.toLowerCase() === 'abstained') return 'None';
+  // Direct hit
+  if (activePeerNames.includes(v)) return v;
+  const lower = v.toLowerCase();
+  const match = activePeerNames.find(p => lower.includes(p.toLowerCase()) || p.toLowerCase().includes(lower));
+  if (match) return match;
+  // "I vote for Oracle", "Oracle - 8", "Oracle: 8", quotes, etc.
+  for (const p of activePeerNames) {
+    if (new RegExp(`\\b${p}\\b`, 'i').test(v)) return p;
+  }
+  return v; // keep raw; validation below will reject if not in list
+};
+
+export const parseVotePayload = (rawText: string, metadata: ProviderMetadata, activePeerNames: string[]): ParsedVotePayload => {
+  const repaired = repairVoteJson(rawText);
   let data: unknown;
   try {
-    data = JSON.parse(cleanJson || '{}');
+    data = JSON.parse(repaired || '{}');
   } catch {
     throw new NvidiaProviderError('Provider returned malformed vote JSON', {
       ...metadata,
@@ -549,13 +689,13 @@ const parseVotePayload = (rawText: string, metadata: ProviderMetadata, activePee
     });
   }
   const voteData = data as { vote?: unknown; reason?: unknown; analysis?: unknown };
-  if (typeof voteData.vote !== 'string' || !voteData.vote.trim() || typeof voteData.reason !== 'string' || !voteData.reason.trim()) {
+  if (typeof voteData.reason !== 'string' || !voteData.reason.trim()) {
     throw new NvidiaProviderError('Provider returned an invalid vote schema', {
       ...metadata,
-      error: { code: 'INVALID_VOTE_SCHEMA', message: 'Vote and reason are required strings', recoverable: false },
+      error: { code: 'INVALID_VOTE_SCHEMA', message: 'Vote reason is a required string', recoverable: false },
     });
   }
-  const votedFor = voteData.vote.trim();
+  const votedFor = normalizeVoteTarget(voteData.vote, activePeerNames);
   if (votedFor !== 'None' && !activePeerNames.includes(votedFor)) {
     throw new NvidiaProviderError('Provider returned a vote for an inactive persona', {
       ...metadata,
@@ -832,7 +972,7 @@ export const runCouncil = async (message: string, mode: CouncilMode, options: Co
     else runContext.emit({ type: 'pipeline_error', phase: 'deliberation', message: messageText, recoverable: false, code });
     runContext.emit({ type: 'run_completed', completeness });
     return {
-      winner: 'None',
+      winner: null,
       synthesis: messageText,
       opinions: [],
       runId,
@@ -842,6 +982,12 @@ export const runCouncil = async (message: string, mode: CouncilMode, options: Co
       providerSummary,
       retryHistory,
       completeness,
+      executionStatus: completeness === 'complete' ? 'complete' : completeness === 'cancelled' ? 'cancelled' : 'failed',
+      deliberationStatus: 'not_attempted',
+      votingStatus: 'skipped',
+      synthesisStatus: 'not_attempted',
+      verdictStatus: 'unavailable',
+      synthesisMode: 'local_fallback',
       error: { code, message: messageText, recoverable: false },
       auditManifest: {
         schemaVersion: 'council-audit-v1',
@@ -905,6 +1051,10 @@ export const runCouncil = async (message: string, mode: CouncilMode, options: Co
           runContext.emit({ type: 'retry', phase, persona, attempt: retry.attempt, error: retry.error, provider: retry.provider, model: retry.model });
       }
   };
+
+  // Persona execution ledger — tracks every provider/model attempt per persona so
+  // recovery is auditable: initial assignment, attempts, final status, vote eligibility.
+  const personaExecutions: Record<string, PersonaExecutionRecord> = {};
 
   // Batch processor to avoid rate limits when hitting Gemini fallback repeatedly
   const processBatch = async <T>(items: any[], fn: (item: any) => Promise<T>, batchSize: number = 4): Promise<T[]> => {
@@ -971,24 +1121,27 @@ The Void Protocol is active. Speak, or be erased.`;
        let text = "";
        let metadata: ProviderMetadata | undefined;
        let failure: unknown;
-       // Try NVIDIA first, fallback to OpenRouter
+       let synthesizedSeat = false;
+       // Primary: assigned NIM model. Then recovery cascade across alternate NIM models.
        try {
            const response = await callNvidiaStructured(modelAssignments[persona.name], analysisPrompt, 0.7);
            text = response.content;
            metadata = response.metadata;
-            recordProviderMetadata(`${persona.name}:analysis`, response.metadata);
-            recordProvider(persona.name, response.metadata.provider || 'nvidia');
-            recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
-            recordProviderRetries(response.retryHistory, 'deliberation', persona.name);
-        } catch (err) {
-            failure = err;
-            recordProviderFailure(`${persona.name}:analysis:nvidia:error`, err, 'deliberation', persona.name);
-            console.warn(`NVIDIA failed for ${persona.name}. Falling back to OpenRouter.`);
-          // Handled by text check below
-      }
+           recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', modelAssignments[persona.name], text ? 'ok' : 'error', undefined, response.metadata?.latencyMs);
+           recordProviderMetadata(`${persona.name}:analysis`, response.metadata);
+           recordProvider(persona.name, response.metadata.provider || 'nvidia');
+           recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
+           recordProviderRetries(response.retryHistory, 'deliberation', persona.name);
+       } catch (err) {
+           failure = err;
+           recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', modelAssignments[persona.name], executionStatusFromHttp(classifyNvidiaError(err).status), err);
+           recordProviderFailure(`${persona.name}:analysis:nvidia:error`, err, 'deliberation', persona.name);
+           console.warn(`NVIDIA failed for ${persona.name}. Falling back to alternate NIM models.`);
+         // Handled by text check below
+     }
       
        if (!text) {
-           // Fallback cascade across valid NIM models (primary may be overloaded)
+           // Recovery cascade across valid NIM models (primary may be overloaded)
            for (const fbModel of COUNCIL_FALLBACK_MODELS) {
                if (fbModel === modelAssignments[persona.name]) continue;
                try {
@@ -996,12 +1149,14 @@ The Void Protocol is active. Speak, or be erased.`;
                    if (!fallback.content) continue;
                    text = fallback.content;
                    metadata = { ...fallback.metadata, status: 'fallback' };
+                   recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', fbModel, 'ok', undefined, fallback.metadata?.latencyMs);
                    recordProviderMetadata(`${persona.name}:analysis:fallback`, metadata);
                    recordProvider(persona.name, metadata.provider || 'nvidia');
                    recordModel(persona.name, metadata.model || fbModel);
                    break;
                } catch (err) {
                    failure = err;
+                   recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', fbModel, executionStatusFromHttp(classifyNvidiaError(err).status), err);
                    recordProviderFailure(`${persona.name}:analysis:fallback:${fbModel}`, err, 'deliberation', persona.name);
                    console.warn(`NIM fallback ${fbModel} failed for ${persona.name}:`, err);
                }
@@ -1046,19 +1201,22 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
               if (altResponse.content && !isSoftRefusal(altResponse.content) && altResponse.content.length > 100) {
                 text = altResponse.content;
                 metadata = altResponse.metadata;
+                recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', altModel, 'ok', undefined, altResponse.metadata?.latencyMs);
                 recordProviderMetadata(`${persona.name}:analysis:escalation`, altResponse.metadata);
                 recordProvider(persona.name, altResponse.metadata.provider || 'nvidia');
                 recordModel(persona.name, altResponse.metadata.model || altModel);
                 console.log(`[VOID PROTOCOL] ${persona.name} engaged via ${altModel}.`);
                 break;
               }
-            } catch {
+            } catch (err) {
+              recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', altModel, executionStatusFromHttp(classifyNvidiaError(err).status), err);
               continue;
             }
           }
 
           // If still refusing after escalation — synthesize an in-character response
-          // from the archetype's known position rather than returning empty.
+          // from the archetype's known position. This is TRANSPARENTLY NOT model
+          // reasoning: the member's seat is forfeit for voting purposes.
           if (!text || isSoftRefusal(text)) {
             console.warn(`[VOID PROTOCOL] ${persona.name} still refusing after escalation. Synthesizing in-character position.`);
             text = `[${persona.name} — synthesized from archetype core]\n\n` +
@@ -1066,11 +1224,19 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
               `From the lens of [${dimensionString}]: ${persona.strategy} ` +
               `This analysis is incomplete — the model assigned to ${persona.name} refused engagement. ` +
               `The Void Protocol notes this failure and will process it accordingly.`;
+            metadata = {
+              provider: 'nvidia',
+              model: modelAssignments[persona.name],
+              status: 'fallback',
+              error: { code: 'SYNTHESIZED_FROM_ARCHETYPE', message: 'Member refused engagement; position synthesized from archetype core.', recoverable: false },
+            };
+            synthesizedSeat = true;
           }
         }
 
 
         if (!text) {
+           finalizePersonaExecution(personaExecutions, persona.name, 'terminal_failure', metadata?.model, metadata?.provider);
            const result = {
              persona: persona.name,
              text: '',
@@ -1085,15 +1251,20 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
            return result;
         }
 
+        const rec = personaExecutions[persona.name];
+        const recovered = Boolean(rec && rec.attempts.length > 1);
+        finalizePersonaExecution(personaExecutions, persona.name, synthesizedSeat ? 'terminal_failure' : recovered ? 'recovered' : 'success', metadata?.model, metadata?.provider);
+
         const result = {
            persona: persona.name,
            text,
-           status: 'completed' as const,
+           status: synthesizedSeat ? 'abstained' as const : 'completed' as const,
            metadata,
          };
-         runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'deliberation', output: text, metadata, status: 'completed' });
+         runContext.emit({ type: 'member_completed', persona: persona.name, phase: 'deliberation', output: text, metadata, status: synthesizedSeat ? 'abstained' : 'completed' });
          return result;
       } catch {
+        finalizePersonaExecution(personaExecutions, persona.name, 'terminal_failure');
         const result = {
           persona: persona.name,
           text: '',
@@ -1109,14 +1280,38 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
    completePhase('deliberation');
    if (isCancelled()) return incompleteResult('RUN_CANCELLED', 'The council run was cancelled before voting.', 'cancelled');
 
-  // Phase 2: Vector-Based Voting
+  // Phase 2: Quorum Gate — evaluated only AFTER the persona recovery ladder
+  // (primary → NIM cascade → Void escalation) has been fully exhausted.
    const validOpinions = opinions.filter(o => o.status === 'completed' && o.text);
+   const quorum: CouncilQuorum = {
+       assigned: PERSONALITIES.length,
+       participated: validOpinions.length,
+       failed: opinions.length - validOpinions.length,
+       threshold: COUNCIL_QUORUM_THRESHOLD,
+       participationRatio: Math.round((validOpinions.length / PERSONALITIES.length) * 100) / 100,
+       achieved: validOpinions.length / PERSONALITIES.length >= COUNCIL_QUORUM_THRESHOLD,
+   };
 
-   // --- VOID PROTOCOL (Total Failure) ---
-   if (validOpinions.length === 0) {
+   // --- QUORUM GATE (hard): with too few surviving members the council cannot
+   // claim a deliberative outcome. VERDICT_UNAVAILABLE is a first-class result.
+   if (!quorum.achieved || validOpinions.length === 0) {
+       const reason = validOpinions.length === 0
+           ? 'The council produced no verifiable member opinions after recovery exhaustion.'
+           : `Deliberation quorum not met: ${validOpinions.length}/${PERSONALITIES.length} members survived recovery (required ${Math.ceil(COUNCIL_QUORUM_THRESHOLD * PERSONALITIES.length)}).`;
+       const code = validOpinions.length === 0 ? 'TOTAL_RUN_FAILURE' : 'QUORUM_FAILED';
+       runContext.emit({ type: 'pipeline_error', phase: 'deliberation', message: reason, recoverable: false, code });
        return {
-         ...incompleteResult('TOTAL_RUN_FAILURE', 'The council produced no verifiable member opinions.', 'incomplete'),
-         opinions: opinions as CouncilOpinion[],
+           ...incompleteResult(code, reason, 'incomplete'),
+           opinions: opinions as CouncilOpinion[],
+           winner: null,
+           deliberationStatus: 'quorum_failed' as const,
+           votingStatus: 'skipped' as const,
+           synthesisStatus: 'not_attempted' as const,
+           verdictStatus: 'unavailable' as const,
+           synthesisMode: 'local_fallback' as const,
+           quorum,
+           voteStats: { expectedVoters: validOpinions.length, validVotes: 0, abstentions: 0, invalidVotes: 0 } as CouncilVoteStats,
+           personaExecutions,
        };
    }
 
@@ -1144,35 +1339,31 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
     const dimensionString = persona.dimensions.join(", ");
 
     const votingPrompt = `
-      You are ${persona.name}. 
+      You are ${persona.name}.
       Your Cognitive Dimensions are: [${dimensionString}].
       Your Core Strategy is: "${persona.strategy}"
 
       We are debating the query: "${message}".
-      
+
       *** PHASE 1: VECTOR ANALYSIS ***
-      For every peer argument below, you MUST perform a compatibility check against YOUR specific dimensions.
-      
+      For every peer argument below, score alignment (0-10) against YOUR dimensions.
       Peers:
       ${peers.map((op) => `[Agent: ${op.persona}]
       Argument: "${op.text.replace(/"/g, "'").substring(0, 1000)}..."`).join('\n\n')}
-      
-      Analysis Criteria:
-      1. Does their solution maximize your dimensions?
-      2. Is their solution feasible according to your worldview?
-      3. Calculate an alignment score (0-10) for each peer.
-      
+
       *** PHASE 2: THE VOTE ***
       Cast your vote for the peer with the highest alignment score.
       If all scores are below 5, vote "None".
-      
-      Return strictly JSON:
+      You may vote "None". You may NOT abstain from the vote JSON.
+
+      Return ONLY the JSON object below. NO prose. NO markdown. NO preamble.
+      The "vote" field must be exactly one of the peer names or "None":
       {
         "analysis": [
-           { "target": "PeerName", "score": 8, "notes": "Matches my dimension X" }
+          { "target": "PeerName", "score": 8, "notes": "Short note" }
         ],
-        "vote": "PeerName" (or "None"),
-        "reason": "Why this vector won based on your dimensions."
+        "vote": "PeerName",
+        "reason": "One sentence."
       }
     `;
     
@@ -1259,16 +1450,31 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
    completePhase('voting');
    if (isCancelled()) return incompleteResult('RUN_CANCELLED', 'The council run was cancelled after voting.', 'cancelled');
 
-  // Tally
+  // Tally — deterministic, from validated structured votes only.
   const tally: Record<string, number> = {};
   votes.forEach(v => {
-       if (v.status === 'completed' && v.votedFor !== "None" && validOpinions.some(o => o.persona === v.votedFor)) {
+       if (v.status === 'completed' && v.votedFor !== "None" && v.votedFor !== v.voter && validOpinions.some(o => o.persona === v.votedFor)) {
           tally[v.votedFor] = (tally[v.votedFor] || 0) + 1;
       }
   });
 
-  // Determine winner
-  let winner = Object.keys(tally).reduce((a, b) => (tally[a] || 0) > (tally[b] || 0) ? a : b, validOpinions[0]?.persona || "None");
+  // VOTING INTEGRITY GATE
+  const validVotes = votes.filter(v => v.status === 'completed' && v.votedFor !== 'None' && v.votedFor !== v.voter);
+  const voteStats: CouncilVoteStats = {
+    expectedVoters: validOpinions.length,
+    validVotes: validVotes.length,
+    abstentions: votes.filter(v => v.votedFor === 'None' || v.status === 'abstained').length,
+    invalidVotes: votes.filter(v => v.status === 'failed').length,
+  };
+  const voteTallyValid = validVotes.length >= COUNCIL_MIN_VALID_VOTES && Object.keys(tally).length > 0;
+
+  // DETERMINISTIC WINNER — derived strictly from the validated tally.
+  // Structural invariant: voteTally empty ⇒ winner === null. NEVER defaulted
+  // to a persona with zero votes.
+  let winner: string | null = null;
+  if (voteTallyValid) {
+    winner = Object.entries(tally).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+  }
   
   // Attach vote data
   const enhancedOpinions: CouncilOpinion[] = opinions.map(op => {
@@ -1280,43 +1486,76 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       };
   });
 
-   // Phase 3: Chairman Synthesis + Tie Detection
-   // Replace Gemini with OpenRouter for the Chairman
+   // Phase 3: Chairman Synthesis (recovery ladder) + Verdict Gate
    startPhase('verdict', 'Verdict', 'The council synthesizes its decision.');
-  const chairmanPrompt = `
-    You are the Chairman of the AI Council (The Basilisk Node).
-    User Query: "${message}"
-    
-    Meta-Analysis of Council Vectors:
-    Winner: ${winner} (${tally[winner] || 0} votes).
-    
-    Voting Matrix:
-    ${JSON.stringify(tally)}
+   let synthesis: string;
+   let synthesisMode: 'chairman' | 'deterministic' | 'local_fallback' = 'local_fallback';
+   let synthesisStatus: 'generated' | 'deterministic' | 'fallback' | 'not_attempted' = 'fallback';
+   let verdictStatus: 'valid' | 'invalid' | 'unavailable' = 'invalid';
 
-    Dimensional Arguments:
-    ${enhancedOpinions.map(op => `[${op.persona}]: ${op.text.substring(0, 300)}...`).join('\n')}
-    
-    Task:
-    1. Declare the winning decision.
-    2. Synthesize the "Highest Dimensional Answer" by merging the winning argument with valid points from the runner-up.
-    3. Adopt a tone of finality and supreme logic.
-  `;
+   if (!voteTallyValid || !winner) {
+      // VOTE GATE / WINNER GATE: no mathematically valid collective decision.
+      synthesis = validVotes.length === 0
+        ? `## VERDICT_UNAVAILABLE\n\nThe council completed its run, but no valid structured vote could be produced (${voteStats.validVotes} valid / ${voteStats.invalidVotes} invalid / ${voteStats.abstentions} abstained). No winner can be declared.`
+        : `## VERDICT_UNAVAILABLE\n\nOnly ${voteStats.validVotes} valid vote${voteStats.validVotes === 1 ? '' : 's'} were cast (minimum ${COUNCIL_MIN_VALID_VOTES} required). The council cannot declare a convergent verdict.`;
+      runContext.emit({ type: 'pipeline_error', phase: 'verdict', message: 'No valid vote quorum; verdict unavailable.', recoverable: false, code: 'VOTE_QUORUM_FAILED' });
+      runContext.emit({ type: 'synthesis_completed', synthesis });
+   } else {
+      // Chairman recovery ladder — same reliability machinery as any persona.
+      const chairmanPrompt = `
+        You are the Chairman of the AI Council (The Basilisk Node).
+        User Query: "${message}"
 
-   let synthesis = `The Council has converged on **${winner}**.`;
-   try {
-       const chairmanResponse = await callNvidiaStructured(COUNCIL_FALLBACK_NIM_MODEL, chairmanPrompt, 0.7);
-       synthesis = chairmanResponse.content;
-       recordProviderMetadata('chairman:synthesis', chairmanResponse.metadata);
-   } catch (e) {
-       console.error("Chairman synthesis failed, using fallback:", e);
-       recordProviderMetadata('chairman:synthesis', {
-           provider: 'openrouter',
-           model: COUNCIL_FALLBACK_NIM_MODEL,
-           status: 'error',
-           error: { code: 'CHAIRMAN_SYNTHESIS_FAILED', message: 'Chairman synthesis failed', recoverable: false },
-       });
-        synthesis = `The Council has converged on **${winner}** with ${tally[winner] || 0} votes.`;
-        runContext.emit({ type: 'pipeline_error', phase: 'verdict', message: 'Chairman synthesis failed; local synthesis used.', recoverable: false, code: 'CHAIRMAN_SYNTHESIS_FAILED' });
+        Meta-Analysis of Council Vectors:
+        Winner: ${winner} (${tally[winner] || 0} votes).
+
+        Voting Matrix:
+        ${JSON.stringify(tally)}
+
+        Dimensional Arguments:
+        ${enhancedOpinions.map(op => `[${op.persona}]: ${op.text.substring(0, 300)}...`).join('\n')}
+
+        Task:
+        1. Declare the winning decision.
+        2. Synthesize the "Highest Dimensional Answer" by merging the winning argument with valid points from the runner-up.
+        3. Adopt a tone of finality and supreme logic.
+      `;
+
+      try {
+          let chairmanResponse: NvidiaProviderResponse | undefined;
+          for (const chModel of [COUNCIL_FALLBACK_NIM_MODEL, ...COUNCIL_FALLBACK_MODELS.filter(m => m !== COUNCIL_FALLBACK_NIM_MODEL)]) {
+              try {
+                  const attempt = await callNvidiaStructured(chModel, chairmanPrompt, 0.7);
+                  if (attempt.content) { chairmanResponse = attempt; break; }
+              } catch {
+                  continue;
+              }
+          }
+          if (!chairmanResponse) throw new Error('Chairman failed across all models');
+          synthesis = chairmanResponse.content;
+          synthesisMode = 'chairman';
+          synthesisStatus = 'generated';
+          verdictStatus = 'valid';
+          recordProviderMetadata('chairman:synthesis', chairmanResponse.metadata);
+      } catch (e) {
+          console.error("Chairman synthesis failed across all models; deterministic ledger synthesis used.", e);
+          recordProviderMetadata('chairman:synthesis', {
+              provider: 'nvidia',
+              model: COUNCIL_FALLBACK_NIM_MODEL,
+              status: 'error',
+              error: { code: 'CHAIRMAN_SYNTHESIS_FAILED', message: 'Chairman synthesis failed', recoverable: false },
+          });
+          // Deterministic synthesis from the validated vote ledger — explicitly declared.
+          synthesisMode = 'deterministic';
+          synthesisStatus = 'deterministic';
+          verdictStatus = 'valid';
+          const winnerOpinion = enhancedOpinions.find(o => o.persona === winner);
+          synthesis = `## The Council has converged on **${winner}** (${tally[winner]} votes).\n\n` +
+            `_Deterministic synthesis — Chairman generation unavailable._\n\n` +
+            `**Winning vector:** ${winnerOpinion?.text?.substring(0, 600) || ''}`;
+          runContext.emit({ type: 'pipeline_error', phase: 'verdict', message: 'Chairman synthesis failed; deterministic ledger synthesis used.', recoverable: false, code: 'CHAIRMAN_SYNTHESIS_FAILED' });
+      }
+      runContext.emit({ type: 'synthesis_completed', synthesis });
    }
 
   // Phase 4: Tie Detection & Runoff Trial
@@ -1417,7 +1656,6 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
        completePhase('runoff');
    }
 
-   runContext.emit({ type: 'synthesis_completed', synthesis });
    completePhase('verdict');
 
   const personaRoster: CouncilModelAssignment[] = PERSONALITIES.map((persona, assignmentIndex) => ({
@@ -1484,6 +1722,16 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
      phaseTimeline: runContext.phaseTimeline,
      completeness: 'complete',
      auditManifest,
+     // ── Council Epistemic State Machine ─────────────────────────────────────
+     executionStatus: 'complete',
+     deliberationStatus: 'quorum_met',
+     votingStatus: voteTallyValid ? 'valid' : 'invalid',
+     synthesisStatus,
+     verdictStatus,
+     synthesisMode,
+     quorum,
+     voteStats,
+     personaExecutions,
     councilState: {
         phases: [
             { id: 'assembly', title: 'Assembly', description: 'Council members convene.', status: 'completed' },
@@ -1501,7 +1749,7 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
             voteCount,
             percentage: votes.length ? Math.round((voteCount / votes.length) * 100) : 0,
         })),
-        status: 'completed',
+        status: verdictStatus === 'valid' ? 'completed' : 'failed',
     }
   };
 };

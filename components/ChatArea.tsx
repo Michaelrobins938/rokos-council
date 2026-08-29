@@ -387,7 +387,7 @@ const EpisodeLeaderboard: React.FC = () => {
                 <p className="text-[8px] text-slate-600 mb-3 italic">Each entry shows the path from question to verdict. Archives as tactical maps, not logs. — Strategos</p>
                 <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                   {seasons.flatMap(s => s.episodes).sort((a, b) => b.timestamp - a.timestamp).slice(0, 8).map(ep => {
-                    const winnerConfig = getPersonaConfig(ep.winner);
+                    const winnerConfig = ep.winner ? getPersonaConfig(ep.winner) : null;
                     // Build faction summary from episode data if available
                     const factionIcons = ep.factions ? ep.factions.slice(0, 3) : [];
                     return (
@@ -2582,7 +2582,7 @@ interface LiveDelibState {
   runoffCandidates: string[]
   runoffWinner: string | null
   synthesis: string
-  winner: string
+  winner: string | null
   startedAt: number
   events: number
   retries: LiveRetry[]
@@ -4002,6 +4002,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                        {msg.councilResult.councilState && (
                                            <div className="mt-6 p-4 bg-yellow-900/10 border border-yellow-500/20 rounded-xl">
                                                <h4 className="text-sm font-cinzel font-bold text-yellow-500 mb-2">Decision Summary</h4>
+                                               {msg.councilResult.winner ? (
                                                <p className="text-slate-300 text-sm">
                                                    <strong>{msg.councilResult.runoffResult?.winner || msg.councilResult.winner}</strong> was selected as the winning vector with 
                                                    {(() => {
@@ -4018,6 +4019,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                                                   })()}
                                                   {msg.councilResult.isTie && " after a tie-breaking runoff trial."}
                                               </p>
+                                              ) : (
+                                                <p className="text-slate-400 text-sm">
+                                                    <strong className="text-red-400">VERDICT_UNAVAILABLE</strong> — the council did not reach a valid convergent decision.
+                                                    {msg.councilResult.verdictStatus === 'invalid' && " The vote was not mathematically valid."}
+                                                    {msg.councilResult.verdictStatus === 'unavailable' && " Deliberation quorum was not satisfied after recovery exhaustion."}
+                                                </p>
+                                              )}
                                           </div>
                                       )}
 
