@@ -111,6 +111,16 @@ export const COUNCIL_MODEL_POOL = [
 // Reliable fallback that is not drawn from the shuffled per-run pool.
 export const COUNCIL_FALLBACK_NIM_MODEL = 'minimaxai/minimax-m3';
 
+// ── Vote extraction protocol model ─────────────────────────────────────────────
+// Deliberate separation of reasoning from protocol (the "reasoning models vs
+// protocol models" boundary): the big assigned models produce the analysis, but
+// ballot extraction runs through a small, fast, proven-stable model. Several
+// pool models are unreliable for structured ballots even without json mode
+// (kimi-k3 400s, gpt-oss/gemma edge timeouts, nemotron-3.5-lightning leaks CoT
+// essays) — decoupling keeps the voting phase deterministic and fast regardless
+// of which model the persona was assigned for analysis.
+export const COUNCIL_VOTE_MODEL = 'nvidia/nemotron-3-nano-30b-a3b';
+
 // ── Council Epistemic State Machine gates ────────────────────────────────────
 // Quorum = fraction of assigned members with substantive opinions after the
 // full recovery ladder has been exhausted. MIN_VALID_VOTES = floor for a
@@ -1572,27 +1582,29 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
       let terminalVoteError: unknown;
 
       try {
-        // Try NVIDIA first — tiny ballot. JSON mode is deliberately OFF: several
-        // NIM models reject/slow/fail on response_format json_object (400, edge
-        // timeouts, CoT essays), while the compact prompt + repair parser
-        // handles prose-wrapped JSON robustly.
-        const response = await callNvidiaStructured(modelAssignments[persona.name], votingPrompt, 0.2, false, 3, undefined, 512);
+        // Ballot extraction via the dedicated protocol model — NOT the persona's
+        // analysis model. Reasoning and protocol are deliberately separated (the
+        // big models analyze; the small model casts the structured ballot), so a
+        // pool model that misbehaves on JSON (kimi-k3 400, gpt-oss/gemma timeouts,
+        // CoT-essay leakage) cannot fail the vote phase.
+        const response = await callNvidiaStructured(COUNCIL_VOTE_MODEL, votingPrompt, 0.2, false, 3, undefined, 512);
         recordProviderMetadata(`${persona.name}:voting`, response.metadata);
         recordProvider(persona.name, response.metadata.provider || 'nvidia');
-        recordModel(persona.name, response.metadata.model || modelAssignments[persona.name]);
+        recordModel(persona.name, response.metadata.model || COUNCIL_VOTE_MODEL);
         recordProviderRetries(response.retryHistory, 'voting', persona.name);
         voteMetadata = response.metadata;
         voteData = parseVotePayload(response.content, response.metadata, peers.map(peer => peer.persona));
       } catch (err) {
         terminalVoteError = err;
         recordProviderFailure(`${persona.name}:voting:nvidia:error`, err, 'voting', persona.name);
-        console.warn(`Voting NVIDIA failed for ${persona.name}. Fallback.`);
+        console.warn(`Voting via ${COUNCIL_VOTE_MODEL} failed for ${persona.name}. Fallback.`);
       }
 
       if (!voteData) {
-        // Fallback cascade across valid NIM models for voting if primary fails.
-        for (const fbModel of COUNCIL_FALLBACK_MODELS) {
-          if (fbModel === modelAssignments[persona.name]) continue;
+        // Fallback cascade across valid NIM models for voting if the protocol
+        // model itself fails.
+        for (const fbModel of [COUNCIL_FALLBACK_NIM_MODEL, ...COUNCIL_FALLBACK_MODELS]) {
+          if (fbModel === COUNCIL_VOTE_MODEL) continue;
           try {
             const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, false, 3, undefined, 512);
             if (!attempt.content) continue;
