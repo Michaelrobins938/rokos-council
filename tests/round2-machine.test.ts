@@ -5,8 +5,10 @@ import {
   computeRound2Defenders,
   parseRound2Defense,
   parseRound2Ballot,
+  parseVotePayload,
   aggregateRound2Ballots,
   computeRound2Persuasion,
+  computeBallotConservation,
   buildLegacyRunoffResult,
   NvidiaProviderError,
 } from '../services/geminiService';
@@ -200,6 +202,74 @@ const revisions2 = [
 ];
 const e2eAgg2 = aggregateRound2Ballots(revisions2);
 ok(e2eAgg2.outcome === 'majority' && e2eAgg2.winner === 'Demagogue' && e2eAgg2.tally.Demagogue === 4, 'revision flow (no self-vote) → Demagogue strict majority (4 of 6)');
+
+// ── BALLOT CONSERVATION INVARIANT ────────────────────────────────────────────
+console.log('ROUND 2 — BALLOT CONSERVATION');
+const failedRec = (member: string, reason: string) => ({
+  round: 2, member, originalVote: 'Demagogue', newVote: 'Demagogue', changed: false,
+  confidenceBefore: 0.6, confidenceAfter: 0.6, decisiveArgument: reason, status: 'failed' as const,
+});
+
+// The exact report-run shape: 8 valid Round-1 ballots, 8 eligible, only 2 cast.
+// Silent vote loss MUST be flagged, with every exclusion audited.
+const lossy = computeBallotConservation(8, ['a','b','c','d','e','f','g','h'], [
+  rev('a', 'Demagogue', 'Citizen', 0.6, 0.9, true, 'the Citizen rebuttal of the continuity objection'),
+  rev('b', 'Demagogue', 'Citizen', 0.6, 0.8, true, 'the Citizen defense of substrate continuity'),
+  failedRec('c', 'Ballot extraction failed: provider request timed out'),
+  failedRec('d', 'Ballot extraction failed: provider request timed out'),
+  failedRec('e', 'Ballot extraction failed: malformed Round 2 ballot JSON'),
+  failedRec('f', 'Ballot extraction failed: provider request timed out'),
+  failedRec('g', 'Ballot extraction failed: malformed Round 2 ballot JSON'),
+  failedRec('h', 'Ballot extraction failed: provider request timed out'),
+]);
+ok(lossy.round1ValidBallots === 8 && lossy.round2EligibleMembers === 8 && lossy.round2CastBallots === 2, 'ledger counts match the report run (8 → 8 → 2)');
+ok(lossy.round2FailedBallots === 6, '6 exclusions recorded, none silent');
+ok(lossy.conserved === false, 'lost ballots → conserved=false (audit required)');
+ok(lossy.failedMembers.length === 6 && lossy.failedMembers[0].reason.includes('timed out'), 'every failed member carries its reason');
+
+// A healthy runoff: every eligible member casts a valid ballot.
+const healthy = computeBallotConservation(6, ['a','b','c','d','e','f'], [
+  rev('a', 'A', 'B', 0.5, 0.7, true), rev('b', 'B', 'B', 0.5, 0.6),
+  rev('c', 'A', 'A', 0.5, 0.5), rev('d', 'A', 'B', 0.5, 0.8, true),
+  rev('e', 'B', 'B', 0.5, 0.5), rev('f', 'A', 'B', 0.5, 0.75, true),
+]);
+ok(healthy.conserved === true, 'fully accounted → conserved ✓');
+ok(healthy.round1ValidBallots >= healthy.round2EligibleMembers && healthy.round2EligibleMembers >= healthy.round2CastBallots, 'ROUND_1_VALID ≥ ROUND_2_ELIGIBLE ≥ ROUND_2_CAST');
+
+// Ledger hole: an eligible member produces NO record at all → not conserved.
+const holey = computeBallotConservation(5, ['a','b','c','d','e'], [
+  rev('a', 'A', 'B', 0.5, 0.7, true), rev('b', 'B', 'B', 0.5, 0.6), rev('c', 'A', 'A', 0.5, 0.5),
+]);
+ok(holey.conserved === false && holey.round2CastBallots === 3, 'missing ledger record (2 of 5 eligible) → conserved=false');
+
+// ── TRUNCATION REPAIR (finishReason:"length" — the report's root cause) ──────
+console.log('ROUND 2 — TRUNCATION REPAIR');
+const okTargets = ['Demagogue', 'Citizen'];
+
+// Cut off mid-string, object unclosed.
+const t1 = parseRound2Ballot('{"vote":"Citizen","confidence":0.7,"decisiveArgument":"The Jurist rebuttal resona', meta, okTargets);
+ok(t1.vote === 'Citizen' && t1.confidence === 0.7 && t1.decisiveArgument === 'The Jurist rebuttal resona', 'unterminated trailing string → completed + parsed');
+
+// Cut off after a complete string, missing closing brace.
+const t2 = parseRound2Ballot('{"vote":"Demagogue","confidence":0.6,"decisiveArgument":"The Citizen defense held firm"', meta, okTargets);
+ok(t2.vote === 'Demagogue' && t2.confidence === 0.6, 'missing closing brace → completed + parsed');
+
+// Cut off with a dangling comma.
+const t3 = parseRound2Ballot('{"vote":"Citizen","confidence":0.8,"decisiveArgument":"Historian precedent",', meta, okTargets);
+ok(t3.vote === 'Citizen' && t3.confidence === 0.8, 'dangling comma → completed + parsed');
+
+// Cut off mid-number → value fragment dropped → honest SCHEMA error, not JSON collapse.
+let t4Schema = false;
+try {
+  parseRound2Ballot('{"vote":"Citizen","confidence":0.', meta, okTargets);
+} catch (e) {
+  t4Schema = e instanceof NvidiaProviderError && (e.metadata.error?.code || '').startsWith('INVALID_ROUND2_SCHEMA');
+}
+ok(t4Schema, 'mid-number fragment → dropped; schema error (honest), never INVALID_ROUND2_JSON');
+
+// Round-1 ballot truncation through the vote parser.
+const v1 = parseVotePayload('{"vote":"Oracle","confidence":0.8,"reason":"Oracle identifies the historical pattern of semantic', meta, ['Oracle', 'Technocrat', 'Citizen']);
+ok(v1.votedFor === 'Oracle' && v1.reason === 'Oracle identifies the historical pattern of semantic', 'truncated Round-1 ballot → completed + parsed');
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) {

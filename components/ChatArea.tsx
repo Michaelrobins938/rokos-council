@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Play, Menu, Square, ThumbsUp, Lock, Users, Gavel, Sword, BrainCircuit, Volume2, Scale, Scroll, AlertTriangle, Eye, Crown, Globe, Mic, Zap, Sparkles, Activity, Aperture, Cpu, TrendingUp, Palette, Copy, Check, ChevronUp, ChevronDown, BarChart3, Search, Download, Share2, FileText, BarChart2, Newspaper, BookOpen, Trophy, Flame, Swords, Image as ImageIcon, X as XIcon, ChevronRight, Clock, RefreshCw, ShieldAlert } from 'lucide-react';
-import { CouncilMode, ChatMessage, CouncilResult, CouncilOpinion, CouncilEvent } from '../types';
+import { CouncilMode, ChatMessage, CouncilResult, CouncilOpinion, CouncilEvent, BallotConservation } from '../types';
 import { runCouncil, generateSpeech, LiveClient, generateNextMoves, getCurrentCouncil, generateImage, PERSONALITIES, DeliberationEvent } from '../services/geminiService';
 import { buildExportSession, exportToJSON, exportToMarkdown, exportToCSV, exportToScript, exportToSubstack, calculateTraceSize, exportAllAsZip } from '../services/exportService';
 import { loadSeasons, getLeaderboard, loadAllMemory, clearAllMemory, getEpisodeCounter } from '../services/councilMemoryService';
@@ -2844,6 +2844,7 @@ interface LiveDelibState {
   votes: LiveVote[]
   tally: Record<string, number>
   runoffCandidates: string[]
+  runoffReason?: 'tie' | 'plurality' | null
   runoffWinner: string | null
   runoffMethod?: 'runoff_vote' | 'engagement_metric' | null
   runoffNote?: string
@@ -2852,7 +2853,16 @@ interface LiveDelibState {
     defensesTotal: number
     reassessmentsCompleted: number
     reassessmentsTotal: number
-    ballots: Array<{ member: string; originalVote: string; newVote: string; changed: boolean; confidenceBefore: number; confidenceAfter: number }>
+    defenses: Array<{
+      position: string
+      defender: string
+      status: 'completed' | 'failed'
+      defense?: string
+      strongestObjection?: string
+      rebuttal?: string
+    }>
+    ballots: Array<{ member: string; originalVote: string; newVote: string; changed: boolean; confidenceBefore: number; confidenceAfter: number; decisiveArgument?: string }>
+    conservation?: BallotConservation | null
     winner: string | null
     stillTied: boolean
   } | null
@@ -2904,13 +2914,22 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
         timestamp: event.timestamp,
       };
     case 'runoff_started':
-      return { type: 'runoff_started', candidates: event.candidates, timestamp: event.timestamp };
+      return { type: 'runoff_started', candidates: event.candidates, reason: event.reason, timestamp: event.timestamp };
     case 'runoff_completed':
       return { type: 'runoff_completed', winner: event.winner, method: event.method, note: event.note, timestamp: event.timestamp };
     case 'round2_defense_started':
       return { type: 'round2_defense_started', position: event.position, defender: event.defender, timestamp: event.timestamp };
     case 'round2_defense_completed':
-      return { type: 'round2_defense_completed', position: event.position, defender: event.defender, status: event.status, timestamp: event.timestamp };
+      return {
+        type: 'round2_defense_completed',
+        position: event.position,
+        defender: event.defender,
+        status: event.status,
+        defense: event.defense,
+        strongestObjection: event.strongestObjection,
+        rebuttal: event.rebuttal,
+        timestamp: event.timestamp,
+      };
     case 'round2_reassess_completed':
       return {
         type: 'round2_reassess_completed',
@@ -2920,12 +2939,13 @@ const toDeliberationEvent = (event: CouncilEvent): DeliberationEvent | null => {
         changed: event.changed,
         confidenceBefore: event.confidenceBefore,
         confidenceAfter: event.confidenceAfter,
+        decisiveArgument: event.decisiveArgument,
         timestamp: event.timestamp,
       };
     case 'round2_ballot_cast':
       return { type: 'round2_ballot_cast', member: event.member, vote: event.vote, confidence: event.confidence, decisiveArgument: event.decisiveArgument, timestamp: event.timestamp };
     case 'round2_completed':
-      return { type: 'round2_completed', winner: event.winner, stillTied: event.stillTied, tally: event.tally, note: event.outcome, timestamp: event.timestamp };
+      return { type: 'round2_completed', winner: event.winner, stillTied: event.stillTied, tally: event.tally, note: event.outcome, conservation: event.conservation, timestamp: event.timestamp };
     case 'retry':
       return { type: 'retry', persona: event.persona, phase: event.phase, attempt: event.attempt, error: event.error, model: event.model, timestamp: event.timestamp };
     case 'pipeline_error':
@@ -3362,7 +3382,13 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
             <div className="flex items-center gap-2 mb-2">
               <Swords size={14} className={state.runoffMethod === 'engagement_metric' ? 'text-amber-400' : 'text-red-400'} />
               <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${state.runoffMethod === 'engagement_metric' ? 'text-amber-400' : 'text-red-400'}`}>
-                {state.runoffMethod === 'engagement_metric' ? 'Tie — Runoff Provider Failed · Local Tie-Break' : 'Tie Detected — Runoff Trial'}
+                {state.runoffMethod === 'engagement_metric'
+                  ? 'Tie — Runoff Provider Failed · Local Tie-Break'
+                  : state.runoffReason === 'plurality'
+                    ? 'Plurality — No Majority — Runoff Trial'
+                    : state.runoffReason === 'tie'
+                      ? 'Tie Detected — Runoff Trial'
+                      : 'Contested Outcome — Runoff Trial'}
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
@@ -3393,12 +3419,103 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
             transition={{ duration: 0.4 }}
             className="rounded-xl border border-purple-700/40 bg-purple-950/20 p-4"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <Swords size={14} className="text-purple-400" />
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400">
                 Round 2 — Adversarial Reconsideration
               </span>
+              {state.runoffReason && (
+                <span className={`ml-auto text-[8px] font-black uppercase tracking-[0.2em] border rounded px-1 py-0.5 ${
+                  state.runoffReason === 'plurality' ? 'text-orange-400 border-orange-900/60' : 'text-red-400 border-red-900/60'
+                }`}>
+                  {state.runoffReason === 'plurality' ? 'plurality' : 'tie'}
+                </span>
+              )}
             </div>
+
+            {/* Defenses — each contesting position's case, objection, and rebuttal */}
+            {state.round2.defenses.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-purple-400/70">
+                  Defenses ({state.round2.defensesCompleted}/{state.round2.defensesTotal})
+                </div>
+                {state.round2.defenses.map((d) => {
+                  const dcfg = getPersonaConfig(d.defender);
+                  return (
+                    <div key={d.position} className="rounded-lg border border-purple-900/40 bg-purple-950/10 p-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span className={`text-[9px] font-cinzel font-bold ${dcfg.color}`}>{d.defender}</span>
+                        <ChevronRight size={10} className="text-slate-600" />
+                        <span className="text-[10px] font-cinzel text-purple-200">{d.position}</span>
+                        {d.status === 'failed' && (
+                          <span className="text-[8px] font-mono text-red-400 border border-red-900/60 rounded px-1">FAILED</span>
+                        )}
+                      </div>
+                      {d.defense && (
+                        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2" title={d.defense}>
+                          <span className="text-purple-300/80">Defense:</span> {d.defense}
+                        </p>
+                      )}
+                      {d.strongestObjection && (
+                        <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-2 mt-1" title={d.strongestObjection}>
+                          <span className="text-red-400/80">Objection:</span> {d.strongestObjection}
+                        </p>
+                      )}
+                      {d.rebuttal && (
+                        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 mt-1" title={d.rebuttal}>
+                          <span className="text-emerald-400/80">Rebuttal:</span> {d.rebuttal}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {/* Reassessments — who kept, who shifted, and why */}
+            {state.round2.ballots.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-purple-400/70">
+                  Reassessments ({state.round2.reassessmentsCompleted}/{state.round2.reassessmentsTotal})
+                  {state.round2.ballots.filter(b => b.changed).length > 0 && (
+                    <span className="text-amber-300 ml-2">{state.round2.ballots.filter(b => b.changed).length} shifted</span>
+                  )}
+                </div>
+                {state.round2.ballots.map((b) => {
+                  const bcfg = getPersonaConfig(b.member);
+                  return (
+                    <div key={b.member} className="rounded-lg border border-slate-800/60 bg-slate-900/30 p-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[9px] font-cinzel font-bold ${bcfg.color}`}>{b.member}</span>
+                        <span className="text-[10px] font-mono text-slate-500 line-through">{b.originalVote}</span>
+                        <ChevronRight size={10} className="text-slate-600" />
+                        <span className="text-[10px] font-mono text-purple-300">{b.newVote}</span>
+                        {b.changed ? (
+                          <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 border border-amber-900/60 rounded px-1">Shifted</span>
+                        ) : (
+                          <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 border border-slate-800 rounded px-1">Retained</span>
+                        )}
+                        <span className="text-[8px] font-mono text-slate-600 ml-auto">
+                          {Math.round((b.confidenceBefore || 0) * 100)}% → {Math.round((b.confidenceAfter || 0) * 100)}%
+                        </span>
+                      </div>
+                      {b.decisiveArgument && (
+                        <p className="text-[10px] text-slate-500 italic leading-relaxed mt-1 line-clamp-2" title={b.decisiveArgument}>
+                          &ldquo;{b.decisiveArgument}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {state.round2.defenses.length === 0 && state.round2.ballots.length === 0 && (
+              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                <Loader2 size={10} className="animate-spin text-purple-400" />
+                Defenders are preparing their cases…
+              </div>
+            )}
+
             <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
               <span className="text-slate-500">Defenses:</span>
               <span className="text-purple-300">{state.round2.defensesCompleted}/{state.round2.defensesTotal}</span>
@@ -3425,6 +3542,31 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
                 </span>
               )}
             </div>
+
+            {/* Ballot conservation ledger — where every member's Round-2 vote went */}
+            {state.round2.conservation && (
+              <div className="text-[9px] font-mono text-slate-500 mt-2 pt-2 border-t border-slate-800/50 flex items-center gap-2 flex-wrap">
+                <span className="text-purple-300/80">Ballot ledger:</span>
+                <span>{state.round2.conservation.round1ValidBallots} valid R1</span>
+                <ChevronRight size={9} className="text-slate-700" />
+                <span>{state.round2.conservation.round2EligibleMembers} eligible</span>
+                <ChevronRight size={9} className="text-slate-700" />
+                <span>{state.round2.conservation.round2CastBallots} cast R2</span>
+                {state.round2.conservation.round2FailedBallots > 0 && (
+                  <span
+                    className="text-red-400 cursor-help underline decoration-dotted"
+                    title={state.round2.conservation.failedMembers.map(f => `${f.member}: ${f.reason}`).join('\n')}
+                  >
+                    {state.round2.conservation.round2FailedBallots} failed
+                  </span>
+                )}
+                {state.round2.conservation.conserved ? (
+                  <span className="text-emerald-400">conserved ✓</span>
+                ) : (
+                  <span className="text-amber-400">VOTES LOST — audit required</span>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -3926,6 +4068,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
           votes: [],
           tally: {},
           runoffCandidates: [],
+          runoffReason: null,
           runoffWinner: null,
           runoffMethod: null,
           runoffNote: '',
@@ -4001,7 +4144,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 };
               }
               case 'runoff_started':
-                return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], events: ev };
+                return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], runoffReason: event.reason || null, events: ev };
               case 'runoff_completed':
                 return { ...prev, runoffWinner: event.winner || null, runoffMethod: event.method || null, runoffNote: event.note || '', events: ev };
               case 'round2_defense_started':
@@ -4014,6 +4157,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                     defensesTotal: (prev.round2?.defensesTotal || 0) + 1,
                     reassessmentsCompleted: prev.round2?.reassessmentsCompleted || 0,
                     reassessmentsTotal: prev.round2?.reassessmentsTotal || 0,
+                    defenses: prev.round2?.defenses || [],
                     ballots: prev.round2?.ballots || [],
                     winner: prev.round2?.winner || null,
                     stillTied: prev.round2?.stillTied || false,
@@ -4026,6 +4170,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                   round2: prev.round2 ? {
                     ...prev.round2,
                     defensesCompleted: prev.round2.defensesCompleted + 1,
+                    defenses: [...prev.round2.defenses, {
+                      position: event.position || '',
+                      defender: event.defender || '',
+                      status: event.status === 'failed' ? 'failed' as const : 'completed' as const,
+                      defense: event.defense,
+                      strongestObjection: event.strongestObjection,
+                      rebuttal: event.rebuttal,
+                    }],
                   } : prev.round2,
                 };
               case 'round2_reassess_completed':
@@ -4044,6 +4196,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                       changed: !!event.changed,
                       confidenceBefore: event.confidenceBefore ?? 0.5,
                       confidenceAfter: event.confidenceAfter ?? 0.5,
+                      decisiveArgument: event.decisiveArgument,
                     }],
                   } : prev.round2,
                 };
@@ -4057,6 +4210,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                     ...prev.round2,
                     winner: event.winner || prev.round2.winner,
                     stillTied: !!event.stillTied,
+                    conservation: event.conservation || prev.round2.conservation || null,
                   } : prev.round2,
                 };
               case 'synthesis_start':

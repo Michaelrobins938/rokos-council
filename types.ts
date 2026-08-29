@@ -109,13 +109,13 @@ export type CouncilEvent = CouncilEventEnvelope & (
   | { type: 'member_started'; persona: string; phase: CouncilPhase; model?: string; provider?: string }
   | { type: 'member_completed'; persona: string; phase: CouncilPhase; output: string; metadata?: ProviderMetadata; status?: 'completed' | 'failed' | 'abstained' }
   | { type: 'vote_cast'; persona: string; vote: string; reason?: string; scores?: Array<{ target: string; score: number; notes: string }>; metadata?: ProviderMetadata; outcome?: VoteOutcome; confidence?: number; errorCode?: string }
-  | { type: 'runoff_started'; candidates: string[] }
+  | { type: 'runoff_started'; candidates: string[]; reason?: 'tie' | 'plurality' }
   | { type: 'runoff_completed'; winner: string; metadata?: ProviderMetadata; method?: 'runoff_vote' | 'engagement_metric'; note?: string }
   | { type: 'round2_defense_started'; position: string; defender: string }
-  | { type: 'round2_defense_completed'; position: string; defender: string; status: 'completed' | 'failed' }
-  | { type: 'round2_reassess_completed'; member: string; originalVote: string; newVote: string; changed: boolean; confidenceBefore: number; confidenceAfter: number }
+  | { type: 'round2_defense_completed'; position: string; defender: string; status: 'completed' | 'failed'; defense?: string; strongestObjection?: string; rebuttal?: string }
+  | { type: 'round2_reassess_completed'; member: string; originalVote: string; newVote: string; changed: boolean; confidenceBefore: number; confidenceAfter: number; decisiveArgument?: string }
   | { type: 'round2_ballot_cast'; member: string; vote: string; confidence: number; decisiveArgument: string }
-  | { type: 'round2_completed'; winner: string | null; outcome: Round2Outcome; stillTied: boolean; tally: Record<string, number> }
+  | { type: 'round2_completed'; winner: string | null; outcome: Round2Outcome; stillTied: boolean; tally: Record<string, number>; conservation?: BallotConservation }
   | { type: 'phase_completed'; phase: CouncilPhase }
   | { type: 'synthesis_completed'; synthesis: string }
   | { type: 'retry'; phase: CouncilPhase; persona?: string; attempt: number; error: string; provider?: string; model?: string }
@@ -744,6 +744,20 @@ export interface MoralAxisAnalysis {
 
 export type Round2Outcome = 'majority' | 'still_tied' | 'unavailable';
 
+// ── BALLOT CONSERVATION LEDGER ───────────────────────────────────────────────
+// The auditable answer to "where did each member's Round-2 vote go?" The
+// invariant ROUND_1_VALID ≥ ROUND_2_ELIGIBLE ≥ ROUND_2_CAST is checked on every
+// runoff, and every exclusion carries its reason — silent vote loss is a
+// constitutional fault, not a statistical detail.
+export interface BallotConservation {
+  round1ValidBallots: number;
+  round2EligibleMembers: number;
+  round2CastBallots: number;
+  round2FailedBallots: number;
+  failedMembers: Array<{ member: string; reason: string }>;
+  conserved: boolean;
+}
+
 export interface Round2Result {
   round: number;
   leadingPositions: string[];
@@ -761,6 +775,7 @@ export interface Round2Result {
   persuasion: Round2Persuasion;
   movementBreakdown?: Record<BeliefMovement, number>;
   deadlockNote?: string;
+  conservation?: BallotConservation;
 }
 
 export interface CouncilDebrief {

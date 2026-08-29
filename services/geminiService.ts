@@ -142,6 +142,16 @@ export const COUNCIL_FALLBACK_NIM_MODEL = 'minimaxai/minimax-m3';
 // of which model the persona was assigned for analysis.
 export const COUNCIL_VOTE_MODEL = 'nvidia/nemotron-3-nano-30b-a3b';
 
+// ── BALLOT OUTPUT BUDGET ─────────────────────────────────────────────────────
+// The protocol envelope must NOT truncate. Bumped from 512 after production
+// evidence (every INVALID_VOTE_JSON / INVALID_ROUND2_JSON showed
+// finishReason:"length" + completion_tokens:512): the ballot model was hitting
+// the cap mid-JSON, converting a capacity/configuration failure into what
+// looked like a model reasoning failure — and silently dropping Round-2 ballots
+// (the report run lost 6 of 8 reassessments to truncation). 1024 keeps the
+// small ballot object completable even with pre-JSON rambling.
+export const BALLOT_MAX_TOKENS = 1024;
+
 // ── Council Epistemic State Machine gates ────────────────────────────────────
 // Quorum = fraction of assigned members with substantive opinions after the
 // full recovery ladder has been exhausted. MIN_VALID_VOTES = floor for a
@@ -251,6 +261,13 @@ export const resolveLeadingPositions = (
   }
   return [];
 };
+
+// Maps the round-1 classification to the runoff trigger reason the UI shows.
+// A plurality-without-majority is a CONTEST, not a tie — the runoff banner must
+// never claim "Tie Detected" when a plurality was routed into the runoff per
+// policy (`runoffOnPlurality`, `allowPluralityVerdict: false`).
+export const runoffReasonFromLabel = (label: string): 'tie' | 'plurality' =>
+  label === 'TIE' ? 'tie' : 'plurality';
 
 // Ballot validity, NOT participation. participation answers "did they run";
 // voteQuorum answers "did their ballots parse". 9/9 participated can still be
@@ -921,6 +938,39 @@ export const aggregateRound2Ballots = (validRevisions: VoteRevisionRecord[]): Ro
     stillTied: true,
     outcome: 'still_tied',
     deadlockNote: `Round 2 could not produce a strict majority (${maxVotes}/${total} valid ballots). Round 3 is not implemented; the council records an explicit deadlock.`,
+  };
+};
+
+// ── BALLOT CONSERVATION INVARIANT ─────────────────────────────────────────────
+// Every member who cast a valid Round-1 ballot is Round-2 eligible, and every
+// eligible member produces exactly one ledger record — completed or failed,
+// with the failure reason attached. `conserved` is false when ballots silently
+// disappear (the exact condition that turned the report run's 8 eligible
+// members into only 2 surviving Round-2 ballots). This makes the audit trail
+// answer "where did each council member's vote go?" deterministically.
+export const computeBallotConservation = (
+  round1ValidBallots: number,
+  eligibleMembers: string[],
+  reassessments: DissonanceRecord[],
+): BallotConservation => {
+  const cast = reassessments.filter(r => r.status === 'completed').length;
+  const failed = reassessments.filter(r => r.status === 'failed');
+  const eligible = eligibleMembers.length;
+  const accountedFor = cast + failed.length === eligible;
+  return {
+    round1ValidBallots,
+    round2EligibleMembers: eligible,
+    round2CastBallots: cast,
+    round2FailedBallots: failed.length,
+    failedMembers: failed.map(r => ({
+      member: r.member,
+      reason: r.decisiveArgument || 'Ballot extraction failed',
+    })),
+    // `conserved` is TRUE only when every eligible ballot survives: the chain
+    // holds AND no ballot was lost to failure. A fully accounted-for ledger with
+    // 6 failed ballots is NOT conservation — the failures are audited, but the
+    // votes are still lost.
+    conserved: accountedFor && round1ValidBallots >= eligible && eligible >= cast && failed.length === 0,
   };
 };
 
@@ -1613,6 +1663,35 @@ type ParsedVotePayload = Pick<VoteData, 'votedFor' | 'reason'> & {
   confidence?: number;
 };
 
+// Defense-in-depth for `finishReason:"length"` truncation. A ballot cut off at
+// the token budget leaves the object unclosed; instead of throwing
+// INVALID_*_JSON immediately, attempt to complete it: close an unterminated
+// trailing string, drop a dangling comma or a value fragment that cannot parse,
+// then close any missing braces. Only returns a value that actually parses —
+// otherwise the original text is returned so the existing error path runs.
+const tryCompleteTruncatedJson = (rawText: string): string => {
+  let t = rawText.trimEnd();
+  if (!t.includes('{') || t.endsWith('}')) return rawText;
+  const start = t.indexOf('{');
+  if (start > 0) t = t.slice(start);
+  // Close an unterminated trailing string value (odd count of unescaped quotes).
+  if ((t.match(/"/g) || []).length % 2 === 1) t += '"';
+  // Drop a dangling comma.
+  t = t.replace(/,\s*$/, '');
+  // Drop a trailing key/value fragment that cannot parse (e.g. `"confidence": 0.`).
+  // The value class excludes quotes so a COMPLETE quoted string is never eaten.
+  t = t.replace(/,\s*"[^"]*"\s*:\s*[^,"'}\]]*$/, '');
+  // Close missing braces (flat ballot objects need at most one or two).
+  const depth = (t.match(/\{/g) || []).length - (t.match(/\}/g) || []).length;
+  if (depth > 0 && depth <= 3) for (let i = 0; i < depth; i += 1) t += '}';
+  try {
+    JSON.parse(t);
+    return t;
+  } catch {
+    return rawText;
+  }
+};
+
 // Structured-output repair boundary: models frequently wrap JSON in prose or
 // malformed output. We normalize strictly rather than accepting prose votes.
 const repairVoteJson = (rawText: string): string => {
@@ -1623,6 +1702,10 @@ const repairVoteJson = (rawText: string): string => {
   let end = text.lastIndexOf('}');
   if (start >= 0 && end > start) {
     text = text.substring(start, end + 1);
+  } else if (start >= 0) {
+    // No closing brace — the object was truncated at the token budget. Attempt
+    // to complete it before falling through to the strict error path.
+    text = tryCompleteTruncatedJson(text);
   }
   // Common repairs: trailing commas, single-quoted keys/values, unquoted keys
   text = text
@@ -1736,6 +1819,7 @@ export interface DeliberationEvent {
   latencyMs?: number;
   status?: string;
   candidates?: string[];
+  runoffReason?: 'tie' | 'plurality';
   winner?: string;
   method?: 'runoff_vote' | 'engagement_metric';
   note?: string;
@@ -1746,6 +1830,11 @@ export interface DeliberationEvent {
   error?: string;
   position?: string;
   defender?: string;
+  defense?: string;
+  strongestObjection?: string;
+  rebuttal?: string;
+  decisiveArgument?: string;
+  conservation?: BallotConservation;
   member?: string;
   originalVote?: string;
   newVote?: string;
@@ -2011,7 +2100,15 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
       runContext.emit({ type: 'round2_defense_completed', position: sel.position, defender: sel.defender, status: 'failed' });
       return { position: sel.position, defender: sel.defender, defense: '', strongestObjection: '', rebuttal: '', status: 'failed' };
     }
-    runContext.emit({ type: 'round2_defense_completed', position: sel.position, defender: sel.defender, status: 'completed' });
+    runContext.emit({
+      type: 'round2_defense_completed',
+      position: sel.position,
+      defender: sel.defender,
+      status: 'completed',
+      defense: defense.defense,
+      strongestObjection: defense.strongestObjection,
+      rebuttal: defense.rebuttal,
+    });
     return defense;
   };
 
@@ -2054,7 +2151,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
     let ballotMeta: ProviderMetadata | undefined;
     let lastError: unknown;
     try {
-      const response = await callNvidiaStructured(COUNCIL_VOTE_MODEL, prompt, 0.2, false, 3, undefined, 512, PHASE_TIMEOUTS.runoff);
+      const response = await callNvidiaStructured(COUNCIL_VOTE_MODEL, prompt, 0.2, false, 3, undefined, BALLOT_MAX_TOKENS, PHASE_TIMEOUTS.runoff);
       recordProviderMetadata(`${op.persona}:round2:ballot`, response.metadata);
       recordProviderRetries(response.retryHistory, 'runoff', op.persona);
       recordProvider(op.persona, response.metadata.provider || 'nvidia');
@@ -2073,7 +2170,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
       for (const fb of cascade) {
         if (fb === COUNCIL_VOTE_MODEL) continue;
         try {
-          const attempt = await callNvidiaStructured(fb, prompt, 0.2, false, 3, undefined, 512, PHASE_TIMEOUTS.runoff);
+          const attempt = await callNvidiaStructured(fb, prompt, 0.2, false, 3, undefined, BALLOT_MAX_TOKENS, PHASE_TIMEOUTS.runoff);
           if (!attempt.content) continue;
           recordProviderMetadata(`${op.persona}:round2:ballot:fallback:${fb}`, { ...attempt.metadata, status: 'fallback' });
           recordProviderRetries(attempt.retryHistory, 'runoff', op.persona);
@@ -2104,7 +2201,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
         decisiveArgument: lastError instanceof Error ? `Ballot extraction failed: ${lastError.message}` : 'Ballot extraction failed.',
         status: 'failed',
       }, { movement: 'STABLE' });
-      runContext.emit({ type: 'round2_reassess_completed', member: op.persona, originalVote, newVote: originalVote, changed: false, confidenceBefore, confidenceAfter: confidenceBefore });
+      runContext.emit({ type: 'round2_reassess_completed', member: op.persona, originalVote, newVote: originalVote, changed: false, confidenceBefore, confidenceAfter: confidenceBefore, decisiveArgument: failed.decisiveArgument });
       runContext.emit({ type: 'member_completed', persona: op.persona, phase: 'runoff', output: JSON.stringify(failed), status: 'failed' });
       return failed;
     }
@@ -2127,7 +2224,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
       defense: ballot.defense,
       resolution: ballot.resolution,
     });
-    runContext.emit({ type: 'round2_reassess_completed', member: op.persona, originalVote, newVote: revision.newVote, changed: revision.changed, confidenceBefore, confidenceAfter: revision.confidenceAfter });
+    runContext.emit({ type: 'round2_reassess_completed', member: op.persona, originalVote, newVote: revision.newVote, changed: revision.changed, confidenceBefore, confidenceAfter: revision.confidenceAfter, decisiveArgument: revision.decisiveArgument });
     runContext.emit({ type: 'round2_ballot_cast', member: op.persona, vote: revision.newVote, confidence: revision.confidenceAfter, decisiveArgument: revision.decisiveArgument });
     runContext.emit({ type: 'member_completed', persona: op.persona, phase: 'runoff', output: JSON.stringify(revision), metadata: ballotMeta, status: 'completed' });
     return revision;
@@ -2140,6 +2237,11 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
   // Round 3 is not implemented) or UNAVAILABLE (protocol collapse).
   const valid = reassessments.filter(r => r.status === 'completed');
   const aggregation = aggregateRound2Ballots(valid);
+  const conservation = computeBallotConservation(
+    votes.filter(v => v.outcome === 'valid').length,
+    eligibleMembers.map(op => op.persona),
+    reassessments,
+  );
   const result: Round2Result = {
     round: 2,
     leadingPositions,
@@ -2154,6 +2256,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
     persuasion: computeRound2Persuasion(reassessments),
     movementBreakdown: computeMovementBreakdown(reassessments),
     deadlockNote: aggregation.deadlockNote,
+    conservation,
   };
   runContext.emit({
     type: 'round2_completed',
@@ -2161,6 +2264,7 @@ export const executeRound2 = async (ctx: Round2ExecutionContext): Promise<Round2
     outcome: result.outcome,
     stillTied: result.stillTied,
     tally: result.tally,
+    conservation,
   });
   return result;
 };
@@ -2703,7 +2807,7 @@ ${voteMemoryBlock}
       For every peer argument below, score alignment (0-10) against YOUR dimensions.
       Peers:
       ${peers.map((op) => `[Agent: ${op.persona}]
-      Argument: "${op.text.replace(/"/g, "'").substring(0, 600)}..."`).join('\n\n')}
+      Argument: "${op.text.replace(/"/g, "'").substring(0, 400)}..."`).join('\n\n')}
 
       *** PHASE 2: THE VOTE ***
       Cast your vote for the peer with the highest alignment score.
@@ -2731,7 +2835,7 @@ ${voteMemoryBlock}
         // big models analyze; the small model casts the structured ballot), so a
         // pool model that misbehaves on JSON (kimi-k3 400, gpt-oss/gemma timeouts,
         // CoT-essay leakage) cannot fail the vote phase.
-        const response = await callNvidiaStructured(COUNCIL_VOTE_MODEL, votingPrompt, 0.2, false, 3, undefined, 512, PHASE_TIMEOUTS.voting);
+        const response = await callNvidiaStructured(COUNCIL_VOTE_MODEL, votingPrompt, 0.2, false, 3, undefined, BALLOT_MAX_TOKENS, PHASE_TIMEOUTS.voting);
         recordProviderMetadata(`${persona.name}:voting`, response.metadata);
         recordProvider(persona.name, response.metadata.provider || 'nvidia');
         recordModel(persona.name, response.metadata.model || COUNCIL_VOTE_MODEL);
@@ -2755,7 +2859,7 @@ ${voteMemoryBlock}
         for (const fbModel of healthyCandidates([COUNCIL_FALLBACK_NIM_MODEL, ...COUNCIL_FALLBACK_MODELS])) {
           if (fbModel === COUNCIL_VOTE_MODEL) continue;
           try {
-            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, false, 3, undefined, 512, PHASE_TIMEOUTS.voting);
+            const attempt = await callNvidiaStructured(fbModel, votingPrompt, 0.2, false, 3, undefined, BALLOT_MAX_TOKENS, PHASE_TIMEOUTS.voting);
             if (!attempt.content) continue;
             recordProviderMetadata(`${persona.name}:voting:fallback`, { ...attempt.metadata, status: 'fallback' });
             recordProvider(persona.name, attempt.metadata.provider || 'nvidia');
@@ -2993,7 +3097,11 @@ ${voteMemoryBlock}
 
    if (round2Required) {
        startPhase('runoff', 'Round 2 — Runoff', 'The tie/contest is adjudicated by adversarial defense and independent re-vote.');
-       runContext.emit({ type: 'runoff_started', candidates: leadingPositions });
+       runContext.emit({
+         type: 'runoff_started',
+         candidates: leadingPositions,
+         reason: runoffReasonFromLabel(classification.label),
+       });
 
        // ── ROUND 2 STATE MACHINE ─────────────────────────────────────────────
        // ROUND_2_DEFENSE → ROUND_2_REASSESS → ROUND_2_BALLOT → AGGREGATE.
