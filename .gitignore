@@ -1,4 +1,52 @@
+# ============================================================
+# SECRETS & API KEYS — never commit these
+# ============================================================
+# Environment files
+.env
+.env.*
+*.env
+*.env.*
+**/.env
+!.env.example
+
+# Local key dump files (raw API keys)
+temp_*key*.txt
+temp_*.txt
+*key*.txt
+*keys*.txt
+keys/
+secrets/
+.npmrc
+.netrc
+auth.json
+
+# Key / credential file formats
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+credentials.json
+client_secret*.json
+serviceAccountKey*.json
+firebase-adminsdk*.json
+
+# Key testing scripts
+test-keys.js
+test-api-keys.mjs
+test_app.py
+
+# Session transcripts (contain raw council payloads)
+session-ses_*.md
+
+# Vercel CLI state
+.vercel
+.vercel/**
+
+# ============================================================
 # Logs
+# ============================================================
 logs
 *.log
 npm-debug.log*
@@ -7,17 +55,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables
-.env
-.env.local
-.env.production
-
+# ============================================================
+# Dependencies / build output
+# ============================================================
 node_modules
 dist
 dist-ssr
 *.local
 
+# ============================================================
 # Editor directories and files
+# ============================================================
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -28,17 +76,11 @@ dist-ssr
 *.sln
 *.sw?
 
-.vercel
-
-# Temp files and secrets
-temp_*.txt
-test-keys.js
-test-api-keys.mjs
-test_app.py
+# ============================================================
+# Temp/test artifacts
+# ============================================================
 test_initial.png
 test_result.png
-session-ses_*.md
-.env.test
 
 # Build artifacts and exports
 roko's-council/
