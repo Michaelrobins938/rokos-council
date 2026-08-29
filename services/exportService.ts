@@ -129,6 +129,147 @@ const computeEpistemicScore = (result: CouncilResult): number => {
   return Math.round(60 + (withPremises / Math.max(result.opinions.length, 1)) * 35);
 };
 
+export interface DiagnosticsBlock {
+  memberFailures: Array<{
+    persona: string;
+    outcome: 'ok' | 'recovered' | 'failed';
+    primaryModel?: string;
+    finalModel?: string;
+    attempts: Array<{
+      model?: string;
+      status?: number | string;
+      code?: string;
+      message?: string;
+      latencyMs?: number;
+      recoverable?: boolean;
+    }>;
+  }>;
+  retrySummary: { total: number; byPhase: Record<string, number> };
+  latencyStats: Record<string, { calls: number; ok: number; failed: number; avgMs?: number; p95Ms?: number; maxMs?: number }>;
+  modelHealth: Record<string, { ok: number; failed: number; statuses: Array<number | string>; lastError?: string }>;
+  phaseDurations: Record<string, number>;
+  usageTotals: { successfulCalls: number; failedCalls: number; promptTokens: number; completionTokens: number };
+  recoverability: Record<string, number>;
+}
+
+// Builds a consolidated debugging view from the audited CouncilResult so failures
+// are diagnosable at a glance: which member failed, which models were attempted,
+// retry counts, latency, and error classification.
+export const computeDiagnostics = (result: CouncilResult): DiagnosticsBlock => {
+  const opinions = result.opinions || [];
+  const providerSummary = result.providerSummary || {};
+  const phaseTimeline = result.phaseTimeline || [];
+  const retryHistory = result.retryHistory || [];
+
+  // Group every recorded provider call by persona and phase.
+  const memberAttempts: Record<string, Array<{
+    model?: string; status?: number | string; code?: string; message?: string;
+    latencyMs?: number; recoverable?: boolean; phase: string;
+  }>> = {};
+  for (const [key, meta] of Object.entries(providerSummary)) {
+    const persona = key.split(':')[0];
+    if (!persona) continue;
+    const phase = key.includes(':voting') ? 'voting' : key.includes('chairman') ? 'verdict' : 'analysis';
+    (memberAttempts[persona] ||= []).push({
+      model: meta.model,
+      status: meta.error?.status,
+      code: meta.error?.code,
+      message: meta.error?.message,
+      latencyMs: meta.latencyMs,
+      recoverable: meta.error?.recoverable,
+      phase,
+    });
+  }
+
+  const memberFailures = opinions
+    .map(op => {
+      const attempts = memberAttempts[op.persona] || [];
+      const hasError = attempts.some(a => a.status != null || a.code);
+      const outcome: 'ok' | 'recovered' | 'failed' = op.status === 'completed' ? (hasError ? 'recovered' : 'ok') : 'failed';
+      return {
+        persona: op.persona,
+        outcome,
+        primaryModel: op.metadata?.model,
+        finalModel: op.metadata?.model,
+        attempts,
+      };
+    })
+    .filter(m => m.outcome !== 'ok' || m.attempts.length > 0);
+
+  const retrySummary = {
+    total: retryHistory.length,
+    byPhase: retryHistory.reduce<Record<string, number>>((acc, r) => {
+      acc[r.phase] = (acc[r.phase] || 0) + 1;
+      return acc;
+    }, {}),
+  };
+
+  const phaseLatency: Record<string, { calls: number; ok: number; failed: number; lats: number[] }> = {};
+  for (const [key, meta] of Object.entries(providerSummary)) {
+    const phase = key.includes(':voting') ? 'voting' : key.includes('chairman') ? 'verdict' : 'analysis';
+    const bucket = (phaseLatency[phase] ||= { calls: 0, ok: 0, failed: 0, lats: [] });
+    bucket.calls += 1;
+    if (meta.status === 'ok' || meta.status === 'fallback') bucket.ok += 1;
+    else bucket.failed += 1;
+    if (meta.latencyMs != null) bucket.lats.push(meta.latencyMs);
+  }
+  const latencyStats: DiagnosticsBlock['latencyStats'] = {};
+  for (const [phase, b] of Object.entries(phaseLatency)) {
+    const sorted = [...b.lats].sort((x, y) => x - y);
+    latencyStats[phase] = {
+      calls: b.calls,
+      ok: b.ok,
+      failed: b.failed,
+      avgMs: b.lats.length ? Math.round(b.lats.reduce((a, c) => a + c, 0) / b.lats.length) : undefined,
+      p95Ms: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : undefined,
+      maxMs: b.lats.length ? sorted[sorted.length - 1] : undefined,
+    };
+  }
+
+  const modelHealth: DiagnosticsBlock['modelHealth'] = {};
+  for (const meta of Object.values(providerSummary)) {
+    const m = meta.model || 'unknown';
+    const h = (modelHealth[m] ||= { ok: 0, failed: 0, statuses: [] });
+    if (meta.status === 'ok' || meta.status === 'fallback') h.ok += 1;
+    else {
+      h.failed += 1;
+      if (meta.error?.status != null) h.statuses.push(meta.error.status);
+      h.lastError = meta.error?.message || h.lastError;
+    }
+  }
+
+  const phaseDurations: Record<string, number> = {};
+  for (const p of phaseTimeline) {
+    if (p.startTime != null && p.endTime != null) phaseDurations[p.id] = p.endTime - p.startTime;
+  }
+
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let successfulCalls = 0;
+  let failedCalls = 0;
+  const recoverability: Record<string, number> = {};
+  for (const meta of Object.values(providerSummary)) {
+    if (meta.usage?.promptTokens != null) promptTokens += meta.usage.promptTokens;
+    if (meta.usage?.completionTokens != null) completionTokens += meta.usage.completionTokens;
+    if (meta.status === 'ok' || meta.status === 'fallback') successfulCalls += 1;
+    else failedCalls += 1;
+    if (meta.error?.status != null) {
+      const key = String(meta.error.status);
+      recoverability[key] = (recoverability[key] || 0) + 1;
+    }
+  }
+
+  return {
+    memberFailures,
+    retrySummary,
+    latencyStats,
+    modelHealth,
+    phaseDurations,
+    usageTotals: { successfulCalls, failedCalls, promptTokens, completionTokens },
+    recoverability,
+  };
+};
+
 export interface ExportSession {
   session: CouncilSession;
   result: CouncilResult;
@@ -167,8 +308,9 @@ export const buildExportSession = (
     modelRoster: [],
     metadata: {
       phasesCompleted: result.councilState?.phases?.filter(p => p.status === 'completed').map(p => p.id) ?? [],
-      totalTokensUsed: undefined,
-      processingTimeMs: undefined,
+      totalTokensUsed: (result.providerSummary ? Object.values(result.providerSummary).reduce((acc, m) => acc + (m.usage?.totalTokens ?? (m.usage?.promptTokens ?? 0) + (m.usage?.completionTokens ?? 0)), 0) : undefined),
+      processingTimeMs: result.phaseTimeline?.reduce((acc, p) => acc + (p.endTime && p.startTime ? p.endTime - p.startTime : 0), 0),
+      diagnostics: computeDiagnostics(result),
       lensData: {
         paradoxMeta: findParadoxMeta(query),
         silenceMetric: computeSilenceMetric(result),

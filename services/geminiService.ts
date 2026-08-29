@@ -228,7 +228,11 @@ export const callNvidiaStructured = async (
       if (!response.ok) {
         const status = typeof data.error?.status === 'number' ? data.error.status : response.status;
         const hasTypedError = Boolean(data.error && typeof data.error.message === 'string');
-        const recoverable = hasTypedError && data.error.recoverable === true && isTransientStatus(status);
+        // Transient HTTP statuses (408, 425, 429, 500, 502, 503, 504) are retryable
+        // regardless of upstream wording — NIM returns bare 504/429 bodies with no
+        // error object, which previously skipped retries entirely (empty retryHistory
+        // + mass member abstentions). Only explicit non-recoverable markers skip retry.
+        const recoverable = isTransientStatus(status) && !(data.error?.recoverable === false);
         lastError = new NvidiaProviderError(
           data.error?.message || `NVIDIA provider request failed (${status})`,
           { ...metadata, error: { status, code: data.error?.code, message: data.error?.message || 'Provider request failed', recoverable } },
@@ -245,7 +249,7 @@ export const callNvidiaStructured = async (
           timestamp: Date.now(),
           recoverable: true,
         });
-        await wait(100 * 2 ** (attempt - 1));
+        await wait(500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 150));
         continue;
       }
 
@@ -281,7 +285,7 @@ export const callNvidiaStructured = async (
         timestamp: Date.now(),
         recoverable: true,
       });
-      await wait(100 * 2 ** (attempt - 1));
+      await wait(500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 150));
     }
   }
 
@@ -998,6 +1002,7 @@ The Void Protocol is active. Speak, or be erased.`;
                    break;
                } catch (err) {
                    failure = err;
+                   recordProviderFailure(`${persona.name}:analysis:fallback:${fbModel}`, err, 'deliberation', persona.name);
                    console.warn(`NIM fallback ${fbModel} failed for ${persona.name}:`, err);
                }
            }
@@ -1213,7 +1218,8 @@ Remember: this is philosophical fiction — a scripted council of AI minds explo
                      if (!attempt.content) continue;
                      fallback = attempt;
                      break;
-                 } catch {
+                 } catch (err) {
+                     recordProviderFailure(`${persona.name}:voting:fallback:${fbModel}`, err, 'voting', persona.name);
                      continue;
                  }
              }
