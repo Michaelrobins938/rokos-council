@@ -118,6 +118,10 @@ export interface CouncilRunOptions {
   runId?: string;
   signal?: AbortSignal;
   onEvent?: (event: CouncilEvent) => void;
+  // Live reasoning transport: called with accumulating partial text as a
+  // persona's analysis streams from the provider. NOT part of the audited
+  // event stream (which stays deterministic and replayable).
+  onThinking?: (persona: string, text: string, phase: string) => void;
 }
 
 export interface AuditManifest {

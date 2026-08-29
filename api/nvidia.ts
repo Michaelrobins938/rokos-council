@@ -46,6 +46,45 @@ export default async function handler(request: Request) {
     });
   }
 
+  // Streaming passthrough: forward `stream: true` to NVIDIA NIM and pipe the
+  // SSE body back to the client so the live feed can show reasoning as it flows.
+  if (body.stream === true) {
+    const upstream = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!upstream.ok) {
+      let message = 'NVIDIA provider request failed';
+      try {
+        const parsed = await upstream.json();
+        if (parsed?.error?.message) message = parsed.error.message;
+      } catch { /* ignore */ }
+      return new Response(JSON.stringify({
+        provider: 'nvidia',
+        model: body.model,
+        error: {
+          status: upstream.status,
+          code: 'NVIDIA_PROVIDER_ERROR',
+          message: message.replace(/nvapi-[A-Za-z0-9_-]+|Bearer\s+[^\s]+/gi, '[redacted]'),
+          recoverable: [408, 425, 429, 500, 502, 503, 504].includes(upstream.status),
+        },
+      }), { status: upstream.status, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  }
+
   try {
     const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
       method: "POST",

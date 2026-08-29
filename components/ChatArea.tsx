@@ -2552,6 +2552,7 @@ interface LiveAnalysis {
   persona: string
   model: string
   text: string
+  thinkingText?: string
   status: 'pending' | 'thinking' | 'complete' | 'failed'
   startedAt?: number | null
   latencyMs?: number | null
@@ -2861,7 +2862,18 @@ const LiveDeliberationFeed: React.FC<{ state: LiveDelibState; personas: typeof P
 
                       {/* Status / text */}
                       {analysis.status === 'thinking' && (
-                        <p className="text-[10px] text-emerald-400/70 italic">Analyzing...</p>
+                        analysis.thinkingText ? (
+                          <div className="overflow-y-auto max-h-[140px] custom-scrollbar">
+                            <p className="text-[10px] text-emerald-300/80 font-mono leading-relaxed whitespace-pre-wrap">
+                              {analysis.thinkingText}
+                              <span className="inline-block w-1.5 h-3 bg-emerald-400/70 ml-0.5 align-middle animate-pulse" />
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-emerald-400/70 italic flex items-center gap-1">
+                            <Loader2 size={10} className="animate-spin" /> Reasoning…
+                          </p>
+                        )
                       )}
                       {analysis.status === 'complete' && analysis.text && (
                         <div className="overflow-y-auto max-h-[120px] custom-scrollbar">
@@ -3447,7 +3459,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
         // LIVE MODE: Initialize deliberation state and call actual LLM with progress callbacks
         setDeliberationLive({
           phase: 'assembly',
-          analyses: PERSONALITIES.map(p => ({ persona: p.name, model: p.model ?? 'unassigned', text: '', status: 'pending' as const, startedAt: null, latencyMs: null })),
+          analyses: PERSONALITIES.map(p => ({ persona: p.name, model: p.model ?? 'unassigned', text: '', thinkingText: '', status: 'pending' as const, startedAt: null, latencyMs: null })),
           votes: [],
           tally: {},
           runoffCandidates: [],
@@ -3461,6 +3473,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
         });
 
         councilResult = await runCouncil(pendingQuery, councilMode, {
+          // Live reasoning transport — streams each persona's accumulating
+          // analysis text into the feed while the model is still working.
+          onThinking: (persona, text, phase) => {
+            if (phase !== 'deliberation') return;
+            setDeliberationLive(prev => prev ? {
+              ...prev,
+              analyses: prev.analyses.map(a => a.persona === persona ? { ...a, thinkingText: text } : a),
+            } : prev);
+          },
           onEvent: (councilEvent) => {
             const event = toDeliberationEvent(councilEvent);
             if (!event) return;
@@ -3481,12 +3502,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 return { ...prev, events: ev };
               case 'analysis_start':
                 return { ...prev, phase: 'analysis' as const, events: ev, analyses: prev.analyses.map(a =>
-                  a.persona === event.persona ? { ...a, model: event.model || a.model, status: 'thinking' as const, startedAt: event.timestamp || Date.now() } : a
+                  a.persona === event.persona ? { ...a, model: event.model || a.model, status: 'thinking' as const, thinkingText: '', startedAt: event.timestamp || Date.now() } : a
                 )};
               case 'analysis_complete':
                 return { ...prev, events: ev, analyses: prev.analyses.map(a =>
                   a.persona === event.persona
-                    ? { ...a, text: event.text || '', status: event.status === 'failed' ? 'failed' as const : 'complete' as const, latencyMs: event.latencyMs ?? null }
+                    ? { ...a, text: event.text || '', thinkingText: '', status: event.status === 'failed' ? 'failed' as const : 'complete' as const, latencyMs: event.latencyMs ?? null }
                     : a
                 )};
               case 'vote_start':

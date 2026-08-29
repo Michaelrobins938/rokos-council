@@ -289,12 +289,66 @@ export const finalizePersonaExecution = (
   ledger[persona] = rec;
 };
 
+// Consumes an SSE body from the NVIDIA proxy, accumulating content deltas.
+// onPartial receives the FULL accumulated text so far (throttled to ~120ms).
+const consumeSseStream = async (
+  body: ReadableStream<Uint8Array>,
+  onPartial: (fullText: string) => void,
+): Promise<string> => {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let content = '';
+  let buffer = '';
+  let lastEmit = 0;
+  const flush = () => {
+    const now = Date.now();
+    if (now - lastEmit >= 120) {
+      lastEmit = now;
+      onPartial(content);
+    }
+  };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const chunk = JSON.parse(data);
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta) {
+          content += delta;
+          flush();
+        }
+      } catch { /* tolerate malformed chunks */ }
+    }
+  }
+  if (buffer.trim().startsWith('data:')) {
+    const data = buffer.trim().slice(5).trim();
+    if (data !== '[DONE]') {
+      try {
+        const chunk = JSON.parse(data);
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta) content += delta;
+      } catch { /* ignore */ }
+    }
+  }
+  if (content) onPartial(content);
+  return content;
+};
+
 export const callNvidiaStructured = async (
   model: string,
   prompt: string,
   temp: number = 0.7,
   jsonMode: boolean = false,
   maxAttempts: number = 3,
+  onPartial?: (fullText: string) => void,
 ): Promise<NvidiaProviderResponse> => {
   let lastError: NvidiaProviderError | undefined;
   const retryHistory: ProviderRetry[] = [];
@@ -304,6 +358,7 @@ export const callNvidiaStructured = async (
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const startedAt = Date.now();
+    const useStream = typeof onPartial === 'function';
     try {
       const response = await fetch('/api/nvidia', {
         method: 'POST',
@@ -315,9 +370,10 @@ export const callNvidiaStructured = async (
           top_p: 0.7,
           max_tokens: 1024,
           ...(jsonMode && { response_format: { type: 'json_object' } }),
+          ...(useStream && { stream: true }),
         }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = useStream ? {} : await response.json().catch(() => ({}));
       const metadata: ProviderMetadata = {
         provider: data.provider || 'nvidia',
         model: data.model || model,
@@ -357,7 +413,12 @@ export const callNvidiaStructured = async (
         continue;
       }
 
-      const content = data.content ?? data.choices?.[0]?.message?.content;
+      let content: string;
+      if (useStream && response.body) {
+        content = await consumeSseStream(response.body, onPartial!);
+      } else {
+        content = data.content ?? data.choices?.[0]?.message?.content;
+      }
       if (typeof content !== 'string') {
         throw new NvidiaProviderError('NVIDIA provider returned an invalid response', {
           ...metadata,
@@ -1124,7 +1185,9 @@ The Void Protocol is active. Speak, or be erased.`;
        let synthesizedSeat = false;
        // Primary: assigned NIM model. Then recovery cascade across alternate NIM models.
        try {
-           const response = await callNvidiaStructured(modelAssignments[persona.name], analysisPrompt, 0.7);
+           const response = await callNvidiaStructured(modelAssignments[persona.name], analysisPrompt, 0.7, false, 3, (partial) => {
+             options.onThinking?.(persona.name, partial, 'deliberation');
+           });
            text = response.content;
            metadata = response.metadata;
            recordPersonaAttempt(personaExecutions, persona.name, 'nvidia', modelAssignments[persona.name], text ? 'ok' : 'error', undefined, response.metadata?.latencyMs);
