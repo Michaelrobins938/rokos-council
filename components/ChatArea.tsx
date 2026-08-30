@@ -233,7 +233,46 @@ const PARADOX_META: Record<string, { sensoryFragment: string; destabilizes: stri
   'MEMORY & CONTINUITY':    { sensoryFragment: 'The moment you realize the "you" from yesterday may already be gone', destabilizes: 'your sense of being a continuous entity persisting through time', recurrence: 5, provenance: 'Hume, 1739 — the bundle theory and the self that isn\'t there' },
   'POWER ASYMMETRY':        { sensoryFragment: 'The last choice made by an unaugmented mind', destabilizes: 'your assumption that human oversight remains meaningful after a threshold is crossed', recurrence: 3, provenance: 'Wiener, 1950 — the human use of human beings' },
   'SUFFERING ETHICS':       { sensoryFragment: 'Every scream that was never heard because no one was listening', destabilizes: 'your moral framework\'s radius — how far it actually reaches', recurrence: 4, provenance: 'Singer, 1975 — the expanding circle of moral consideration' },
+  'COALITION':              { sensoryFragment: 'The sound of two enemies discovering they want the same thing', destabilizes: 'your assumption that the camps cannot stand on one side', recurrence: 4, provenance: 'The Popular Front, 1935 — ideologies aligned by threat' },
+  'INSTITUTIONAL DESIGN':   { sensoryFragment: 'An organization watching its own hands for capture', destabilizes: 'your belief that good founding intent survives success', recurrence: 4, provenance: 'Michels, 1911 — the iron law of oligarchy' },
+  'TRANSPARENCY':           { sensoryFragment: 'A ledger that cannot be unseen once it is written', destabilizes: 'your trust in voluntary disclosure', recurrence: 4, provenance: 'External realism, 1977 — measure what you regulate' },
+  'RESOURCE ACCOUNTING':    { sensoryFragment: 'The physical weight of every token: water, watts, land', destabilizes: 'your confidence that intelligence is weightless', recurrence: 3, provenance: 'Meadows, 1972 — limits made visible' },
+  'PRESERVATION':           { sensoryFragment: 'The last physical copy of a vanished language', destabilizes: 'your assumption that scarcity protects what matters', recurrence: 4, provenance: 'Alexandria, 48 BCE — what the archive cost' },
+  'KNOWLEDGE CONSERVATION': { sensoryFragment: 'A floor of human writing beneath an ocean of synthetic text', destabilizes: 'your certainty that more output means more knowledge', recurrence: 3, provenance: 'Shalev, 2024 — model collapse documented' },
+  'CAPABILITY CONTINUITY':  { sensoryFragment: 'The senior engineer who cannot teach what the system does for them', destabilizes: 'your belief that competence regenerates itself', recurrence: 3, provenance: 'Fogbank, 1973 — the skill that died in the vault' },
+  'CIVIL LIBERTIES':        { sensoryFragment: 'The camera that wants nothing until it wants you', destabilizes: 'your trust that oversight scales with capability', recurrence: 4, provenance: 'Church Committee, 1975 — what supervision missed' },
+  'TECHNICAL PRIVACY':      { sensoryFragment: 'A vault whose key no single guard possesses', destabilizes: 'your reliance on promised restraint', recurrence: 3, provenance: 'Diffie–Hellman, 1976 — secrecy by construction' },
+  'LEVERAGE':               { sensoryFragment: 'The rung where the lawful steps run out', destabilizes: 'your hope that institutions always absorb pressure', recurrence: 4, provenance: 'Gandhi, 1930 — nonviolence as structural force' },
+  'LEGITIMACY':             { sensoryFragment: 'The benefit that convinces no one because it never arrives', destabilizes: 'your claim that the gains will be shared', recurrence: 3, provenance: 'Morduval, 2016 — prosperity without proof' },
+  'INDUSTRY ACCOUNTABILITY': { sensoryFragment: 'The audit that only the audited company paid for', destabilizes: 'your trust in self-certification', recurrence: 3, provenance: 'Carhart, 1995 — the certification that certified nothing' },
+  'INDEPENDENT VERIFICATION': { sensoryFragment: 'A watchdog that cannot be bought because no one owns it', destabilizes: 'your comfort with funded independence', recurrence: 3, provenance: 'UL, 1894 — the laboratory that sold trust' },
+  'STRATEGIC SEQUENCING':   { sensoryFragment: 'Day one of six months, with nothing built and no permission granted', destabilizes: 'your habit of mistaking planning for action', recurrence: 3, provenance: 'Mannheim, 1929 — urgency is the only schedule' },
+  'REALISM UNDER PRESSURE': { sensoryFragment: 'The safeguard that survives only because the door it guards is already open', destabilizes: 'your architecture built for good actors', recurrence: 4, provenance: 'Machiavelli, 1513 — design for the world as it is' },
 };
+
+// ── EMERGENCY CIVILIZATIONAL DESIGN SESSION ─────────────────────────────────
+// A dedicated carousel level rendered ABOVE the three rotating paradox rows.
+// These are not dilemmas to be judged — they are engineering briefs the Council
+// is asked to *build answers* for. Each is phrased so a member cannot answer
+// with "it's complex": every card demands a proposed mechanism or a named
+// failure mode, and the deliverable is always an artifact, never an opinion.
+const CIVILIZATIONAL_SESSION = [
+  { category: "COALITION", title: "Bridging the Camps", text: "Design a nonviolent, pro-human, pro-technology coalition that unites those who fear AI and those who build it — without asking either to abandon its worldview. Name at least ten concrete things both camps can genuinely support, and give me an organizing doctrine, not a slogan, that an AI-builder and an AI-skeptic can both sign without self-betrayal." },
+  { category: "INSTITUTIONAL DESIGN", title: "The Uncapturable Movement", text: "Design a decentralized movement that cannot be captured by a billionaire, a political party, an AI company, an activist faction, an influencer, or its own founder. Specify the membership architecture, leadership rotation, funding transparency, conflict-of-interest rules, public decision records, independent auditing, whistleblower channels, internal opposition mechanisms, and succession. Then answer the hardest part: how does an organization fighting institutional concentration avoid becoming concentrated itself?" },
+  { category: "TRANSPARENCY", title: "Disclosure Without Nationalization", text: "Force frontier AI companies, hyperscalers, and major deployers to disclose their energy, water, hardware, data provenance, synthetic-content share, evaluations, failures, labor displacement, apprenticeship effects, licensing practices, destruction of physical culture, surveillance capabilities, and government contracts — without nationalizing them. Identify the mechanisms (licensing, procurement, tax incentives, securities law, market access) that make disclosure economically unavoidable, and tell me which of those levers exist outside federal legislation." },
+  { category: "RESOURCE ACCOUNTING", title: "The AI Resource Ledger", text: "Make the physical footprint of AI impossible to abstract away. Define a standardized AI Resource Ledger that every sufficiently large deployment must report — kilowatt-hours, water, CO2e, hardware lifecycle, critical minerals, land and infrastructure, grid impact. Then solve the real problem: design an independent verification system that does not depend on the company's own self-reporting." },
+  { category: "PRESERVATION", title: "The Non-Destructive Mandate", text: "An AI company acquires a scarce book, manuscript, archival recording, or other culturally significant source. Destruction would lower costs; preservation is possible. What stops it from choosing destruction? Give me a classification system, a legal mechanism, an economic incentive, an enforcement mechanism, an appeal mechanism, an independent custodian, and a penalty for irreversible destruction — then name every other human-originated substrate that, once consumed, cannot be reconstructed." },
+  { category: "KNOWLEDGE CONSERVATION", title: "The Human Data Commons", text: "Prevent AI from eating its own future data supply — the loop where AI consumes human knowledge, emits synthetic output, and gradually replaces the human-originated record. Design a conservation architecture: what counts as scarce human-originated knowledge, what is irreplaceable, what must be preserved and in physical redundancy, how provenance is established, how independent archives participate, and who pays. Then answer: how do we ensure AI development increases the production of human knowledge rather than merely consuming the historical stock?" },
+  { category: "CAPABILITY CONTINUITY", title: "The Apprenticeship Standard", text: "Prevent firms from optimizing away the junior work that produces future experts — the apprenticeship void, where each generation's capability decays because AI did the learning for it. Derive the standard yourself: what must a trainee do unassisted, how much practice is required, when may AI substitute, how competence is tested, who certifies it, how the firm demonstrates succession, and what happens when the apprenticeship pipeline runs dry." },
+  { category: "CIVIL LIBERTIES", title: "The Anti-Surveillance Architecture", text: "Prevent AI from handing governments surveillance, identification, prediction, and behavioral-control capacity far beyond what constitutional institutions can safely supervise — and do it without creating an even more powerful centralized AI regulator. Specify what government may collect, what AI may infer, what requires a warrant, what must never be automated, retention limits, who may inspect government AI, how citizens independently challenge AI-derived action, what happens when the government lies, and the technical mechanisms that make unauthorized surveillance detectable. Solve the recursion: how do you audit the surveillance without the audit itself becoming a surveillance database?" },
+  { category: "TECHNICAL PRIVACY", title: "Privacy by Construction", text: "Design an architecture where privacy does not depend on 'please trust the government.' Build from minimization, encryption, access controls, auditable logs, independent verification, and technical separation. Then name the class of information that should be technically impossible for even a willing government employee to access — and describe the construction that enforces that impossibility." },
+  { category: "LEVERAGE", title: "The Lawful Escalation Ladder", text: "If citizens conclude that corporations or governments are violating the compact, what legitimate mechanisms give them enough leverage that destructive action becomes unnecessary? Design the ladder from disclosure through public challenge, independent audit, legal challenge, procurement pressure, collective bargaining, shareholder action, market exit, and regulatory enforcement — and answer the question every movement fails on: what happens when every step fails? Design constitutional escalation mechanisms that remain lawful and nonviolent. The objective isn't pacification; it's legitimate power." },
+  { category: "LEGITIMACY", title: "The Pro-Human Dividend", text: "Build more than a coalition of opposition. Define the pro-human AI future in tangible terms: shorter workweeks, better education, more scientific discovery, cheaper goods, wider entrepreneurship, accessibility, ecological optimization, creative freedom. Then answer the hard question: what must change in ownership and institutions for ordinary people to actually receive those benefits rather than watch them concentrate?" },
+  { category: "INDUSTRY ACCOUNTABILITY", title: "The Human-Compatible AI Accord", text: "Name what an AI company could adopt tomorrow, voluntarily, that would materially improve legitimacy without waiting for legislation: non-destructive cultural preservation, environmental disclosure, apprenticeship preservation, model provenance, independent evaluation, user exit, interoperability, anti-dependency, surveillance limitations, worker participation, public failure reporting. Then make it real: no credit for signing the pledge — credit only for passing the audit." },
+  { category: "INDEPENDENT VERIFICATION", title: "The Uncaptured Watchdog", text: "Design an institution capable of independently verifying AI companies, governments, and major deployers without becoming financially dependent on any of them — because a watchdog with dependent funding is eventually captured. Give me the funding architecture (membership, endowment, foundation diversification, research contracts, public-interest licensing) and run a vulnerability analysis on every mechanism." },
+  { category: "STRATEGIC SEQUENCING", title: "Day 180", text: "You have 180 days, minimal capital, no government mandate, and no guarantee the industry cooperates. What do you build first? Give me an exact sequence — Days 1–30: what gets built; 31–60: what gets tested; 61–90: who is recruited; 91–120: what is demonstrated publicly; 121–150: what institutions are approached; 151–180: what policymakers and industry can no longer ignore. No aspirations. Deliverables." },
+  { category: "REALISM UNDER PRESSURE", title: "Designing for Adversarial Actors", text: "Assume every major institution behaves according to its own incentives, not yours. Which parts of your architecture still work? Which protections fail? What remains enforceable when governments are incompetent, corporations maximize profit, activists fracture, citizens are apathetic, and AI capability outruns legislation? Redesign accordingly — we're not building a world of good actors; we're building a system that survives ordinary human incentives." },
+];
 
 // --- CINEMATIC NEW COMPONENTS ---
 
@@ -1086,8 +1125,24 @@ const CATEGORY_PALETTE: Record<string, {
     'CONSCIOUSNESS':      { primary: 'text-fuchsia-400', bg: 'from-fuchsia-950/40 to-slate-950', border: 'border-fuchsia-500/25', glowRgb: '232,121,249', badge: 'bg-fuchsia-900/30', accentBar: 'bg-fuchsia-500' },
     'DIGITAL CONSCIOUSNESS': { primary: 'text-sky-400', bg: 'from-sky-950/40 to-slate-950',     border: 'border-sky-500/25',     glowRgb: '56,189,248',  badge: 'bg-sky-900/30',     accentBar: 'bg-sky-500' },
     'DECEPTION':          { primary: 'text-orange-500',  bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '249,115,22',  badge: 'bg-red-950/50',     accentBar: 'bg-orange-500' },
-    'DEMOCRACY':          { primary: 'text-blue-300',    bg: 'from-blue-950/30 to-slate-950',    border: 'border-blue-400/25',    glowRgb: '147,197,253', badge: 'bg-blue-900/30',    accentBar: 'bg-blue-400' },
+    'DEMOCRACY':          { primary: 'text-blue-300',    bg: 'from-blue-950/30 to-slate-950',   border: 'border-blue-400/25',    glowRgb: '147,197,253', badge: 'bg-blue-900/30',    accentBar: 'bg-blue-400' },
     'GENETICS':           { primary: 'text-lime-400',    bg: 'from-lime-950/40 to-slate-950',    border: 'border-lime-500/25',    glowRgb: '163,230,53',  badge: 'bg-lime-900/30',    accentBar: 'bg-lime-500' },
+    // Emergency Civilizational Design Session — the emergency register: crimson
+    'COALITION':              { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'INSTITUTIONAL DESIGN':   { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'TRANSPARENCY':           { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'RESOURCE ACCOUNTING':    { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'PRESERVATION':           { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'KNOWLEDGE CONSERVATION': { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'CAPABILITY CONTINUITY':  { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'CIVIL LIBERTIES':        { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'TECHNICAL PRIVACY':      { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'LEVERAGE':               { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'LEGITIMACY':             { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'INDUSTRY ACCOUNTABILITY': { primary: 'text-red-300',   bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'INDEPENDENT VERIFICATION': { primary: 'text-red-400',  bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
+    'STRATEGIC SEQUENCING':   { primary: 'text-red-300',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-400/25',     glowRgb: '252,165,165', badge: 'bg-red-900/30',     accentBar: 'bg-red-400' },
+    'REALISM UNDER PRESSURE': { primary: 'text-red-400',    bg: 'from-red-950/40 to-slate-950',     border: 'border-red-500/25',     glowRgb: '248,113,113', badge: 'bg-red-900/30',     accentBar: 'bg-red-500' },
 };
 
 type ParadoxSuggestion = typeof COUNCIL_SUGGESTIONS[number];
@@ -1265,7 +1320,7 @@ const ParadoxTrack: React.FC<{
                 key={`${copyIndex}-${itemIndex}-${s.category}`}
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (rowIndex * items.length + itemIndex) * 0.04, duration: 0.5, ease: 'easeOut' }}
+                transition={{ delay: (rowIndex >= 0 ? rowIndex * items.length : 0) * 0.04 + itemIndex * 0.04, duration: 0.5, ease: 'easeOut' }}
                 onClick={() => {
                     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
                     onSelect(s.text);
@@ -1324,7 +1379,7 @@ const ParadoxTrack: React.FC<{
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            aria-label={`Paradox track ${rowIndex + 1}`}
+            aria-label={rowIndex >= 0 ? `Paradox track ${rowIndex + 1}` : "Emergency Civilizational Design Session"}
             className="flex overflow-x-auto gap-4 pb-4 px-4 touch-pan-x snap-x [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)]"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
@@ -1354,7 +1409,16 @@ const SuggestionCards: React.FC<{ onSelect: (text: string) => void }> = ({ onSel
 
     return (
         <div className="relative w-full">
-            <div className="flex items-center justify-center gap-4 mb-5 px-4">
+            {/* Emergency Civilizational Design Session — a dedicated level above the rotating rows */}
+            <div className="flex items-center justify-center gap-4 mb-4 px-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-red-700/40 to-transparent" />
+                <span className="text-[9px] font-mono text-red-400/70 uppercase tracking-[0.35em] flex items-center gap-2"><Swords size={9} className="text-red-500/70" />Emergency Session · Mechanism or Failure</span>
+                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-red-700/40 to-transparent" />
+            </div>
+            <ParadoxTrack key="civilizational-session" items={CIVILIZATIONAL_SESSION} direction="forward" onSelect={onSelect} rowIndex={-1} />
+
+            {/* Rotating paradox layers */}
+            <div className="flex items-center justify-center gap-4 mt-6 mb-5 px-4">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-purple-800/30 to-transparent" />
                 <span className="text-[9px] font-mono text-purple-400/50 uppercase tracking-[0.35em] flex items-center gap-2"><Eye size={9} className="text-purple-500/60" />Each paradox carries the weight of its lineage</span>
                 <div className="h-px flex-1 bg-gradient-to-l from-transparent via-purple-800/30 to-transparent" />
@@ -4231,7 +4295,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                 };
               }
               case 'runoff_started':
-                return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], runoffReason: event.reason || null, events: ev };
+                const reason = event.reason === 'tie' || event.reason === 'plurality' ? event.reason : null;
+                return { ...prev, phase: 'runoff' as const, runoffCandidates: event.candidates || [], runoffReason: reason, events: ev };
               case 'runoff_completed':
                 return { ...prev, runoffWinner: event.winner || null, runoffMethod: event.method || null, runoffNote: event.note || '', events: ev };
               case 'round2_defense_started':
@@ -4331,6 +4396,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
             defensesTotal: councilResult.round2Result.defenses.length,
             reassessmentsCompleted: councilResult.round2Result.reassessments.length,
             reassessmentsTotal: councilResult.round2Result.reassessments.length,
+            defenses: councilResult.round2Result.defenses.map(d => ({
+              position: d.position,
+              defender: d.defender,
+              status: d.status,
+              defense: d.defense,
+              strongestObjection: d.strongestObjection,
+              rebuttal: d.rebuttal,
+            })),
             ballots: councilResult.round2Result.reassessments.map(r => ({
               member: r.member,
               originalVote: r.originalVote,
@@ -4339,6 +4412,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
               confidenceBefore: r.confidenceBefore,
               confidenceAfter: r.confidenceAfter,
             })),
+            conservation: councilResult.round2Result.conservation ?? null,
             winner: councilResult.round2Result.winner,
             stillTied: councilResult.round2Result.stillTied,
           } : prev.round2,
@@ -5424,8 +5498,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
                     onClick={scrollToBottom}
-                    aria-label={hasNewMessages ? 'New transmissions received. Scroll to bottom.' : 'Return to present'}
-                    className="absolute bottom-24 right-8 z-50 p-3 bg-emerald-500 text-slate-950 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition-all group"
+                     aria-label={hasNewMessages ? 'New transmissions received. Scroll to bottom.' : 'Return to present'}
+                     className="absolute bottom-28 md:bottom-24 right-6 md:right-8 z-50 p-3 bg-emerald-500 text-slate-950 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition-all group"
                >
                    <TrendingUp className="rotate-180 group-hover:-translate-y-1 transition-transform" size={20} />
                    {hasNewMessages && (
@@ -5443,7 +5517,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onUpdateMessages, onToggl
                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
                      onClick={scrollToTop}
                      aria-label="Scroll to top of transcript"
-                     className="absolute top-36 right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
+                     className="absolute top-36 right-6 md:right-8 z-50 p-3 bg-slate-800/80 text-slate-400 rounded-full border border-slate-700 shadow-xl hover:text-white hover:bg-slate-700 transition-all group"
                >
                    <ChevronUp className="group-hover:-translate-y-1 transition-transform" size={20} />
                    <div className="absolute right-full mr-3 px-2 py-1 bg-black/80 text-slate-300 text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">

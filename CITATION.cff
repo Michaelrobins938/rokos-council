@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "Rokos Council"
+type: software
+authors:
+  - name: "Michael Forsythe Robinson"
+    orcid: "https://orcid.org/0009-0002-8487-759X"
+repository-code: "https://github.com/Michaelrobins938/rokos-council"
+license: MIT

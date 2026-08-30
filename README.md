@@ -1,6 +1,8 @@
 # Roko's Council
 
-> A multi-agent deliberation system in which nine adversarially-constructed AI personas analyze, cross-examine, and vote on ill-structured problems, producing an audited, synthesized verdict.
+> A cinematic multi-agent deliberation interface in which nine adversarially-constructed AI personas analyze, cross-examine, and vote on ill-structured problems — producing an audited, synthesized verdict you can inspect, export, and trust.
+
+> *"The council does not meet in a room. It meets in the space between a question and its answer."*
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-roko-s-council.vercel.app-blue?style=for-the-badge&logo=vercel)](https://roko-s-council.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -19,6 +21,25 @@ Single-model inference collapses disagreement into a single voice: one sampler, 
 The system is engineered for **verifiability rather than theatre**. Every run emits a hash-chained event stream (`council-audit-v1`), per-member provider metadata, retry history, and a completeness attestation, so the provenance of each verdict is inspectable rather than asserted. Refusals are treated as a first-class failure mode and handled by an escalation protocol rather than silently discarded.
 
 The application is deployed at [roko-s-council.vercel.app](https://roko-s-council.vercel.app).
+
+---
+
+## Feature Highlights
+
+| Capability | What it does |
+|---|---|
+| **Nine adversarial personas** | Oracle · Strategos · Philosopher · Demagogue · Jurist · Citizen · Historian · Critic · Technocrat — each a cognitive attractor with its own epistemology, values, and failure modes |
+| **Three-act ritual** | Act I intent declaration ("Ritual Threshold") → Act II live deliberation under four Chamber Lenses → Act III Verdict Loom (Decided / Rejected / Unresolved) |
+| **Verifiable deliberation** | Hash-chained `council-audit-v1` event stream, per-member provider metadata, retry history, completeness attestation |
+| **Void Protocol** | Refusal escalation: soft-refusal detection → re-prompt under Chamber Law → in-character forfeiture — refusal never silently degrades a session |
+| **Round-2 machine** | Adversarial reassessment where every member defends or revises its vote against challengers, with confidence deltas recorded |
+| **Social-cognitive ecology** | Persona bible (`CognitiveSpec`), static 9×9 relationship graph + dynamic relationship state with provenance, dissonance ledger, longitudinal council memory |
+| **Moral topology** | 20 paradox families with full moral structure + variations; every persona carries a stable ethical prior, a moral fingerprint (15 latent parameters), and a threshold that would crack it |
+| **Constitutional machine** | Executable continuity loop: deadlock → audited Void sacrifice → Voidborn replacement → reconstituted council → post-void reflection, with drift and integrity metrics |
+| **Council Laboratory** | Sidebar observability — inspect any persona's full cognitive spec, the 8-edge social field with provenance, and the dissonance ledger |
+| **Multi-format export** | JSON · Markdown · CSV · podcast script · Substack · ZIP, each embedding the audit manifest |
+| **Live voice** | Browser-native per-persona speech (Web Speech API), wired end-to-end — agent cards, chamber members, and the chairman's verdict all speak |
+| **Design system** | `DESIGN.md` (Google Stitch format) + `.impeccable/design.json` — a documented cinematic system ("The Verdict Chamber") that new surfaces inherit |
 
 ---
 
@@ -82,12 +103,14 @@ User Query
   └─► Phase I — Independent Analysis (9 personas, batched ×4, per-member provider fallback)
         └─► soft-refusal detection → Void Protocol escalation ladder (§5.4)
   └─► Phase II — Cross-Examination & Voting (pairwise alignment scoring, 0–10, JSON ballots)
+  └─► Round 2 — Adversarial Reassessment (each member defends or revises its position;
+        movement SHIFTED/REINFORCED/WEAKENED/STABLE recorded against challengers)
   └─► Tie Detection → Runoff Trial (adjudicated re-deliberation) or engagement-metric fallback
   └─► Phase III — Chairman Synthesis (winner merge + runner-up salvage)
   └─► Verdict Loom (Decided / Rejected / Unresolved) + audit manifest
 ```
 
-A **live deliberation feed** renders the pipeline in real time — per-member analysis status and model, voting score badges, and synthesis phase — driven by the same event stream that produces the audit log (§5.3), so the UI cannot diverge from the record.
+A **live deliberation feed** renders the pipeline in real time — per-member analysis status and model, voting score badges, and synthesis phase — driven by the same event stream that produces the audit log (§5.3), so the UI cannot diverge from the record. The cinematic chamber ceremony (doors, assembly, speakers) is driven by that same real event stream: members light up only when they genuinely begin work, and the status line names the actual phase.
 
 ---
 
@@ -144,6 +167,36 @@ The protocol is *dramaturgical on the surface and defensive underneath*: it conv
 | Vote tie | Adjudicated **Runoff Trial**; provider failure degrades to engagement-metric tie-break |
 | User cancellation | `run_cancelled` event; partial result returned with `cancelled` completeness |
 
+### 5.6 The Social-Cognitive Ecology
+
+The nine members are not labels attached to prompts — each is a **behavioral attractor** specified by a stack of independent artifacts beneath the deliberation engine:
+
+- **Persona bible** (`personaBible.ts`). A canonical `CognitiveSpec` per member — identity (ontology / epistemology / theory of truth / telos), psychology (values / biases / blind spots / shadow / contradiction), cognition (`preferredEvidence` / `defaultHeuristic` / `characteristicFailure` / invariants), and social cognition (trust model / status behavior). `renderCognitiveSpec` / `renderSocialCognition` compile these into each member's prompt.
+- **Relationship graph** (`relationshipGraph.ts`). A static, immutable 9×9 seed (trust / respect / ideological distance / epistemic compatibility / status tension) plus a `DynamicRelationshipState` that evolves *only* from recorded events. Every delta is attributed to the event that caused it (`relationshipProvenance`, FIFO-capped) — so "why does the Historian distrust the Technocrat" is answerable with the vote that did it.
+- **Dissonance engine** (`dissonanceEngine.ts`). Round-2 revisions produce a `movement` classification (SHIFTED / REINFORCED / WEAKENED / STABLE) derived from the immutable ledger, while the *trigger / defense / resolution* are model-reported — the fact and the interpretation are never conflated.
+- **Longitudinal memory** (`councilMemoryService.ts`). Per-topic-class prediction lessons, relationship evolution, and invariant stress persist across sessions and are injected into future deliberations via `buildMemoryContext` / `updateMemoryAfterSession`.
+- **Moral topology & fingerprint** (`moralTopology.ts`, `moralFingerprint.ts`). Each member carries a stable ethical prior in rights/order × consequence/virtue space plus 15 latent parameters (authority sensitivity, risk tolerance, punitive instinct, mercy threshold, temporal discounting…). The paradoxes stress-test these priors; deviations are dissonance events.
+- **Integrity tests** (`personaIntegrity.ts`). Nine adversarial temptations, each engineered to provoke a specific member's designed `characteristicFailure`; a pure scorer measures failure-mode activation against invariant preservation. `tests/persona-integrity-battery.ts` runs the live battery.
+- **Benchmark seam** (`benchmarkMetrics.ts`). `CouncilRunOptions.cognitiveLayers` lets each layer (ROLE → … → IDENTITY + RELATIONS + DISSONANCE) be switched independently; `computeIdentityStability` / `computeContextSensitivity` classify a member as STABLE+ADAPTABLE / STABLE+RIGID / UNSTABLE+ADAPTABLE / UNSTABLE.
+
+**The invariant the whole stack serves:** *stable in principles, flexible in beliefs.* Identity stability and context sensitivity are measured separately and must coexist.
+
+### 5.7 The Constitutional System
+
+When a deliberation deadlocks, the chamber does not collapse — it follows a written constitution:
+
+- **Deliberative integrity** (`deliberativeIntegrity.ts`). A `CONSTITUTIONAL_AUTHORITY` ladder (council vote → runoff → reconciliation → structured tiebreak → **no_verdict**). `buildDeadlockVerdict` makes "the available reasoning does not justify a collective decision" a valid output; `computePersonaStability` / `computePersuadability` / `computeDissonanceDeviation` are the integrity metrics.
+- **Void Protocol as consequence** (`voidProtocol.ts`). COUNCIL_FAILURE (deliberative gridlock) triggers an auditable sacrifice: a deterministic `VoidSeed` names the victim, a diagnostic **Voidborn** is generated *in opposition to the failure mode* (Witness attacks utilitarian consensus, Gambler attacks epistemic paralysis, Heretic attacks proceduralism, Rupture attacks stability-worship), and a predecessor-memory `VoidDebt` is recorded. A Basilisk-pressure readout surfaces the tension.
+- **The constitutional machine** (`constitutionalMachine.ts`). `runConstitutionalCouncil` is an executable state machine — DELIBERATING → … → DEADLOCK → VOID_ASSESSED → VOID_EXECUTING → RECONSTITUTING → POST_VOID_REFLECTION → RESOLVED — where the *seat* survives and the *occupant* changes (PERSON vs ROLE). `computeConstitutionalDrift` (pre/post moral axes) and `computeMoralIntegrity` (belief ↔ position ↔ vote under Basilisk pressure) measure what the sacrifice cost the chamber. The runner and reflector are injectable, so the entire loop is testable without live keys (`tests/constitutional-loop.test.ts`).
+
+### 5.8 The Design System
+
+The interface carries its own documented visual system rather than borrowing a template:
+
+- **`PRODUCT.md`** captures durable product truth (audiences, positioning, principles).
+- **`DESIGN.md`** (Google Stitch format) records the world: North Star *"The Verdict Chamber"*, the emerald-as-living / amber-as-record accent rule, the Cinzel / Inter / JetBrains Mono type pairing, the four Chamber Lens tints, and named rules (One Voice, Lens, Caps, Flat-by-Default).
+- **`.impeccable/design.json`** ships tonal ramps, motion tokens, and self-contained component snippets so the panel can render the system's actual button/input/nav primitives.
+
 ---
 ## 6. Implementation
 
@@ -153,13 +206,15 @@ The protocol is *dramaturgical on the surface and defensive underneath*: it conv
 |-------|-----------|---------|------|
 | UI runtime | React | 19.2 | Concurrent rendering of the deliberation stream |
 | Language | TypeScript (strict) | 5.8 | End-to-end type safety, including the event contract |
-| Build | Vite | 6.2 | HMR and production bundling (~220 KB gzipped JS) |
+| Build | Vite | 6.2 | HMR and production bundling (~275 KB gzipped JS) |
 | Styling | Tailwind CSS | 3.4 | Utility-first styling with custom design tokens |
 | Animation | Framer Motion | 11 | Chamber assembly, phase transitions, live feed |
 | Icons | Lucide React | 0.555 | Interface iconography |
 | Inference | NVIDIA NIM / OpenRouter | — | Persona inference via edge proxies |
-| Speech | Web Speech API | — | Browser-native per-persona voices |
+| Speech | Web Speech API | — | Browser-native per-persona voices (wired end-to-end) |
 | Persistence | localStorage | — | Session archive and recovery |
+| Markdown | react-markdown | 10 | Verdict/transcript rendering |
+| Design system | Stitch DESIGN.md + Impeccable | — | Documented visual tokens, detector, hooks |
 | Hosting | Vercel (Edge) | — | Static build + serverless proxies |
 
 ### 6.2 Source Layout
@@ -167,20 +222,46 @@ The protocol is *dramaturgical on the surface and defensive underneath*: it conv
 ```
 ├── App.tsx                        Root state machine and view routing
 ├── types.ts                       Event contract, persona, vote, audit types
+├── PRODUCT.md                     Product truth (audiences, purpose, principles)
+├── DESIGN.md                      Visual design system (Stitch DESIGN.md format)
 ├── api/
 │   ├── nvidia.ts                  Edge proxy — key isolation, error redaction
 │   └── openrouter.ts              Edge proxy — key rotation, error redaction
-├── components/                    Chamber UI (13 components)
-│   ├── ChatArea.tsx               Deliberation surface + LiveDeliberationFeed
-│   ├── Sidebar.tsx                Session archive
+├── components/                    Chamber UI (19 components)
+│   ├── ChatArea.tsx               Deliberation surface + CinematicCouncil + live feed
+│   ├── Sidebar.tsx                Session archive + exports
 │   ├── ExitDebrief.tsx            Verdict Loom (Decided/Rejected/Unresolved)
-│   └── …
+│   ├── CouncilLab.tsx             Observability hub (persona / relations / dissonance)
+│   ├── PersonaBibleInspector.tsx  Full CognitiveSpec per member
+│   ├── RelationshipGraphPanel.tsx 8-edge social field with provenance
+│   ├── DissonanceViewer.tsx       Dissonance ledger (emerald = ledger fact, amber = interpretation)
+│   ├── ConsensusVisualization.tsx Vote tally visualization
+│   ├── ExportCenter.tsx           Multi-format export center
+│   └── …                          Splash, VisualStudio, PodcastPlayer, SearchResults, …
 ├── services/
-│   ├── geminiService.ts           Deliberation engine: prompts, protocol, events
+│   ├── geminiService.ts           Deliberation engine: prompts, protocol, events, round-2
+│   ├── personaBible.ts            Canonical CognitiveSpec per member + prompt rendering
+│   ├── relationshipGraph.ts       Static 9×9 seed + dynamic state + provenance
+│   ├── dissonanceEngine.ts        Round-2 movement derivation (SHIFTED/REINFORCED/…)
+│   ├── councilMemoryService.ts    Longitudinal memory + prediction lessons
+│   ├── moralParadoxLibrary.ts     20 paradox families + render/extract
+│   ├── moralTopology.ts           Per-persona stable ethical priors
+│   ├── moralFingerprint.ts        15 latent moral parameters per persona
+│   ├── deliberativeIntegrity.ts   Constitutional ladder + no-verdict deadlock
+│   ├── voidProtocol.ts            Void seed, Voidborn archetypes, Basilisk pressure
+│   ├── constitutionalMachine.ts   Executable reconstitution loop + drift metrics
+│   ├── benchmarkMetrics.ts        Cognitive-layer ablation + identity/context scoring
+│   ├── personaIntegrity.ts        Adversarial temptation scorer
 │   ├── exportService.ts           Multi-format export (JSON/MD/CSV/Script/Substack/ZIP)
-│   ├── councilMemoryService.ts    Session persistence
+│   ├── exportArtifacts.ts         Verdict/artifacts export helpers
+│   ├── exportConstitutional.ts    Constitutional-run export
+│   ├── exportDatasets.ts          Dataset export
+│   ├── exportReproduction.ts      Reproduction/reproducibility export
+│   ├── epistemicTopology.ts       Epistemic premise tracing
 │   ├── narratorService.ts         Season/story-arc narration
-│   └── searchService.ts           Web-search grounding
+│   ├── searchService.ts           Web-search grounding
+│   └── portraitCacheService.ts    Avatar asset caching
+├── tests/                         12 runnable suites + integrity battery + soak runner
 └── vercel.json                    Build config + API headers
 ```
 
@@ -213,11 +294,12 @@ GEMINI_API_KEY=your_gemini_api_key_here
 NVIDIA_API_KEY=your_nvidia_api_key_here
 NVIDIA_API_KEY_2=your_nvidia_api_key_2_here
 NVIDIA_API_KEY_3=your_nvidia_api_key_3_here
+# … the NVIDIA proxy rotates through up to NVIDIA_API_KEY_32.
 OPENROUTER_API_KEY_1=your_openrouter_api_key_1_here
 OPENROUTER_API_KEY_2=your_openrouter_api_key_2_here
 ```
 
-All keys are **free-tier eligible** (NVIDIA NIM, OpenRouter free models, Google AI Studio). Keys are read server-side by the edge proxies and are never shipped to the client. `.env` is git-ignored; never commit it.
+All keys are **free-tier eligible** (NVIDIA NIM, OpenRouter free models, Google AI Studio). Keys are read server-side by the edge proxies (which rotate across the NVIDIA key pool and round-robin OpenRouter) and are never shipped to the client. `.env` is git-ignored; never commit it. Also see `.env.test` for the test-time configuration and `tests/provider-resilience.test.ts` for the fallback behavior it exercises.
 
 ### Scripts
 
@@ -226,7 +308,12 @@ npm run dev      # Development server (HMR)
 npm run build    # Production build (vite build)
 npm run preview  # Preview the production build
 npm run lint     # Strict TypeScript check (tsc --noEmit)
+
+# Test suites (bundle then run; no live keys required):
+npx esbuild --bundle tests/constitutional-loop.test.ts --format=esm --outfile=/tmp/cc.test.mjs && node /tmp/cc.test.mjs
 ```
+
+The `tests/` directory holds 12 runnable suites (Void Protocol, constitutional loop, round-2 machine, moral paradoxes, epistemic gates, provider resilience, verdict integrity, and more) plus the live-key integrity battery (`persona-integrity-battery.ts`) and a soak runner (`soak-reliability.mjs`). Most suites run with injectable runners and no live API keys.
 
 ---
 
@@ -256,10 +343,12 @@ The `api/` directory deploys as Edge Functions automatically; set the environmen
 Stated plainly, in the spirit of the system's own verdict columns:
 
 - **Independence is approximated, not guaranteed.** Members share provider distributions and era-specific training data; the Condorcet-style independence assumption (§2) is only partially satisfied. Future work: heterogeneous model *families* per member and prompt-level decorrelation studies.
-- **Vote tallies are small.** Nine voters make the tally sensitive to single defections; the runoff trial mitigates but does not eliminate variance. Future work: configurable council size and repeated-run aggregation.
+- **Vote tallies are small.** Nine voters make the tally sensitive to single defections; the runoff trial and Round-2 reassessment mitigate but do not eliminate variance. Future work: configurable council size and repeated-run aggregation.
 - **Refusal detection is lexical.** `isSoftRefusal` matches known phrasings; subtle compliance-without-engagement passes. Future work: classifier-based detection scored against the argumentation-quality rubric.
-- **No ground truth.** Deliberation quality is currently assessed structurally (completeness, ballot validity, retry rates) rather than against external correctness benchmarks — appropriate for ill-structured problems, but worth stating.
+- **No ground truth.** Deliberation quality is currently assessed structurally (completeness, ballot validity, retry rates, relationship/invariant integrity) rather than against external correctness benchmarks — appropriate for ill-structured problems, but worth stating.
 - **Client-side persistence.** `localStorage` bounds session durability; a sync layer is future work.
+- **The moral machinery runs inside the session.** The 20-paradox library, relationship graph, and moral priors shape prompts and structure interpretation, but the constitutional machine's reconstituted runs are primarily exercised through the injectable test runner — a production UI path for full constitutional sessions is future work.
+- **Design system is web-only.** The documented system and the impeccable tooling (detector, hooks, DESIGN.md) target the web surface; native targets would need their own token mapping.
 
 ---
 
@@ -269,6 +358,8 @@ Stated plainly, in the spirit of the system's own verdict columns:
 |----------|-------------|
 | [SCOPE-DOCUMENT.md](SCOPE-DOCUMENT.md) | Full development narrative and architecture decisions |
 | [ABOUT.md](ABOUT.md) | Project philosophy, vision, and the Basilisk Node framing |
+| [PRODUCT.md](PRODUCT.md) | Product truth — audiences, positioning, principles |
+| [DESIGN.md](DESIGN.md) | The visual design system (Stitch DESIGN.md format) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and contribution guidelines |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
 | [SECURITY.md](SECURITY.md) | Security policy and reporting |
